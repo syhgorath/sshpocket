@@ -21,21 +21,21 @@ USB_LOG_FILE="$USB_PATH/usb_logs/system_$(date +%Y%m%d).log"
 mkdir -p "$(dirname "$USB_LOG_FILE")"
 
 # Helper'lar (sıra önemli)
-# shellcheck source=sistem/Helpers/Log.sh
+# shellcheck source=Helpers/Log.sh
 source "$SISTEM_PATH/Helpers/Log.sh"
-# shellcheck source=sistem/Helpers/RegisterModules.sh
+# shellcheck source=Helpers/RegisterModules.sh
 source "$SISTEM_PATH/Helpers/RegisterModules.sh"
-# shellcheck source=sistem/Helpers/Menu.sh
+# shellcheck source=Helpers/Menu.sh
 source "$SISTEM_PATH/Helpers/Menu.sh"
-# shellcheck source=sistem/Helpers/CheckRoot.sh
+# shellcheck source=Helpers/CheckRoot.sh
 source "$SISTEM_PATH/Helpers/CheckRoot.sh"
-# shellcheck source=sistem/Helpers/Eject.sh
+# shellcheck source=Helpers/Eject.sh
 source "$SISTEM_PATH/Helpers/Eject.sh"
-# shellcheck source=sistem/Helpers/SSHHelper.sh
+# shellcheck source=Helpers/SSHHelper.sh
 source "$SISTEM_PATH/Helpers/SSHHelper.sh"
-# shellcheck source=sistem/Helpers/SSHModule.sh
+# shellcheck source=Helpers/SSHModule.sh
 source "$SISTEM_PATH/Helpers/SSHModule.sh"
-# shellcheck source=sistem/Autoload.sh
+# shellcheck source=Autoload.sh
 source "$SISTEM_PATH/Autoload.sh"
 
 # Modülleri yükle
