@@ -3,6 +3,14 @@
 macOS için, USB bellekten (veya herhangi bir klasörden) çalışan, modüler bir SSH bağlantı menüsü.
 Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendiliğinden görünür.
 
+> **Durum: ham / erken aşama (v2.0.0).** 🛠️
+> Bu, kişisel bir HomeLab aracından çıkan bir proje. [Claude](https://claude.com/claude-code) ile
+> elden geçirildi ve ilk hâline göre epey toparlandı, ama hâlâ geliştirilecek çok yeri var:
+> pürüzler, eksik testler ve yazılmamış özellikler olabilir. Sorunlar projenin hamlığından
+> kaynaklanır; bunun için kimseye kızmayın 😄 — issue ve PR'larla yardım etmeniz çok makbule geçer.
+> Yalnızca macOS'ta denendi. Kendi sunucularınızda kullanmadan önce kodu okuyun;
+> kullanım sorumluluğu size aittir (bkz. [LICENSE](LICENSE)).
+
 ## Hızlı başlangıç
 
 ```bash
