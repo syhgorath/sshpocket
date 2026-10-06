@@ -99,6 +99,17 @@ ${func}() {
 EOF
 chmod +x "$module_dir/${func}.sh"
 
+# Key varsa hedef sunucuya göndermeyi öner
+if [ -f "$key" ]; then
+    echo ""
+    read -r -p "Public key şimdi sunucuya gönderilsin mi? (y/n) " do_copy
+    if [ "$do_copy" = "y" ] || [ "$do_copy" = "Y" ]; then
+        # shellcheck source=Helpers/SSHKeyCopy.sh
+        source "$SCRIPT_DIR/Helpers/SSHKeyCopy.sh"
+        ssh_copy_key "$ssh_user" "$ssh_ip" "$ssh_port" "$key" || true
+    fi
+fi
+
 echo ""
 echo -e "${GREEN}✅ Modül oluşturuldu: $module_dir${NC}"
 echo "   Menüde '${upper}' olarak görünür (start.sh ile başlatın)."

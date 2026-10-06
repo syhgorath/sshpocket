@@ -102,6 +102,18 @@ ssh_module_run() {
     fi
     echo ""
 
+    local choice
+    echo "  1) Bağlan"
+    echo "  2) Public key'i sunucuya gönder"
+    echo "  0) Geri"
+    read -r -p "Seçim [1]: " choice
+    case "${choice:-1}" in
+        1) ;;
+        2) ssh_copy_key "$user" "$ip" "$port" "$ssh_key"; return $? ;;
+        *) return 0 ;;
+    esac
+    echo ""
+
     echo "🔍 Port kontrolü..."
     if command -v nc >/dev/null 2>&1; then
         if nc -z -w 2 "$ip" "$port" 2>/dev/null; then

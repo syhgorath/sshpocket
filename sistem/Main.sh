@@ -33,6 +33,8 @@ source "$SISTEM_PATH/Helpers/CheckRoot.sh"
 source "$SISTEM_PATH/Helpers/Eject.sh"
 # shellcheck source=Helpers/SSHHelper.sh
 source "$SISTEM_PATH/Helpers/SSHHelper.sh"
+# shellcheck source=Helpers/SSHKeyCopy.sh
+source "$SISTEM_PATH/Helpers/SSHKeyCopy.sh"
 # shellcheck source=Helpers/SSHModule.sh
 source "$SISTEM_PATH/Helpers/SSHModule.sh"
 # shellcheck source=Autoload.sh

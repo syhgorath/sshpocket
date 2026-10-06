@@ -21,6 +21,18 @@ bash sistem/ModuleGenerator.sh  # yeni sunucu modülü oluştur
 Generator size IP/kullanıcı/port sorar, isterseniz ed25519 anahtar üretir ve
 passphrase'i **macOS Keychain**'e kaydeder.
 
+## Key'i sunucuya gönderme
+
+Modül menüsünden **2) Public key'i sunucuya gönder** seçeneği (veya generator'ın son adımı)
+`ssh-copy-id` çalıştırır:
+
+- Key sunucuda zaten yetkiliyse bunu söyler ve bir şey yapmaz.
+- Değilse `ssh-copy-id` önce agent'taki/varsayılan key'leri, olmazsa **parolayı** dener.
+  İsterseniz giriş için başka bir key dosyası yolu da verebilirsiniz.
+- Parola yalnızca `ssh`'ın kendi isteminde girilir; script'e hiç uğramaz.
+- Sunucuda `PasswordAuthentication no` yapmak **bilerek otomatik değildir.** Key ile girişin
+  çalıştığını gördükten sonra elle yapın, yoksa kendinizi dışarıda bırakabilirsiniz.
+
 ## Güvenlik modeli
 
 - **Passphrase diske yazılmaz.** Keychain'de durur (`USBMonitor_<ÖNEK>_Passphrase`),
