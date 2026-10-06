@@ -45,6 +45,19 @@ Menu() {
   # Display menu (stderr'e yaz, böylece stdout sadece seçimi içerir)
   echo "" >&2
   echo "=== $group ===" >&2
+  # SSHPOCKET_STATUS=1 ise, <modül>_status fonksiyonu olanların durumu paralel kontrol edilir
+  local status_dir=""
+  if [ "${SSHPOCKET_STATUS:-0}" = "1" ]; then
+    status_dir=$(mktemp -d)
+    i=1
+    while [ $i -le $count ]; do
+      if declare -F "${module_array[$i]}_status" >/dev/null 2>&1; then
+        "${module_array[$i]}_status" > "$status_dir/$i" 2>/dev/null &
+      fi
+      ((i++))
+    done
+    wait
+  fi
   i=1
   while [ $i -le $count ]; do
     local func_name="${module_array[$i]}"
@@ -53,15 +66,24 @@ Menu() {
     if [ -z "$label" ]; then
       label="$func_name"
     fi
-    printf "  %2d) %s\n" "$i" "$label" >&2
+    local mark=""
+    if [ -n "$status_dir" ] && [ -f "$status_dir/$i" ]; then
+      mark="$(cat "$status_dir/$i") "
+    fi
+    printf "  %2d) %s%s\n" "$i" "$mark" "$label" >&2
     ((i++))
   done
+  if [ -n "$status_dir" ]; then rm -r "$status_dir"; fi
   echo "  0) Exit" >&2
   echo "" >&2
   
   # Get user selection
   while true; do
-    read -r -p "Select option [0-$count]: " selection
+    # Girdi biterse (EOF/pipe kapandı) sonsuz döngüye girmeden çık
+    if ! read -r -p "Select option [0-$count]: " selection; then
+      echo -n "exit"
+      return 0
+    fi
     
     # Trim whitespace
     selection=$(echo "$selection" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')

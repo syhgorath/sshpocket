@@ -72,15 +72,18 @@ ssh_module_run() {
         return 1
     fi
 
-    # Komut enjeksiyonuna karşı doğrulama
-    if ! [[ "$ip" =~ ^[A-Za-z0-9._:-]+$ ]]; then
-        echo "⚠️  ${prefix}_IP geçersiz karakter içeriyor"; return 1
+    # Komut/seçenek enjeksiyonuna karşı doğrulama
+    local verr
+    if ! verr=$(ssh_validate_target "$ip" "$user" "$port" 2>&1); then
+        echo "⚠️  .env: $verr"; return 1
     fi
-    if ! [[ "$user" =~ ^[A-Za-z0-9._-]+$ ]]; then
-        echo "⚠️  ${prefix}_USER geçersiz karakter içeriyor"; return 1
-    fi
-    if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
-        echo "⚠️  ${prefix}_PORT geçersiz: $port"; return 1
+
+    # İsteğe bağlı: modül klasörü yerine mevcut bir key (örn: ~/.ssh/id_ed25519)
+    local custom_key
+    custom_key=$(_ssh_env_get "$env_file" "${prefix}_KEY")
+    if [ -n "$custom_key" ]; then
+        if [ "${custom_key:0:1}" = "~" ]; then custom_key="$HOME${custom_key:1}"; fi
+        ssh_key="$custom_key"
     fi
 
     if [ ! -f "$ssh_key" ]; then
@@ -131,4 +134,23 @@ ssh_module_run() {
 
     Log "INFO" "$prefix SSH bağlantısı: ${user}@${ip}:${port}"
     ssh_connect "$user" "$ip" "$port" "$ssh_key"
+}
+
+# Menüde gösterilecek durum simgesi: 🟢 port açık, 🔴 kapalı/erişilemiyor, ⚪ ayar yok
+# Parametreler: $1 - öneki, $2 - modül klasörü
+ssh_module_status() {
+    local prefix="$1" module_dir="$2"
+    local env_file="$module_dir/.env" ip port
+    if [ ! -f "$env_file" ]; then printf '⚪'; return 0; fi
+    ip=$(_ssh_env_get "$env_file" "${prefix}_IP")
+    port=$(_ssh_env_get "$env_file" "${prefix}_PORT")
+    port="${port:-22}"
+    if [ -z "$ip" ] || ! ssh_validate_target "$ip" "x" "$port" 2>/dev/null; then
+        printf '⚪'; return 0
+    fi
+    if command -v nc >/dev/null 2>&1 && nc -z -w 1 "$ip" "$port" 2>/dev/null; then
+        printf '🟢'
+    else
+        printf '🔴'
+    fi
 }
