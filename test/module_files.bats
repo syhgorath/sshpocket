@@ -14,7 +14,9 @@ setup() { load_helpers; MD="$BATS_TEST_TMPDIR/Modules"; mkdir -p "$MD"; }
     run _ssh_env_get "$MD/web1/.env" WEB1_IP;   [ "$output" = "192.0.2.5" ]
     run _ssh_env_get "$MD/web1/.env" WEB1_USER; [ "$output" = "deploy" ]
     run _ssh_env_get "$MD/web1/.env" WEB1_PORT; [ "$output" = "2222" ]
-    [ "$(stat -f '%Lp' "$MD/web1/.env" 2>/dev/null || stat -c '%a' "$MD/web1/.env")" = "600" ]
+    # platformdan bağımsız: ls -l çıktısının ilk sütunu (macOS ve Linux'ta aynı biçim)
+    perms=$(ls -l "$MD/web1/.env" | cut -c1-10)
+    [ "$perms" = "-rw-------" ]
 }
 @test ".env.example gizli bilgi/gerçek değer içermez" {
     module_write_files "$MD" "web1" "192.0.2.5" "deploy" "2222"

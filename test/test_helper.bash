@@ -1,4 +1,5 @@
 # Ortak test yardımcıları
+bats_require_minimum_version 1.5.0
 ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
 H="$ROOT/sistem/Helpers"
 
