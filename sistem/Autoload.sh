@@ -30,7 +30,8 @@ Autoload() {
     
     # If item is a file, check if it's a shell script (.sh extension)
     if [ -f "$item" ]; then
-      local basename_item=$(basename "$item")
+      local basename_item
+      basename_item=$(basename "$item")
       
       # Skip Autoload.sh and Main.sh to avoid recursion
       [ "$basename_item" = "Autoload.sh" ] && continue
@@ -44,6 +45,7 @@ Autoload() {
       
       echo "Loading module: $item"
       # Source the file and capture errors; continue on failure to allow other modules to load
+      # shellcheck disable=SC1090  # modül yolları çalışma anında belirlenir
       if ! source "$item" 2>&1; then
         echo "Warning: Failed to load module: $item" >&2
         continue  # Continue loading other modules even if one fails

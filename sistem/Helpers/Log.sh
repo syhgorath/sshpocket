@@ -15,7 +15,8 @@ export LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR LOG_LEVEL_DEBUG
 Log() {
   local level="${1:-INFO}"
   local message="$2"
-  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
   
   if [ -z "$message" ]; then
     echo "Error: Log requires a message" >&2

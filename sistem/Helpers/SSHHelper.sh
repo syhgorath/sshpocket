@@ -58,7 +58,7 @@ ssh_connect() {
     args+=(-p "$port")
     [ -f "$ssh_key" ] && args+=(-i "$ssh_key" -o IdentitiesOnly=yes)
     # Host key ilk bağlantıda kullanıcıya sorulur (otomatik kabul yok)
-    args+=(-o PreferredAuthentications=publickey,keyboard-interactive)
+    args+=(-o "PreferredAuthentications=publickey,keyboard-interactive")
     args+=(-o PasswordAuthentication=no)
     args+=("${user}@${ip}")
 

@@ -14,7 +14,8 @@ Menu() {
   fi
   
   # Get modules in group
-  local modules=$(GetModulesInGroup "$group")
+  local modules
+  modules=$(GetModulesInGroup "$group")
   
   if [ -z "$modules" ]; then
     echo "Error: No modules found in group: $group" >&2
@@ -30,11 +31,12 @@ Menu() {
   # IFS'i geçici olarak space'e ayarla (bash 3.2 uyumlu)
   local OLD_IFS="$IFS"
   IFS=' '
+  # shellcheck disable=SC2086  # kasıtlı: IFS=' ' ile kelimelere bölünür
   set -- $modules
   for module; do
     # Boş modül adlarını atla
     [ -z "$module" ] && continue
-    module_array[$i]="$module"
+    module_array[i]="$module"
     ((i++))
     ((count++))
   done
@@ -46,7 +48,8 @@ Menu() {
   i=1
   while [ $i -le $count ]; do
     local func_name="${module_array[$i]}"
-    local label=$(GetModuleLabel "$func_name")
+    local label
+    label=$(GetModuleLabel "$func_name")
     if [ -z "$label" ]; then
       label="$func_name"
     fi
@@ -58,7 +61,7 @@ Menu() {
   
   # Get user selection
   while true; do
-    read -p "Select option [0-$count]: " selection
+    read -r -p "Select option [0-$count]: " selection
     
     # Trim whitespace
     selection=$(echo "$selection" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
