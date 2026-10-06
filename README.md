@@ -1,0 +1,41 @@
+# sshpocket
+
+macOS için, USB bellekten (veya herhangi bir klasörden) çalışan, modüler bir SSH bağlantı menüsü.
+Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendiliğinden görünür.
+
+## Hızlı başlangıç
+
+```bash
+./start.sh                      # menüyü başlat
+bash sistem/ModuleGenerator.sh  # yeni sunucu modülü oluştur
+```
+
+Generator size IP/kullanıcı/port sorar, isterseniz ed25519 anahtar üretir ve
+passphrase'i **macOS Keychain**'e kaydeder.
+
+## Güvenlik modeli
+
+- **Passphrase diske yazılmaz.** Keychain'de durur (`USBMonitor_<ÖNEK>_Passphrase`),
+  `ssh-add`'e `SSH_ASKPASS` ile doğrudan aktarılır.
+- `.env` yalnızca IP, kullanıcı ve port içerir. Gizli bilgi **içermemelidir**.
+- TOTP/2FA gizli anahtarlarını bu klasörde **saklamayın**; telefondaki uygulamada tutun.
+- `.env`, `id_ed25519*` ve `usb_logs/` `.gitignore` ile dışarıda tutulur.
+- IP/kullanıcı/port değerleri komut çalıştırılmadan önce doğrulanır.
+- Sunucu host key'i ilk bağlantıda size sorulur (otomatik kabul yoktur).
+- Özel anahtarınızı USB'de taşıyorsanız USB'yi (FileVault benzeri) şifreleyin.
+
+## Yapı
+
+```
+start.sh                 giriş noktası
+sistem/Main.sh           menü döngüsü
+sistem/Autoload.sh       Modules/ altını otomatik yükler
+sistem/Helpers/          Log, Menu, kayıt, SSH, eject yardımcıları
+sistem/Modules/<ad>/     her sunucu için: <Ad>Module.sh, .env, id_ed25519_<ad>
+```
+
+Not: macOS, USB takılınca script'i otomatik çalıştırmaz; `start.sh`'i elle başlatın.
+
+## Lisans
+
+MIT, bkz. [LICENSE](LICENSE).

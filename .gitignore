@@ -1,0 +1,9 @@
+# Gizli bilgiler
+.env
+id_ed25519*
+*.pem
+*.key
+# Çalışma çıktıları
+usb_logs/
+*.bak
+.DS_Store
