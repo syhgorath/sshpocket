@@ -11,6 +11,9 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 > Yalnızca macOS'ta denendi. Kendi sunucularınızda kullanmadan önce kodu okuyun;
 > kullanım sorumluluğu size aittir (bkz. [LICENSE](LICENSE)).
 
+> **Otomatik başlamaz.** macOS, Linux ve modern Windows USB takılınca script çalıştırmaz (güvenlik gereği).
+> Elle başlatın: `./start.sh` ya da Finder'da `start.command` dosyasına çift tıklayın.
+
 ## Hızlı başlangıç
 
 ```bash
@@ -54,7 +57,6 @@ sistem/Helpers/          Log, Menu, kayıt, SSH, eject yardımcıları
 sistem/Modules/<ad>/     her sunucu için: <Ad>Module.sh, .env, id_ed25519_<ad>
 ```
 
-Not: macOS, USB takılınca script'i otomatik çalıştırmaz; `start.sh`'i elle başlatın.
 
 ## Lisans
 

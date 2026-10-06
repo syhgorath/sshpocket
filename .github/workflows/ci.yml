@@ -9,6 +9,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: ShellCheck
-        run: shellcheck -x -s bash start.sh sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh
+        run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh
       - name: Syntax check (bash -n)
-        run: for f in start.sh sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh; do bash -n "$f"; done
+        run: for f in start.sh start.command sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh; do bash -n "$f"; done
