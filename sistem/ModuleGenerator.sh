@@ -32,10 +32,15 @@ read -r -p "SSH kullanıcı: " ssh_user
 read -r -p "SSH port [22]: " ssh_port
 ssh_port="${ssh_port:-22}"
 
-[[ "$ssh_ip" =~ ^[A-Za-z0-9._:-]+$ ]]   || { echo -e "${RED}❌ Geçersiz IP/host${NC}"; exit 1; }
-[[ "$ssh_user" =~ ^[A-Za-z0-9._-]+$ ]]  || { echo -e "${RED}❌ Geçersiz kullanıcı${NC}"; exit 1; }
-[[ "$ssh_port" =~ ^[0-9]+$ ]] && [ "$ssh_port" -ge 1 ] && [ "$ssh_port" -le 65535 ] \
-                                        || { echo -e "${RED}❌ Geçersiz port${NC}"; exit 1; }
+if ! [[ "$ssh_ip" =~ ^[A-Za-z0-9._:-]+$ ]]; then
+    echo -e "${RED}❌ Geçersiz IP/host${NC}"; exit 1
+fi
+if ! [[ "$ssh_user" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo -e "${RED}❌ Geçersiz kullanıcı${NC}"; exit 1
+fi
+if ! [[ "$ssh_port" =~ ^[0-9]+$ ]] || [ "$ssh_port" -lt 1 ] || [ "$ssh_port" -gt 65535 ]; then
+    echo -e "${RED}❌ Geçersiz port${NC}"; exit 1
+fi
 
 mkdir -p "$module_dir"
 key="$module_dir/id_ed25519_${module_name}"
