@@ -23,6 +23,13 @@ Every server is a *module*: drop a module folder in and it shows up in the menu 
 
 ```bash
 ./start.sh                          # start the menu
+```
+
+Everything is available from the main menu: connect to a server, **➕ Add a new server**,
+**📥 Import from ~/.ssh/config** and **🛠️ Manage servers** (list/remove/rename).
+The same tools work from the command line:
+
+```bash
 bash sistem/ModuleGenerator.sh      # create a new server module
 bash sistem/ImportSSHConfig.sh      # import hosts from ~/.ssh/config
 bash sistem/ModuleManager.sh list   # list modules (also: remove / rename)
@@ -45,7 +52,7 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
   checked in parallel.
 - **Module management:** `ModuleManager.sh list | remove <name> | rename <old> <new>`.
 - **Several users/keys for one server:** make one module per identity (e.g. `web_root`, `web_deploy`).
-- 53 automated tests (Bats) + ShellCheck run in CI on every push.
+- 58 automated tests (Bats) + ShellCheck run in CI on every push.
 
 ## Sending the key to the server
 

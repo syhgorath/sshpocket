@@ -41,6 +41,8 @@ source "$SISTEM_PATH/Helpers/SSHKeyCopy.sh"
 source "$SISTEM_PATH/Helpers/SSHModule.sh"
 # shellcheck source=Autoload.sh
 source "$SISTEM_PATH/Autoload.sh"
+# shellcheck source=Helpers/BuiltinMenu.sh
+source "$SISTEM_PATH/Helpers/BuiltinMenu.sh"
 
 # Modülleri yükle
 if [ -d "$SISTEM_PATH/Modules" ]; then
@@ -48,6 +50,7 @@ if [ -d "$SISTEM_PATH/Modules" ]; then
 else
     Log "WARN" "Modules directory not found: $SISTEM_PATH/Modules"
 fi
+RegisterBuiltinMenu
 
 Log "INFO" "=== Registered Modules ($MODULE_COUNT) ==="
 if [ -n "$MODULE_REGISTRY" ]; then
@@ -60,7 +63,11 @@ echo ""
 # --auto / --one-click / -y: MainMenu'deki ilk modülü direkt çalıştır
 case "${1:-}" in
     --auto|--one-click|-y)
-        first_module=$(GetModulesInGroup "MainMenu" | awk '{print $1}')
+        first_module=""
+        # IFS satır/tab olduğundan, boşlukla ayrılmış listeyi satırlara çevirip oku
+        while IFS= read -r m; do
+            if [ -n "$m" ] && ! IsBuiltinAction "$m"; then first_module="$m"; break; fi
+        done < <(GetModulesInGroup "MainMenu" | tr ' ' '\n')
         if [ -n "$first_module" ] && declare -F "$first_module" >/dev/null 2>&1; then
             Log "INFO" "Auto-executing: $first_module"
             "$first_module"
@@ -76,17 +83,6 @@ while true; do
     echo "USB: $USB_NAME | UUID: $USB_UUID"
     echo "Path: $USB_PATH"
     echo ""
-
-    if [ -z "$(GetModulesInGroup "MainMenu")" ]; then
-        Log "ERROR" "MainMenu grubunda modül yok"
-        echo ""
-        echo "⚠️  Modül bulunamadı. Yeni modül eklemek için:"
-        echo "  bash \"$SISTEM_PATH/ModuleGenerator.sh\""
-        echo ""
-        read -r -p "Çıkmak için Enter..."
-        EjectUSB "$USB_PATH"
-        exit 1
-    fi
 
     selected=$(Menu "MainMenu")
     selected=$(echo -n "$selected" | tr -d '\n\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')

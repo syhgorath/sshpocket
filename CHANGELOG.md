@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- Ana menüde yerleşik eylemler: yeni sunucu ekle, `~/.ssh/config`'ten içe aktar, sunucuları yönet.
+  Eklenen/silinen modüller yeniden başlatmadan menüye yansır.
+
+### Düzeltildi
+- `--auto` modu artık yerleşik eylemleri atlayıp ilk sunucuyu çalıştırır.
+
 ## [2.0.0] - 2026-10-06
 
 ### Eklendi

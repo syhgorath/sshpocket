@@ -23,6 +23,13 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 
 ```bash
 ./start.sh                          # menüyü başlat
+```
+
+Ana menüden her şey yapılır: sunucuya bağlanma, **➕ Yeni sunucu ekle**,
+**📥 ~/.ssh/config'ten içe aktar** ve **🛠️ Sunucuları yönet** (listele/sil/yeniden adlandır).
+Aynı işler komut satırından da çalışır:
+
+```bash
 bash sistem/ModuleGenerator.sh      # yeni sunucu modülü oluştur
 bash sistem/ImportSSHConfig.sh      # ~/.ssh/config'teki sunucuları içe aktar
 bash sistem/ModuleManager.sh list   # modülleri listele (remove / rename de var)
@@ -43,7 +50,7 @@ passphrase'i **macOS Keychain**'e kaydeder.
   gösterir. Sunucular paralel kontrol edilir.
 - **Modül yönetimi:** `ModuleManager.sh list | remove <ad> | rename <eski> <yeni>`.
 - **Aynı sunucuya birden çok kullanıcı/key:** her biri ayrı bir modül olur (örn. `web_root`, `web_deploy`).
-- 53 otomatik test (Bats) + ShellCheck, her push'ta CI'da çalışır.
+- 58 otomatik test (Bats) + ShellCheck, her push'ta CI'da çalışır.
 
 ## Key'i sunucuya gönderme
 

@@ -56,3 +56,32 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
     [[ "$output" == *"Dosya yok"* ]]
     [[ "$output" != *"[ssh-copy-id]"* ]]
 }
+
+@test "ana menü yerleşik eylemleri sunucuların ardından listeler" {
+    run bash -c "printf '0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [[ "$output" == *"1) EXAMPLE"* ]]
+    [[ "$output" == *"2) ➕ Yeni sunucu ekle"* ]]
+    [[ "$output" == *"3) 📥 ~/.ssh/config'ten içe aktar"* ]]
+    [[ "$output" == *"4) 🛠️"* ]]
+}
+@test "hiç sunucu yoksa menü yine de ekleme seçeneklerini gösterir" {
+    rm -r "$SANDBOX/sistem/Modules/example"
+    run bash -c "printf '0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [[ "$output" == *"1) ➕ Yeni sunucu ekle"* ]]
+    [[ "$output" != *"Modül bulunamadı"* ]]
+}
+@test "menüden yönet > listele çalışır ve geri döner" {
+    run bash -c "printf '4\n0\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [[ "$output" == *"Sunucuları yönet"* ]]
+    [[ "$output" == *"example"* ]]
+}
+@test "menüden ekle: yeni modül yeniden başlatmadan menüde görünür" {
+    # sahte ssh-keygen: key üretimini atlayıp 'n' diyoruz; generator'a girdi: ad, ip, kullanıcı, port, key=n
+    run bash -c "printf '2\nnewsrv\n192.0.2.7\nroot\n22\nn\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [ -f "$SANDBOX/sistem/Modules/newsrv/NewsrvModule.sh" ]
+    [[ "$output" == *"NEWSRV"* ]]
+}
+@test "--auto yerleşik eylemi değil ilk sunucuyu çalıştırır" {
+    run bash -c "printf '\n' | bash '$SANDBOX/sistem/Main.sh' --auto 2>&1"
+    [[ "$output" == *"Auto-executing: ExampleModule"* ]]
+}
