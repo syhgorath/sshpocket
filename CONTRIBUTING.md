@@ -20,6 +20,19 @@ bats test
 PR açmadan önce ikisi de temiz olmalı (CI aynısını çalıştırır; CI'daki ShellCheck bazen yerelden
 eski olabilir, o yüzden `info` seviyesindeki uyarıları da düzeltin).
 
+## Uçtan uca testler (isteğe bağlı, Docker gerekir)
+
+Gerçek bir `sshd`'ye karşı (yerel bir Ubuntu konteyneri, yalnızca `127.0.0.1`) `ssh-copy-id` ve key akışlarını dener:
+
+```bash
+./test/e2e/up.sh      # konteyneri kurar; rastgele test şifresi test/e2e/.secrets içinde (git'e girmez)
+bats test/e2e
+./test/e2e/down.sh    # kaldırır (--clean: şifre, host key ve known_hosts kaydını da siler)
+```
+
+Varsayılan `bats test` bu klasörü çalıştırmaz; CI'da da yoktur. ssh, `~/.ssh/known_hosts`'a
+`[127.0.0.1]:2222` kaydı ekler; `down.sh --clean` temizler.
+
 ## Kod kuralları
 
 - **bash 3.2 uyumlu** olun (macOS varsayılanı): `declare -A`, `mapfile`, `${var,,}` kullanmayın.

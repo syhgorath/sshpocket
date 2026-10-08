@@ -7,3 +7,7 @@ id_ed25519*
 usb_logs/
 *.bak
 .DS_Store
+
+# E2E test sırlarını asla commit etme
+test/e2e/.secrets
+test/e2e/.hostkeys/

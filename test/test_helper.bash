@@ -1,6 +1,7 @@
 # Ortak test yardımcıları
 bats_require_minimum_version 1.5.0
-ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
+# Kök dizin: bu dosyanın konumundan (test/ ve test/e2e/ altındaki testler için de doğru)
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 H="$ROOT/sistem/Helpers"
 
 load_helpers() {
