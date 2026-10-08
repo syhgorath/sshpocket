@@ -4,6 +4,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-08
+
 ### Eklendi
 - **İmzalı güncelleme:** `./start.sh --update` / `--check-update` ve menüde "Güncelle". Yalnızca bakımcının imza
   anahtarıyla imzalı (`ssh-keygen -Y verify`), HTTPS ile inen Release paketini kurar; imza yoksa/anahtar tanımlı
@@ -11,6 +13,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
   verisini korur, yedek alır ve hata olursa geri yükler.
 - `scripts/release.sh` (imzalı paket üretir ve yayından önce doğrular) ve `RELEASING.md` (bakımcı rehberi).
 - `.gitattributes` ile release paketine `test/`, `scripts/`, `.github/` girmez.
+- Depo hijyeni testleri: `release_signers` biçimi ve repoda özel anahtar/sır dosyası bulunmaması.
+
+> Güncelleyici bu sürümle gelir; v2.1.0 ve öncesi kopyalar bir kez elle güncellenmelidir.
 
 ## [2.1.0] - 2026-10-08
 
@@ -58,5 +63,6 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/syhgorath/sshpocket/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/syhgorath/sshpocket/releases/tag/v2.1.0
