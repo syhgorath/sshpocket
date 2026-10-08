@@ -6,7 +6,18 @@ id_ed25519*
 # Çalışma çıktıları
 usb_logs/
 *.bak
+
+# macOS gürültüsü (Finder, Spotlight, harici disklerdeki AppleDouble dosyaları)
 .DS_Store
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.DocumentRevisions-V100
+__MACOSX/
 
 # E2E test sırlarını asla commit etme
 test/e2e/.secrets

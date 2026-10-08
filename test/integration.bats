@@ -127,3 +127,23 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
     run bash -c "printf '1\n2\ny\n\n\n0\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1"
     [[ "$output" != *"Kullanıcı 'root'"* ]]
 }
+
+@test "Autoload macOS gizli/AppleDouble dosyalarını (._X.sh, .DS_Store, .Spotlight-V100) yüklemez" {
+    # exFAT USB'lerde macOS ._Dosya.sh üretir; yüklenseydi kod çalıştırırdı
+    printf 'echo ZARARLI_YUKLENDI >&2\n' > "$SANDBOX/sistem/Modules/example/._ExampleModule.sh"
+    printf 'echo ZARARLI_YUKLENDI >&2\n' > "$SANDBOX/sistem/Modules/._Gizli.sh"
+    printf 'x' > "$SANDBOX/sistem/Modules/.DS_Store"
+    mkdir -p "$SANDBOX/sistem/Modules/.Spotlight-V100"
+    printf 'echo ZARARLI_YUKLENDI >&2\n' > "$SANDBOX/sistem/Modules/.Spotlight-V100/x.sh"
+    run bash -c "printf '0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1"
+    [[ "$output" != *"ZARARLI_YUKLENDI"* ]]
+    [[ "$output" != *"Loading module: "*"/._"* ]]
+    [[ "$output" == *"1) EXAMPLE"* ]]
+}
+@test "ModuleManager list gizli klasörleri modül saymaz" {
+    mkdir -p "$SANDBOX/sistem/Modules/.Spotlight-V100" "$SANDBOX/sistem/Modules/.Trashes"
+    run bash -c "SSHPOCKET_MODULES_DIR='$SANDBOX/sistem/Modules' bash '$SANDBOX/sistem/ModuleManager.sh' list"
+    [[ "$output" == *"example"* ]]
+    [[ "$output" != *"Spotlight"* ]]
+    [[ "$output" != *"Trashes"* ]]
+}
