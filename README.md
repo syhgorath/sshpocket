@@ -53,7 +53,7 @@ passphrase'i **macOS Keychain**'e kaydeder.
   güncelleme seçenekleri kullanılabilir.
 - **Modül yönetimi:** `ModuleManager.sh list | remove <ad> | rename <eski> <yeni>`.
 - **Aynı sunucuya birden çok kullanıcı/key:** her biri ayrı bir modül olur (örn. `web_root`, `web_deploy`).
-- 77 otomatik test (Bats) + ShellCheck, her push'ta CI'da çalışır.
+- 84 otomatik test (Bats) + ShellCheck, her push'ta CI'da çalışır.
 
 ## Key'i sunucuya gönderme
 

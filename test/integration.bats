@@ -5,7 +5,7 @@ setup() {
     # diskutil/ssh/ssh-copy-id sahte: gerçek bir şeye dokunulmaz
     printf '#!/bin/bash\nexit 1\n' > "$SANDBOX/bin/diskutil"
     printf '#!/bin/bash\n[ "${STUB_AUTHORIZED:-0}" = 1 ] && exit 0\nexit 255\n' > "$SANDBOX/bin/ssh"
-    printf '#!/bin/bash\necho "[ssh-copy-id] $*"\n' > "$SANDBOX/bin/ssh-copy-id"
+    printf '#!/bin/bash\necho "[ssh-copy-id] $*"\n[ "${STUB_COPY_FAIL:-0}" = 1 ] && exit 1\nexit 0\n' > "$SANDBOX/bin/ssh-copy-id"
     # Gerçek Keychain'e dokunulmasın
     printf '#!/bin/bash\nexit 1\n' > "$SANDBOX/bin/security"
     chmod +x "$SANDBOX/bin/"*
@@ -106,4 +106,24 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
     [[ "$output" == *"SSH key bulunamadı"* ]]
     [[ "$output" == *"3) Bilgileri güncelle"* ]]
     [[ "$output" == *"4) Keychain passphrase"* ]]
+}
+
+@test "ssh-copy-id başarısız olursa nedenleri ve elle ekleme komutu gösterilir" {
+    run bash -c "printf '1\n2\ny\n\n\n0\n\n0\n' | STUB_COPY_FAIL=1 bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [[ "$output" == *"ssh-copy-id başarısız oldu"* ]]
+    [[ "$output" == *"Elle ekleme"* ]]
+    [[ "$output" == *"~/.ssh/authorized_keys"* ]]
+    [[ "$output" == *"$(cut -d' ' -f1,2 "$MOD/id_ed25519_example.pub")"* ]]
+}
+@test "başarılı gönderimde elle ekleme talimatı gösterilmez" {
+    run bash -c "printf '1\n2\ny\n\n\n0\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1"
+    [[ "$output" != *"Elle ekleme"* ]]
+}
+@test "kullanıcı root ise Ubuntu uyarısı gösterilir, değilse gösterilmez" {
+    printf 'EXAMPLE_IP=192.0.2.10\nEXAMPLE_USER=root\nEXAMPLE_PORT=22\n' > "$MOD/.env"
+    run bash -c "printf '1\n2\ny\n\n\n0\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1"
+    [[ "$output" == *"Kullanıcı 'root'"* ]]
+    printf 'EXAMPLE_IP=192.0.2.10\nEXAMPLE_USER=pi\nEXAMPLE_PORT=22\n' > "$MOD/.env"
+    run bash -c "printf '1\n2\ny\n\n\n0\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1"
+    [[ "$output" != *"Kullanıcı 'root'"* ]]
 }
