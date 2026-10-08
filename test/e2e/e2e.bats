@@ -33,8 +33,10 @@ ASK
     # Kullanıcının agent'ındaki key'ler "Too many authentication failures"a yol açmasın
     export SSH_AUTH_SOCK=""
 
+    # Konteyner testler arasında kalıcı: her teste özgü etiket, sayımlar karışmasın
+    TAG="e2e-$$-${BATS_TEST_NUMBER}-${RANDOM}"
     KEY="$BATS_TEST_TMPDIR/id_ed25519_e2e"
-    ssh-keygen -q -t ed25519 -N "" -C "e2e it's" -f "$KEY"
+    ssh-keygen -q -t ed25519 -N "" -C "$TAG it's" -f "$KEY"
 }
 
 # key ile (şifresiz, etkileşimsiz) giriş yapılabiliyor mu
@@ -62,7 +64,7 @@ key_login() {
     run ssh_copy_key tester 127.0.0.1 "$PORT" "$KEY" <<< $'y\n\n'
     [ "$status" -eq 0 ]
     [[ "$output" == *"zaten yetkili"* ]]
-    run key_login "grep -c e2e ~/.ssh/authorized_keys"
+    run key_login "grep -cF $TAG ~/.ssh/authorized_keys"
     [ "$output" = "1" ]
 }
 
@@ -93,7 +95,7 @@ key_login() {
     [ "$status" -eq 0 ]
     run key_login echo TAMAM
     [ "$output" = "TAMAM" ]
-    run key_login "grep -c e2e ~/.ssh/authorized_keys"
+    run key_login "grep -cF $TAG ~/.ssh/authorized_keys"
     [ "$output" = "1" ]
     # izinler
     run key_login "stat -c '%a' ~/.ssh ~/.ssh/authorized_keys"
