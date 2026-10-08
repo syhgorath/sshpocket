@@ -7,6 +7,7 @@ RegisterBuiltinMenu() {
     RegisterModules "➕ Yeni sunucu ekle" "MainMenu" "AddServerAction"
     RegisterModules "📥 ~/.ssh/config'ten içe aktar" "MainMenu" "ImportSSHConfigAction"
     RegisterModules "🛠️  Sunucuları yönet (listele/sil/yeniden adlandır)" "MainMenu" "ManageServersAction"
+    RegisterModules "⬆️  Güncellemeleri kontrol et / güncelle" "MainMenu" "UpdateAction"
 }
 
 # Kayıt defterini sıfırlayıp modülleri yeniden yükler (yeni/silinen modüller hemen yansısın)
@@ -22,7 +23,7 @@ ReloadModules() {
 # Fonksiyon adı yerleşik eylem mi? (--auto modunda atlanır)
 IsBuiltinAction() {
     case "$1" in
-        AddServerAction|ImportSSHConfigAction|ManageServersAction) return 0 ;;
+        AddServerAction|ImportSSHConfigAction|ManageServersAction|UpdateAction) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -64,4 +65,17 @@ ManageServersAction() {
             ;;
     esac
     ReloadModules
+}
+
+# İmzalı güncelleme (ayrı süreç). Sürüm değiştiyse temiz bir yeniden başlatma yapılır.
+UpdateAction() {
+    local after
+    clear
+    bash "$SISTEM_PATH/Update.sh"
+    after=$(head -n 1 "$SISTEM_PATH/../VERSION" 2>/dev/null | tr -d '[:space:]')
+    if [ -n "$after" ] && [ "$after" != "$SCRIPT_VERSION" ]; then
+        echo ""
+        read -r -p "Yeni sürümle yeniden başlatmak için Enter..." _ || true
+        exec bash "$SISTEM_PATH/Main.sh"
+    fi
 }

@@ -15,6 +15,9 @@ fi
 
 case "${1:-}" in
     --version|-V) echo "sshpocket $SCRIPT_VERSION"; exit 0 ;;
+    # Güncelleme ayrı bir süreçte çalışır (kendi dosyalarını değiştirebileceği için exec ile devredilir)
+    --update)       exec bash "$SISTEM_PATH/Update.sh" ;;
+    --check-update) exec bash "$SISTEM_PATH/Update.sh" --check ;;
 esac
 
 USB_NAME=$(basename "$USB_PATH")

@@ -1,0 +1,7 @@
+# Release arşivine (git archive) girmeyecek geliştirme dosyaları
+/test/           export-ignore
+/.github/        export-ignore
+/scripts/        export-ignore
+/RELEASING.md    export-ignore
+/.gitignore      export-ignore
+/.gitattributes  export-ignore

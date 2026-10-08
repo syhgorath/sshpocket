@@ -67,6 +67,26 @@ Modül menüsünden **2) Public key'i sunucuya gönder** seçeneği (veya genera
 - Sunucuda `PasswordAuthentication no` yapmak **bilerek otomatik değildir.** Key ile girişin
   çalıştığını gördükten sonra elle yapın, yoksa kendinizi dışarıda bırakabilirsiniz.
 
+## Güncelleme
+
+Otomatik değildir; siz başlatırsınız:
+
+```bash
+./start.sh --check-update   # yalnızca bakar (yeni sürüm varsa çıkış kodu 10)
+./start.sh --update         # indir → imzayı doğrula → notları göster → onaylarsanız kur
+```
+
+ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle**.
+
+- Paket yalnızca bu reponun GitHub Release'lerinden, HTTPS ile inen ve **bakımcının imza anahtarıyla imzalı** olan
+  dosyadır (`ssh-keygen -Y verify`). Doğrulanamazsa hiçbir şey açılmaz/kurulmaz. İmza anahtarı tanımlı değilse
+  güncelleme **kapalıdır**.
+- Modülleriniz, `.env` ve key'leriniz korunur. Kurmadan önce kodun yedeği (`.update-backup/`, gizli dosya
+  içermez) alınır; hata olursa geri yüklenir.
+- Geri sürüme düşmez; `..`, mutlak yol veya symlink içeren paketleri reddeder.
+- USB yazma korumalıysa güncelleme yapılamaz (bilerek).
+- Not: güncelleyici `v2.2.0` ile gelir; daha eski kopyalar bir kez elle güncellenmelidir.
+
 ## Güvenlik modeli
 
 - **Passphrase diske yazılmaz.** Keychain'de durur (`USBMonitor_<ÖNEK>_Passphrase`),
@@ -74,6 +94,7 @@ Modül menüsünden **2) Public key'i sunucuya gönder** seçeneği (veya genera
 - `.env` yalnızca IP, kullanıcı, port (ve ops. key yolu) içerir. Gizli bilgi **içermemelidir**.
 - TOTP/2FA gizli anahtarlarını bu klasörde **saklamayın**; telefondaki uygulamada tutun.
 - `.env`, `id_ed25519*` ve `usb_logs/` `.gitignore` ile dışarıda tutulur.
+- Güncellemeler imzalıdır ve elle başlatılır (yukarıya bakın).
 - IP/kullanıcı/port değerleri komut çalıştırılmadan önce doğrulanır (kullanıcı `-` ile başlayamaz).
 - Sunucu host key'i ilk bağlantıda size sorulur (otomatik kabul yoktur).
 - Özel anahtarınızı USB'de taşıyorsanız USB'yi (APFS şifreli birim) şifreleyin.

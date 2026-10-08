@@ -33,6 +33,11 @@ bats test/e2e
 Varsayılan `bats test` bu klasörü çalıştırmaz; CI'da da yoktur. ssh, `~/.ssh/known_hosts`'a
 `[127.0.0.1]:2222` kaydı ekler; `down.sh --clean` temizler.
 
+## Sürüm çıkarma
+
+Yalnızca bakımcı: bkz. [RELEASING.md](RELEASING.md). Güncelleme/imza koduna dokunan PR'lar özellikle dikkatle incelenir;
+`test/update.bats` ve `test/release.bats` saldırı senaryolarını (sahte imza, `..`, symlink, eski sürüm sunma) kapsar.
+
 ## Kod kuralları
 
 - **bash 3.2 uyumlu** olun (macOS varsayılanı): `declare -A`, `mapfile`, `${var,,}` kullanmayın.

@@ -68,6 +68,26 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
 - Setting `PasswordAuthentication no` on the server is **deliberately not automated.** Do it by hand
   after you have confirmed that key login works, or you may lock yourself out.
 
+## Updating
+
+Never automatic; you start it:
+
+```bash
+./start.sh --check-update   # only looks (exit code 10 if a newer version exists)
+./start.sh --update         # download → verify signature → show notes → install if you confirm
+```
+
+or use **⬆️ Check for updates / update** in the main menu.
+
+- The package is only the file from this repository's GitHub Releases, fetched over HTTPS and **signed with the
+  maintainer's release key** (`ssh-keygen -Y verify`). If it cannot be verified nothing is unpacked or installed.
+  If no signing key is configured, updating is **disabled**.
+- Your modules, `.env` files and keys are kept. A backup of the code (`.update-backup/`, no secrets) is taken first
+  and restored on failure.
+- It never downgrades, and rejects archives containing `..`, absolute paths or symlinks.
+- A write-protected USB cannot be updated (by design).
+- Note: the updater ships with `v2.2.0`; older copies need one manual update first.
+
 ## Security model
 
 - **Passphrases are never written to disk.** They live in the Keychain (`USBMonitor_<PREFIX>_Passphrase`)
