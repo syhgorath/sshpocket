@@ -39,6 +39,8 @@ source "$SISTEM_PATH/Helpers/Validate.sh"
 source "$SISTEM_PATH/Helpers/SSHKeyCopy.sh"
 # shellcheck source=Helpers/SSHModule.sh
 source "$SISTEM_PATH/Helpers/SSHModule.sh"
+# shellcheck source=Helpers/SSHModuleEdit.sh
+source "$SISTEM_PATH/Helpers/SSHModuleEdit.sh"
 # shellcheck source=Autoload.sh
 source "$SISTEM_PATH/Autoload.sh"
 # shellcheck source=Helpers/BuiltinMenu.sh

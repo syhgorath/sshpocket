@@ -50,9 +50,12 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
 - **Use an existing key:** set `<PREFIX>_KEY=/path/to/key` in `.env`.
 - **Status marks:** `SSHPOCKET_STATUS=1 ./start.sh` shows 🟢 (port open) / 🔴 (unreachable) / ⚪ (not configured),
   checked in parallel.
+- **Module menu:** Connect · Send key to server · **Update details** (IP/user/port/key path) ·
+  **Update/delete the Keychain passphrase** (verifies it by unlocking the key after saving). The update options
+  stay available even when the settings are broken or the key is missing.
 - **Module management:** `ModuleManager.sh list | remove <name> | rename <old> <new>`.
 - **Several users/keys for one server:** make one module per identity (e.g. `web_root`, `web_deploy`).
-- 58 automated tests (Bats) + ShellCheck run in CI on every push.
+- 77 automated tests (Bats) + ShellCheck run in CI on every push.
 
 ## Sending the key to the server
 

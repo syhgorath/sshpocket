@@ -5,6 +5,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- Modül menüsünde **Bilgileri güncelle** (IP/kullanıcı/port/key yolu) ve **Keychain passphrase'ini güncelle/sil**.
+  Passphrase kaydedildikten sonra key açılarak doğrulanır. Ayar bozuk veya key eksikken de bu seçenekler çalışır.
 - Ana menüde yerleşik eylemler: yeni sunucu ekle, `~/.ssh/config`'ten içe aktar, sunucuları yönet.
   Eklenen/silinen modüller yeniden başlatmadan menüye yansır.
 

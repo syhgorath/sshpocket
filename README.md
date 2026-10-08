@@ -48,9 +48,12 @@ passphrase'i **macOS Keychain**'e kaydeder.
 - **Mevcut key kullanımı:** `.env`'e `<ÖNEK>_KEY=/yol/key` yazın (örn. `~/.ssh/id_ed25519`).
 - **Durum göstergesi:** `SSHPOCKET_STATUS=1 ./start.sh` menüde 🟢 (port açık) / 🔴 (erişilemiyor) / ⚪ (ayar yok)
   gösterir. Sunucular paralel kontrol edilir.
+- **Modül menüsü:** Bağlan · Key'i sunucuya gönder · **Bilgileri güncelle** (IP/kullanıcı/port/key yolu) ·
+  **Keychain passphrase'ini güncelle/sil** (kayıttan sonra key'i açarak doğrular). Ayar bozuk veya key eksikken de
+  güncelleme seçenekleri kullanılabilir.
 - **Modül yönetimi:** `ModuleManager.sh list | remove <ad> | rename <eski> <yeni>`.
 - **Aynı sunucuya birden çok kullanıcı/key:** her biri ayrı bir modül olur (örn. `web_root`, `web_deploy`).
-- 58 otomatik test (Bats) + ShellCheck, her push'ta CI'da çalışır.
+- 77 otomatik test (Bats) + ShellCheck, her push'ta CI'da çalışır.
 
 ## Key'i sunucuya gönderme
 

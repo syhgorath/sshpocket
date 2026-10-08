@@ -34,89 +34,11 @@ _ssh_env_get() {
     return 1
 }
 
-# Parametreler:
-#   $1 - öneki (büyük harf, örn: RPI)
-#   $2 - modül klasörü
-ssh_module_run() {
-    local prefix="$1"
-    local module_dir="$2"
-    local lower
-    lower=$(printf '%s' "$prefix" | tr '[:upper:]' '[:lower:]')
-    local env_file="$module_dir/.env"
-    local ssh_key="$module_dir/id_ed25519_${lower}"
-
-    clear
-    echo "====================================="
-    echo "$prefix SSH Bağlantı"
-    echo "====================================="
+# Port kontrolü yapıp bağlanır
+# Parametreler: $1 - önek, $2 - kullanıcı, $3 - ip, $4 - port, $5 - key yolu
+_ssh_module_connect() {
+    local prefix="$1" user="$2" ip="$3" port="$4" ssh_key="$5"
     echo ""
-
-    if [ ! -f "$env_file" ]; then
-        echo "⚠️  .env bulunamadı: $env_file"
-        echo ""
-        echo "Şablondan oluşturun:"
-        echo "  cp \"$module_dir/.env.example\" \"$env_file\""
-        return 1
-    fi
-
-    local ip user port
-    ip=$(_ssh_env_get "$env_file" "${prefix}_IP")
-    user=$(_ssh_env_get "$env_file" "${prefix}_USER")
-    port=$(_ssh_env_get "$env_file" "${prefix}_PORT")
-    port="${port:-22}"
-
-    if [ -z "$ip" ] || [ -z "$user" ]; then
-        echo "⚠️  .env içinde eksik bilgi var:"
-        echo "  ${prefix}_IP:   $([ -z "$ip" ] && echo "❌ eksik" || echo "✅")"
-        echo "  ${prefix}_USER: $([ -z "$user" ] && echo "❌ eksik" || echo "✅")"
-        return 1
-    fi
-
-    # Komut/seçenek enjeksiyonuna karşı doğrulama
-    local verr
-    if ! verr=$(ssh_validate_target "$ip" "$user" "$port" 2>&1); then
-        echo "⚠️  .env: $verr"; return 1
-    fi
-
-    # İsteğe bağlı: modül klasörü yerine mevcut bir key (örn: ~/.ssh/id_ed25519)
-    local custom_key
-    custom_key=$(_ssh_env_get "$env_file" "${prefix}_KEY")
-    if [ -n "$custom_key" ]; then
-        if [ "${custom_key:0:1}" = "~" ]; then custom_key="$HOME${custom_key:1}"; fi
-        ssh_key="$custom_key"
-    fi
-
-    if [ ! -f "$ssh_key" ]; then
-        echo "⚠️  SSH key bulunamadı: $ssh_key"
-        return 1
-    fi
-    chmod 600 "$ssh_key" 2>/dev/null
-
-    echo "📡 Bağlantı Bilgileri:"
-    echo "  IP:   $ip"
-    echo "  User: $user"
-    echo "  Port: $port"
-    echo "  Key:  $ssh_key"
-    if ssh_has_passphrase "$prefix"; then
-        echo "  Passphrase: ✅ Keychain"
-        ssh_agent_add "$prefix" "$ssh_key"
-    else
-        echo "  Passphrase: ℹ️  Keychain'de yok (ssh gerekirse soracak)"
-    fi
-    echo ""
-
-    local choice
-    echo "  1) Bağlan"
-    echo "  2) Public key'i sunucuya gönder"
-    echo "  0) Geri"
-    read -r -p "Seçim [1]: " choice
-    case "${choice:-1}" in
-        1) ;;
-        2) ssh_copy_key "$user" "$ip" "$port" "$ssh_key"; return $? ;;
-        *) return 0 ;;
-    esac
-    echo ""
-
     echo "🔍 Port kontrolü..."
     if command -v nc >/dev/null 2>&1; then
         if nc -z -w 2 "$ip" "$port" 2>/dev/null; then
@@ -134,6 +56,92 @@ ssh_module_run() {
 
     Log "INFO" "$prefix SSH bağlantısı: ${user}@${ip}:${port}"
     ssh_connect "$user" "$ip" "$port" "$ssh_key"
+}
+
+# Modül menüsü: bağlan / key gönder / bilgileri güncelle / Keychain
+# Ayar bozuk veya key eksik olsa bile güncelleme seçenekleri kullanılabilir.
+# Parametreler:
+#   $1 - öneki (büyük harf, örn: RPI)
+#   $2 - modül klasörü
+ssh_module_run() {
+    local prefix="$1"
+    local module_dir="$2"
+    local lower env_file default_key
+    lower=$(printf '%s' "$prefix" | tr '[:upper:]' '[:lower:]')
+    env_file="$module_dir/.env"
+    default_key="$module_dir/id_ed25519_${lower}"
+
+    while true; do
+        local ip="" user="" port="22" ssh_key="$default_key" custom_key problem="" verr choice
+
+        clear
+        echo "====================================="
+        echo "$prefix SSH Bağlantı"
+        echo "====================================="
+        echo ""
+
+        if [ ! -f "$env_file" ]; then
+            problem=".env bulunamadı. 3) ile bilgileri girin."
+        else
+            ip=$(_ssh_env_get "$env_file" "${prefix}_IP")
+            user=$(_ssh_env_get "$env_file" "${prefix}_USER")
+            port=$(_ssh_env_get "$env_file" "${prefix}_PORT")
+            port="${port:-22}"
+            custom_key=$(_ssh_env_get "$env_file" "${prefix}_KEY")
+            if [ -n "$custom_key" ]; then
+                if [ "${custom_key:0:1}" = "~" ]; then custom_key="$HOME${custom_key:1}"; fi
+                ssh_key="$custom_key"
+            fi
+            if [ -z "$ip" ] || [ -z "$user" ]; then
+                problem=".env içinde IP veya kullanıcı eksik. 3) ile tamamlayın."
+            elif ! verr=$(ssh_validate_target "$ip" "$user" "$port" 2>&1); then
+                problem=".env: $verr. 3) ile düzeltin."
+            elif [ ! -f "$ssh_key" ]; then
+                problem="SSH key bulunamadı: $ssh_key (3 ile key yolunu düzeltin)"
+            fi
+        fi
+
+        echo "📡 Bağlantı Bilgileri:"
+        echo "  IP:   ${ip:-(yok)}"
+        echo "  User: ${user:-(yok)}"
+        echo "  Port: $port"
+        echo "  Key:  $ssh_key"
+        if ssh_has_passphrase "$prefix"; then
+            echo "  Passphrase: ✅ Keychain"
+        else
+            echo "  Passphrase: ℹ️  Keychain'de yok (ssh gerekirse soracak)"
+        fi
+        if [ -n "$problem" ]; then
+            echo ""
+            echo "⚠️  $problem"
+        else
+            chmod 600 "$ssh_key" 2>/dev/null
+            if ssh_has_passphrase "$prefix"; then ssh_agent_add "$prefix" "$ssh_key"; fi
+        fi
+        echo ""
+
+        echo "  1) Bağlan"
+        echo "  2) Public key'i sunucuya gönder"
+        echo "  3) Bilgileri güncelle (IP / kullanıcı / port / key yolu)"
+        echo "  4) Keychain passphrase'ini güncelle / sil"
+        echo "  0) Geri"
+        if ! read -r -p "Seçim [1]: " choice; then return 0; fi
+        case "${choice:-1}" in
+            1|2)
+                if [ -n "$problem" ]; then
+                    echo "⚠️  Önce sorunu giderin (3 veya 4)."
+                    read -r -p "Devam için Enter..." _ || return 0
+                elif [ "${choice:-1}" = "1" ]; then
+                    _ssh_module_connect "$prefix" "$user" "$ip" "$port" "$ssh_key"; return $?
+                else
+                    ssh_copy_key "$user" "$ip" "$port" "$ssh_key"; return $?
+                fi
+                ;;
+            3) ssh_module_edit "$prefix" "$module_dir"; read -r -p "Devam için Enter..." _ || return 0 ;;
+            4) ssh_keychain_manage "$prefix" "$ssh_key"; read -r -p "Devam için Enter..." _ || return 0 ;;
+            *) return 0 ;;
+        esac
+    done
 }
 
 # Menüde gösterilecek durum simgesi: 🟢 port açık, 🔴 kapalı/erişilemiyor, ⚪ ayar yok

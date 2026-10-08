@@ -10,6 +10,10 @@ load_helpers() {
     source "$H/ModuleFiles.sh"
     # shellcheck source=/dev/null
     source "$H/SSHModule.sh"
+    # shellcheck source=/dev/null
+    source "$H/SSHHelper.sh"
+    # shellcheck source=/dev/null
+    source "$H/SSHModuleEdit.sh"
 }
 
 # İçinde sistem/ kopyası olan izole bir çalışma alanı (eject kapalı, sahte komutlar PATH başında)

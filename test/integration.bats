@@ -6,6 +6,8 @@ setup() {
     printf '#!/bin/bash\nexit 1\n' > "$SANDBOX/bin/diskutil"
     printf '#!/bin/bash\n[ "${STUB_AUTHORIZED:-0}" = 1 ] && exit 0\nexit 255\n' > "$SANDBOX/bin/ssh"
     printf '#!/bin/bash\necho "[ssh-copy-id] $*"\n' > "$SANDBOX/bin/ssh-copy-id"
+    # Gerçek Keychain'e dokunulmasın
+    printf '#!/bin/bash\nexit 1\n' > "$SANDBOX/bin/security"
     chmod +x "$SANDBOX/bin/"*
     export PATH="$SANDBOX/bin:$PATH" TERM=xterm
     MOD="$SANDBOX/sistem/Modules/example"
@@ -84,4 +86,24 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
 @test "--auto yerleşik eylemi değil ilk sunucuyu çalıştırır" {
     run bash -c "printf '\n' | bash '$SANDBOX/sistem/Main.sh' --auto 2>&1"
     [[ "$output" == *"Auto-executing: ExampleModule"* ]]
+}
+
+@test "bozuk ayar: menüden 3 ile düzeltilir ve menü yenilenir" {
+    printf 'EXAMPLE_IP=192.0.2.10\nEXAMPLE_USER=pi;id\nEXAMPLE_PORT=2222\n' > "$MOD/.env"
+    run bash -c "printf '1\n3\n\nroot\n\n\n\n0\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [[ "$output" == *"Güncellendi: root@192.0.2.10:2222"* ]]
+    grep -q '^EXAMPLE_USER=root$' "$MOD/.env"
+}
+@test "bozuk ayar: ayar düzelmeden Bağlan/Key gönder reddedilir" {
+    printf 'EXAMPLE_IP=192.0.2.10\nEXAMPLE_USER=pi;id\nEXAMPLE_PORT=22\n' > "$MOD/.env"
+    run bash -c "printf '1\n1\n\n2\n\n0\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [[ "$output" == *"Önce sorunu giderin"* ]]
+    [[ "$output" != *"[ssh-copy-id]"* ]]
+}
+@test "key eksikken menü açılır ve key yolu 3 ile düzeltilebilir" {
+    rm "$MOD/id_ed25519_example"
+    run bash -c "printf '1\n0\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [[ "$output" == *"SSH key bulunamadı"* ]]
+    [[ "$output" == *"3) Bilgileri güncelle"* ]]
+    [[ "$output" == *"4) Keychain passphrase"* ]]
 }
