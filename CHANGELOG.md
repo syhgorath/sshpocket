@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- Dependabot yapılandırması (aylık, yalnızca GitHub Actions bağımlılıkları).
+
 ## [2.2.0] - 2026-10-08
 
 ### Eklendi
