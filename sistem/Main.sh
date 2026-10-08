@@ -7,7 +7,15 @@ USB_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 SISTEM_PATH="$USB_PATH/sistem"
 
 SCRIPT_NAME="${SCRIPT_NAME:-sshpocket}"
-SCRIPT_VERSION="${SCRIPT_VERSION:-2.0.0}"
+# Sürüm tek yerde: kökteki VERSION dosyası (ortamdan SCRIPT_VERSION ile ezilebilir)
+if [ -z "${SCRIPT_VERSION:-}" ]; then
+    SCRIPT_VERSION="$(head -n 1 "$USB_PATH/VERSION" 2>/dev/null | tr -d '[:space:]')"
+    SCRIPT_VERSION="${SCRIPT_VERSION:-unknown}"
+fi
+
+case "${1:-}" in
+    --version|-V) echo "sshpocket $SCRIPT_VERSION"; exit 0 ;;
+esac
 
 USB_NAME=$(basename "$USB_PATH")
 USB_UUID="N/A"

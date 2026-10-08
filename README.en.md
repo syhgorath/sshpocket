@@ -8,7 +8,7 @@
 A modular SSH launcher menu for macOS that you can carry on a USB drive (or run from any folder).
 Every server is a *module*: drop a module folder in and it shows up in the menu automatically.
 
-> **Status: raw / early stage (v2.0.0).** 🛠️
+> **Status: raw / early stage.** 🛠️
 > This grew out of a personal HomeLab tool. It was reworked together with
 > [Claude](https://claude.com/claude-code) and is much better than where it started, but there is
 > still plenty to improve: rough edges, missing tests and unwritten features are expected.

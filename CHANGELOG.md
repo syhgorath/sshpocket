@@ -4,7 +4,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-08
+
+> İlk yayın. `2.0.0` hiç yayınlanmadığı için bu sürüm, aşağıdaki `2.0.0` bölümündeki her şeyi de içerir.
+
 ### Eklendi
+- Sürüm tek yerde (`VERSION`); `sistem/Main.sh --version` / `./start.sh --version` sürümü yazar.
 - Uçtan uca testler (`test/e2e/`): Docker'da yerel Ubuntu `sshd` ile `ssh-copy-id`, elle ekleme komutu, root reddi ve durum göstergesi gerçek sunucuya karşı denenir.
 - `ssh-copy-id` başarısız olursa olası nedenler ve sunucuda çalıştırılacak **tek satırlık elle ekleme komutu** gösterilir
   (komut tekrar çalıştırılabilir, mevcut key'leri korur). Kullanıcı `root` ise Ubuntu/Debian uyarısı verilir.
@@ -17,6 +22,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 - `--auto` modu artık yerleşik eylemleri atlayıp ilk sunucuyu çalıştırır.
 
 ## [2.0.0] - 2026-10-06
+
+> İç dönüm noktası; etiketlenmedi ve yayınlanmadı. İlk yayın: 2.1.0.
 
 ### Eklendi
 - `~/.ssh/config` içe aktarma (`ImportSSHConfig.sh`); private key'ler kopyalanmaz, `<ÖNEK>_KEY` ile referanslanır.
@@ -42,3 +49,6 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
+
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/syhgorath/sshpocket/releases/tag/v2.1.0
