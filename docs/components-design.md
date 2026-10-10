@@ -31,12 +31,11 @@ sshpocket/
 ├── sistem/                  UYGULAMA KODU: güncelleyici bütünüyle değiştirir; kullanıcı verisi içermez
 │   ├── Main.sh, Update.sh, Helpers/, ...
 │   └── release_signers
-└── servers/                 KULLANICI VERİSİ: git'e girmez, hiçbir zaman çalıştırılmaz (source edilmez)
-    └── <ad>/
-        ├── server.env       IP=  USER=  PORT=  KEY=(ops.)  OS=(ops.)
-        ├── id_ed25519_<ad>[.pub]
-        └── hardening.env    (ops.) bileşen değişkenleri
-
+├── servers/                 KULLANICI VERİSİ: git'e girmez, hiçbir zaman çalıştırılmaz (source edilmez)
+│   └── <ad>/
+│       ├── server.env       IP=  USER=  PORT=  KEY=(ops.)  OS=(ops.)
+│       ├── id_ed25519_<ad>[.pub]
+│       └── hardening.env    (ops.) bileşen değişkenleri
 └── components/              BİLEŞENLER (USB'de kalır; exFAT'ta symlink olmadığı için `current` düz metin dosyasıdır)
     ├── linux-hardening/
     │   ├── 0.1.0/           imzası doğrulanmış içerik (component.yml, playbook'lar, requirements.txt)
