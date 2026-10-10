@@ -152,6 +152,17 @@ Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
   `hardening_ssh_allow_from` için **öneri** olarak gösterir; kullanıcı onaylar.
 - Host key doğrulaması kapatılmaz (`host_key_checking = True`); sunucuya daha önce sshpocket ile bağlanılmış olmalı.
 
+**Entegrasyon notları (linux-hardening `main` incelemesinden, 2026-10-10):**
+- **Çalışma dizini:** `ansible.cfg` (`become = True`, `roles_path = roles`, `inventory`) bileşen klasöründen okunur. sshpocket komutu
+  bileşen klasöründen (ya da `ANSIBLE_CONFIG` ile) çalıştırmak zorundadır; aksi halde `become` sessizce kapanır.
+- **Grup adı:** `hosts: ubuntu` sabit olduğundan, sshpocket geçici inventory'de sunucuyu `ubuntu` grubuna koyar (PR-B beklemeden çalışır).
+- **Anahtar agent'ta olmalı:** `hardening_verify_access` yeni bağlantıyı `BatchMode=yes` + `-i <key> -o IdentitiesOnly=yes` ile açar.
+  Passphrase'li key agent'ta yoksa doğrulama başarısız sayılır ve gereksiz geri alma tetiklenir; sshpocket çalıştırmadan önce
+  key'in agent'ta olduğunu doğrular (`ssh-add -l`).
+- **Port:** 0b'ye kadar `PORT != 22` olan sunucu için hardening reddedilir.
+- **`ansible_python_interpreter`** hedef sunucunun Python'udur; kontrol makinesinin Python'u buraya yazılmaz.
+- **Tarama çıktısı:** D'ye kadar `scans/` bileşen klasörüne (USB) yazılır; bu hassas veridir, entegrasyon D'den önce açılmaz.
+
 ### 6.6 Güvenlik kapıları (sshpocket tarafı)
 - `mutates: true` eylem, aynı oturumda ilgili **önizleme başarıyla çalışmadan** açılmaz.
 - Uygulamadan önce özet gösterilir (sunucu, profil, bileşen sürümü, `allow_from`, port) ve **onay yazdırılır**.
