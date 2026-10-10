@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Belge
+- `docs/components-design.md`: `servers/` veri ayrımı ve bileşen modeli için tasarım (henüz uygulanmadı).
+
 ### Eklendi
 - Dependabot yapılandırması (aylık, yalnızca GitHub Actions bağımlılıkları).
 
