@@ -77,20 +77,28 @@ Sürüm N → N+1, otomatik ve geri alınabilir:
 id: linux-hardening
 version: 0.1.0               # etiketle aynı olmalı (v0.1.0)
 sshpocket_api: 1             # sözleşme sürümü; uyumsuzsa sshpocket reddeder
-requires: [python3, ansible-core]
-profiles:                    # sshpocket menüsünde seçenek; status: supported | planned
-  - { id: ubuntu-26.04, status: supported }
+requires:
+  control:                   # KONTROL makinesi (sshpocket'ın çalıştığı Mac)
+    python: ">=3.12"         # ansible-core==2.21.5 Requires-Python ile DOĞRULANMIŞ
+    packages: [ansible-core]
+  target:                    # HEDEF sunucu (ayrı bir gereksinim; kontrol makinesiyle karıştırılmaz)
+    python: ">=3.8"          # ansible modülleri için; bileşen sahibi belirler
+profiles:                    # status: supported | planned
+  - { id: ubuntu-26.04, status: supported }   # eşleme: ubuntu-26.04 <-> hardening_supported_os {Ubuntu: ["26.04"]}
   - { id: rpi,          status: planned }
   - { id: proxmox,      status: planned }
-actions:                     # sshpocket yalnızca bunları ve sırasını bilir
-  audit:   { cmd: "ansible-playbook playbooks/audit.yml",                 mutates: false }
-  preview: { cmd: "ansible-playbook playbooks/harden.yml --check --diff", mutates: false }
-  apply:   { cmd: "ansible-playbook playbooks/harden.yml",               mutates: true, requires: [preview] }
+actions:
+  audit:   { cmd: "ansible-playbook playbooks/audit.yml",                 effects: [installs-package] , requires_sudo: true }
+  preview: { cmd: "ansible-playbook playbooks/harden.yml --check --diff", effects: [],                  requires_sudo: true }
+  apply:   { cmd: "ansible-playbook playbooks/harden.yml",               effects: [changes-config],    requires_sudo: true, requires: [preview] }
 vars:                        # sshpocket'ın doldurup/onaylatabileceği değişkenler
-  - hardening_ssh_allow_from
-  - hardening_ssh_port
+  - hardening_ssh_allow_from # NOT: ssh_port bilerek yok (bkz. 0b: şu an yalnızca ufw'ye uygulanıyor)
+invoke:                      # sshpocket'ın komuta EKLEDİKLERİ (bileşen bunları kendi cmd'sine yazmaz)
+  append: ["-i <geçici inventory>", "--limit <sunucu>", "--ask-become-pass", "-e @<geçici değişkenler>"]
 ```
-sshpocket bileşenin **içini bilmez**; yalnızca sözleşmeyi ve eylemleri çalıştırır.
+- `effects`: `[]` (salt okunur) | `installs-package` | `changes-config`. sshpocket menüde etkiyi açıkça gösterir.
+- `requires` (ön koşul eylemler) beyandır; **zorlamayı sshpocket yapar** (önizleme başarılı olmadan `apply` açılmaz).
+- sshpocket bileşenin **içini bilmez**; yalnızca sözleşmeyi ve eylemleri çalıştırır.
 
 ### 6.2 Kilit dosyası: `components.lock` (sshpocket reposunda, imzalı sürümle gelir)
 ```yaml
@@ -105,6 +113,9 @@ components:
   Kilit dosyasında olmayan bileşen **çalıştırılmaz**.
 
 ### 6.3 Kurulum ve doğrulama
+- **İmza ad alanı:** bileşenler `sshpocket-component` ad alanıyla imzalanır (çekirdek: `sshpocket-release`). Ayrı ad alanı bilerek seçildi:
+  bir bileşen imzası çekirdek güncellemesi olarak yeniden oynatılamaz. Doğrulayıcı güvenilen anahtarı `release_signers`'tan değil
+  `components.lock`'taki `signers` alanından okur; bu, **sshpocket tarafında ayrı (Aşama 2) bir değişikliktir**.
 - Paket: bileşenin GitHub Release varlığı `<id>-<sürüm>.tar.gz` + `.tar.gz.sig` (bugünkü güncelleyiciyle aynı kurallar:
   yalnızca HTTPS, `ssh-keygen -Y verify`, `..`/mutlak yol/symlink reddi, içindeki `component.yml` sürümü etiketle aynı,
   geri sürüme düşmeme).
@@ -161,19 +172,19 @@ Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
 Ana menü: sunucular + Yeni sunucu / İçe aktar / Yönet / Güncelle (bugünkü gibi).
 
 ## 8. linux-hardening için istenecek değişiklikler (PR listesi)
-Bu depo aktif geliştirme yeri değil; değişiklikler PR ile gelir. Öncelik sırası:
+Bu depo aktif geliştirme yeri değil; değişiklikler PR ile gelir. **Sıra:** A → 0a → 0b → 0c → B → D → C
+(sözleşme en sonda: önceki PR'ların gerçeğini tarif etmeli). Her PR'da `--check --diff` temiz ve ikinci çalıştırmada
+`changed=0` aranır; gerçek test için bir Ubuntu 26.04 test VM'i gerekir.
 
-| # | Değişiklik | Neden |
+| PR | Değişiklik | Neden |
 |---|---|---|
-| 1 | **Etiketli, imzalı sürüm** (`v0.1.0`, `.tar.gz` + `.sig`) | Kök yetkisiyle çalışan kod; sabitlenebilir olmalı |
-| 2 | **`component.yml`** (profiller, eylemler, değişkenler, `sshpocket_api`) | Sözleşme |
-| 3 | `hosts: ubuntu` → **genel grup** (`hardening`) | rpi/proxmox profilleri ve üretilmiş inventory için |
-| 4 | `hardening_ssh_allow_from` **varsayılanı kaldır**, boşsa dur + ön kontrolde kontrol makinesi IP'sinin listede olduğunu doğrula | `10.0.0.0/8` varsayılanı başka ağlarda kilitlenme yaratır |
-| 5 | Ön kontrol: `ansible_user == root` ise dur; `authorized_keys` yolu kullanıcının gerçek home'una göre | root kapanır / yanlış yol |
-| 6 | `KbdInteractiveAuthentication` değişkene çevrilsin (varsayılan `no`) | TOTP/2FA ile çakışma |
-| 7 | `AllowTcpForwarding` değişkene çevrilsin (varsayılan `no`) | Tünel/ProxyJump kullananlar için |
-| 8 | SSH/ufw değişikliğinden sonra **yeni bağlantı testi** (`wait_for_connection`) ve başarısızsa geri alma bloğu | Kilitlenme koruması |
-| 9 | `audit.yml` için özet çıktı (hardening index) | Menüde "öncesi → sonrası" göstermek |
+| **A** | `hardening_ssh_allow_from` varsayılanı kaldır, boşsa dur; kontrol makinesi IP'si listede değilse dur; `ansible_user == root` ise dur; `authorized_keys` gerçek home'a göre; SSH/ufw sonrası yeni bağlantı testi + geri alma | `10.0.0.0/8` varsayılanı ve root, erişimi keser |
+| **0a** | `hardening_*` varsayılanlarını `inventory/group_vars/all.yml`'den **rol `defaults/main.yml`**'ye taşı | `-i /tmp/x.yml` verilince `group_vars` yüklenmez, değişkenler tanımsız kalır, roller düşer |
+| **0b** | `hardening_ssh_port` yalnızca ufw'ye uygulanıyor, sshd'ye değil → ya sshd'ye de uygula (Ubuntu'da `ssh.socket` varsa `Port` yetmez) ya da değişkeni kaldır ve ufw'nin **sshd'nin gerçekten dinlediği portu** (`sshd -T`) kullanmasını sağla | Uyumsuz port = kilitlenme. **sshpocket bu değişkeni arayüze koymaz** |
+| **0c** | `--check`, temiz sunucuda `fail2ban` handler'ı yüzünden `failed=1` veriyor → düzelt | "Güvenli önizleme" iddiası doğru olsun |
+| **B** | Grup adı: `hosts: "hardening:ubuntu"` (geçişi **kırmadan**); `KbdInteractiveAuthentication` değişkeni, açılırsa `AuthenticationMethods publickey,keyboard-interactive` zorunlu + uyarı (`UsePAM yes` ile parola girişini geri açabilir); `AllowTcpForwarding` **string** (`no\|local\|remote\|yes`, varsayılan `no`; ProxyJump için `local` yeter) | Esneklik, güvenliği sessizce düşürmeden |
+| **D** | `audit` özet çıktısı (`summary.json`; rapordaki karşılıkları açıkça eşle) + `hardening_scan_dir` (izin 700; USB'ye değil kullanıcı klasörüne) + `--check`'te `fetch` davranışı (`check_mode: false` ya da atla). `audit.yml` zaten idempotent değil (zaman damgalı klasör); beklenen | `lynis-report.dat` hostname, paket, kullanıcı adı içerir; USB'ye yazılmamalı |
+| **C** | VERSION, CHANGELOG, `component.yml` (yukarıdaki şema), **`pip-compile --generate-hashes`** ile hash'li `requirements.txt` (Python 3.14 ile test), imzalı paket üretim notu (`sshpocket-component` ad alanı), profil eşleme betiği (`ubuntu-26.04 ↔ Ubuntu/26.04`) | Sözleşme gerçeği tarif etsin |
 
 ## 9. Aşamalar ve kabul ölçütleri
 
@@ -195,6 +206,8 @@ Her aşama ayrı sürüm; geri uyumluluk ve geçiş testleri aşama 1'in bir par
 
 ## 11. Riskler ve açık noktalar
 - **Python/Ansible kurulumu:** karar → `--doctor` denetler, onayla `brew install python@3.x` yapabilir (Homebrew'u kurmaz); venv kurulumu sshpocket'ındır.
+- **Canlı test erişimi:** PR serisi gerçek bir test VM'i ister. Başka bir (otomatik) oturumun VM'e erişimi, VM'in kendi key'i/agent'ı ile
+  yapılmalı; `sudo` parolasını yalnızca kullanıcı yazar. Yalnızca test VM'i, önce snapshot.
 - **Bilgisayar kaybı senaryosu:** key dosyaları ve bileşenler USB'de kalır, ama **passphrase'ler Keychain'de (Mac'te)**. Parola yöneticisinde de saklanmalı;
   USB tek hata noktasıdır (şifreli yedek önerilir).
 - **sudo parolasını menü oturumu boyunca hatırlama:** risk/kolaylık dengesi; başta her eylemde bir kez sorulur.
