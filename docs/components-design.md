@@ -16,7 +16,7 @@
 | # | Karar | Gerekçe |
 |---|---|---|
 | 1 | Bileşenler, **sshpocket sürümüyle sabitlenir** (`components.lock`) + yeni imzalı sürüm varsa **bilgilendirir**, onayla kurar | Birlikte test edilmiş sürümler; sunucularda kök yetkisiyle çalışan kod denetimsiz değişmez |
-| 2 | Bileşenler **Mac'te** durur (`~/.local/share/sshpocket/components/`); USB'ye taşınmaz (isteğe bağlı `SSHPOCKET_COMPONENTS_DIR`) | venv taşınamaz (mutlak yol, mimari), USB yavaş/izinsiz/kaybolabilir |
+| 2 | Bileşen **içeriği ve kilitleri USB'de** (`components/`), **venv bir önbellektir** ve Mac'te üretilir (`~/.cache/sshpocket/venv/<ortam-kimliği>`); isteğe bağlı USB'de wheelhouse | Bilgisayar kaybolsa bile her şey USB'de kalır; venv taşınamaz (mutlak yol, mimari, exFAT'ta symlink yok) ama her makinede yeniden üretilebilir |
 | 3 | Bileşen paketleri **aynı imza anahtarıyla** imzalanır; kilit dosyasında bileşen başına `signers` alanı vardır | Tek bakımcı için basit; ileride ayrı anahtar kod değişmeden eklenir |
 | 4 | Kök dizinde **`servers/`** klasörü: kullanıcı verisi buraya | `sistem/` tamamen kod olur; yedeklenecek tek klasör |
 | 5 | Sunucu ayarında **genel anahtar adları**: `IP`, `USER`, `PORT`, `KEY`, `OS` | `UBUNTUTEST_IP` gibi önekler üretilmiş koda bağlıydı |
@@ -37,12 +37,13 @@ sshpocket/
         ├── id_ed25519_<ad>[.pub]
         └── hardening.env    (ops.) bileşen değişkenleri
 
-~/.local/share/sshpocket/                     (Mac'te, USB'de değil)
-└── components/
-    └── linux-hardening/
-        ├── 0.1.0/           imzası doğrulanmış paket içeriği
-        ├── current -> 0.1.0
-        └── .venv/           yalnızca bu Mac'te geçerli çalışma ortamı
+└── components/              BİLEŞENLER (USB'de kalır; exFAT'ta symlink olmadığı için `current` düz metin dosyasıdır)
+    ├── linux-hardening/
+    │   ├── 0.1.0/           imzası doğrulanmış içerik (component.yml, playbook'lar, requirements.txt)
+    │   └── current          tek satır: "0.1.0"
+    └── .wheelhouse/<platform>/    (ops.) çevrimdışı Python paket önbelleği, hash'li
+
+~/.cache/sshpocket/venv/<ortam-kimliği>/      (Mac'te; silinebilir, otomatik yeniden üretilir)
 ```
 
 - Sunucu adı kuralı değişmez: `^[a-z][a-z0-9_]*$`. Klasör adı = kimlik.
@@ -110,7 +111,20 @@ components:
   geri sürüme düşmeme).
 - Sürümlü klasöre açılır, `current` bağlantısı atomik değişir, **eski sürüm kalır** (geri alma).
 - **Her çalıştırmadan önce** dosya özetleri yeniden doğrulanır (kurulumdan sonra değiştirilmiş playbook çalışmaz).
-- Çalışma ortamı (venv) gereksinim dosyasının özeti değişirse yeniden kurulur; sürümler sabitlenir (`requirements.txt`).
+- **Venv bir önbellektir.** Ortam kimliği = `sha256(requirements.txt) + Python sürümü + platform`. Kimlikte venv varsa ve
+  sağlık kontrolü geçerse (python çalışıyor, `ansible-playbook --version`) **yeniden kullanılır**; yoksa/bozuksa kurulur.
+  Python/gereksinim/makine değişince kimlik değişir, aynı makinede değişmeyince hiçbir şey kurulmaz.
+- **Yorumlayıcı seçimi:** `python3`'ü körü körüne almaz. `component.yml`'deki `requires.python` aralığına uyan ilkini arar
+  (`python3.14`, `python3.13`, `python3.12`, `python3`). macOS'un `/usr/bin/python3`'ü (3.9) yeni `ansible-core` için eski olabilir.
+- **Kurulum:** yalnızca venv'in içine; `pip install --require-hashes --only-binary :all:` (kaynak paket derlemesi yok).
+  Önce USB wheelhouse'u (`--no-index --find-links`), yoksa internet; inen paketler isteğe bağlı wheelhouse'a kopyalanır.
+- `requirements.txt` **hash'li** olmalı (linux-hardening PR kalemi).
+
+### 6.3b Ön koşul denetimi: `./start.sh --doctor`
+`ssh`/`ssh-keygen`/`ssh-copy-id`, uygun Python (sürüm aralığı), `venv`+`ensurepip`, disk alanı, internet; ✅/❌ ve düzeltme önerisiyle.
+Hardening/Araçlar ilk açıldığında otomatik çalışır. **Politika:** eksik olanı söyler ve **onay ister**; Homebrew varsa
+`brew install python@3.x` önerir/çalıştırır; **Homebrew'u kendisi kurmaz, `sudo` kullanmaz, sisteme global `pip` yapmaz.**
+Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
 
 ### 6.4 Güncelleme akışı
 `./start.sh --update`:
@@ -181,12 +195,13 @@ Her aşama ayrı sürüm; geri uyumluluk ve geçiş testleri aşama 1'in bir par
 - Docker e2e `sshd` yalnızca bağlantı/anahtar akışları için; hardening (ufw, sysctl, auditd) gerçek VM'de elle.
 
 ## 11. Riskler ve açık noktalar
-- **Python/Ansible kurulumu:** macOS'ta Python yalnızca Command Line Tools ile gelir; kurulumu sshpocket mı yapar, yoksa
-  yalnızca denetleyip yönlendirir mi? (Aşama 3'te karar.)
+- **Python/Ansible kurulumu:** karar → `--doctor` denetler, onayla `brew install python@3.x` yapabilir (Homebrew'u kurmaz); venv kurulumu sshpocket'ındır.
+- **Bilgisayar kaybı senaryosu:** key dosyaları ve bileşenler USB'de kalır, ama **passphrase'ler Keychain'de (Mac'te)**. Parola yöneticisinde de saklanmalı;
+  USB tek hata noktasıdır (şifreli yedek önerilir).
 - **sudo parolasını menü oturumu boyunca hatırlama:** risk/kolaylık dengesi; başta her eylemde bir kez sorulur.
 - **Proxmox/rpi profilleri:** farklı güvenlik duvarı, `ip_forward`, SD kart, küme portları; ayrı rol gerektirir (linux-hardening'in kararı).
 - **Üçüncü taraf bileşen** desteği bilinçli olarak yok; yalnızca kilitteki, imzalı bileşenler.
 - Windows desteği kapsam dışı.
 
 ## 12. Kapsam dışı
-Otomatik (kullanıcı onaysız) güncelleme, bileşenleri USB'den çalıştırma, sudo parolasını saklama, Ansible'ı sshpocket'a gömmek.
+Otomatik (kullanıcı onaysız) güncelleme, venv'i USB'de kalıcı tutmak (önbellek olarak Mac'te üretilir), Python'u USB'ye gömmek (ileride isteğe bağlı), sudo parolasını saklama, Ansible'ı sshpocket'a gömmek.
