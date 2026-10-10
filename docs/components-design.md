@@ -73,30 +73,58 @@ Sürüm N → N+1, otomatik ve geri alınabilir:
 ## 6. Bileşen (component) modeli
 
 ### 6.1 Sözleşme: `component.yml` (bileşen reposunun kökünde)
+Biçim, `linux-hardening`'in `main`'indeki gerçek dosyayla hizalıdır (2026-10-10, issue #2).
 ```yaml
 id: linux-hardening
-version: 0.1.0               # etiketle aynı olmalı (v0.1.0)
+version: 0.1.0               # VERSION dosyası ve etiket (v0.1.0) ile aynı olmalı
 sshpocket_api: 1             # sözleşme sürümü; uyumsuzsa sshpocket reddeder
+
 requires:
   control:                   # KONTROL makinesi (sshpocket'ın çalıştığı Mac)
-    python: ">=3.12"         # ansible-core==2.21.5 Requires-Python ile DOĞRULANMIŞ
-    packages: [ansible-core]
-  target:                    # HEDEF sunucu (ayrı bir gereksinim; kontrol makinesiyle karıştırılmaz)
-    python: ">=3.8"          # ansible modülleri için; bileşen sahibi belirler
+    python: ">=3.12"         # ansible-core 2.21.5 Requires-Python ile aynı
+    packages: [ansible-core] # sürüm/hash: requirements.txt
+  target:                    # HEDEF sunucu (kontrol makinesiyle karıştırılmaz)
+    python: ">=3.9"          # ansible-core 2.21 modüllerinin hedefte gerektirdiği alt sınır (module_utils/basic.py _PY_MIN)
+
+inventory_group: hardening   # üretilen inventory'de hedefin konacağı grup (eski 'ubuntu' geçiş için kabul edilir)
+
 profiles:                    # status: supported | planned
   - { id: ubuntu-26.04, status: supported }   # eşleme: ubuntu-26.04 <-> hardening_supported_os {Ubuntu: ["26.04"]}
   - { id: rpi,          status: planned }
   - { id: proxmox,      status: planned }
+
 actions:
-  audit:   { cmd: "ansible-playbook playbooks/audit.yml",                 effects: [installs-package] , requires_sudo: true }
-  preview: { cmd: "ansible-playbook playbooks/harden.yml --check --diff", effects: [],                  requires_sudo: true }
-  apply:   { cmd: "ansible-playbook playbooks/harden.yml",               effects: [changes-config],    requires_sudo: true, requires: [preview] }
-vars:                        # sshpocket'ın doldurup/onaylatabileceği değişkenler
-  - hardening_ssh_allow_from # NOT: ssh_port bilerek yok (bkz. 0b: şu an yalnızca ufw'ye uygulanıyor)
-invoke:                      # sshpocket'ın komuta EKLEDİKLERİ (bileşen bunları kendi cmd'sine yazmaz)
-  append: ["-i <geçici inventory>", "--limit <sunucu>", "--ask-become-pass", "-e @<geçici değişkenler>"]
+  audit:
+    cmd: "ansible-playbook playbooks/audit.yml"
+    effects: [installs-package]            # hedefe lynis paketini kurar; yapılandırmayı değiştirmez
+    requires_sudo: true
+    outputs:
+      dir_var: hardening_scan_dir          # çıktı klasörü bu değişkenle verilir (varsayılan: bileşen içi scans/)
+      summary: "<dir>/<host>/<tarih>/summary.json"
+  preview:
+    cmd: "ansible-playbook playbooks/harden.yml --check --diff"
+    effects: []
+    requires_sudo: true
+  apply:
+    cmd: "ansible-playbook playbooks/harden.yml"
+    effects: [installs-package, changes-config]
+    requires_sudo: true
+    requires: [preview]                    # sshpocket önce preview çalıştırıp göstermeli
+
+vars: [hardening_ssh_allow_from, hardening_scan_dir]   # hardening_ssh_port YOK (kaldırıldı; port değiştirme desteklenmiyor)
+
+invoke:                      # sshpocket'ın cmd'nin sonuna eklediği argümanlar
+  append:                    # NESNE listesi (string değil)
+    - { arg: "-i", value: "<üretilen geçici inventory>", required: true }
+    - { arg: "--limit", value: "<sunucu>", required: true }
+    - { arg: "--ask-become-pass", required: true, interactive: true }   # sudo parolasını Ansible kendi istemiyle alır
+    - { arg: "-e", value: "@<değişken dosyası>", required: false }
 ```
-- `effects`: `[]` (salt okunur) | `installs-package` | `changes-config`. sshpocket menüde etkiyi açıkça gösterir.
+- `effects`: `[]` (salt okunur) | `installs-package` | `changes-config`; **birden fazla olabilir** ve menü hepsini gösterir.
+- `invoke.append[]`: `arg` bayrak, `value` yer tutucu (`<...>`; sshpocket doldurur), `required` zorunluluk, `interactive` kullanıcıdan
+  istem bekler (sshpocket bunu gizli/sessiz çalıştırmaz, terminali devreder).
+- `inventory_group`: sshpocket geçici inventory'de sunucuyu **bu grupta** üretir (sabit `ubuntu` varsayımı yok).
+- `actions.*.outputs`: sshpocket çıktı klasörünü **kullanıcı klasörüne** (USB'ye değil) yönlendirir ve `summary.json`'u okuyup gösterir.
 - `requires` (ön koşul eylemler) beyandır; **zorlamayı sshpocket yapar** (önizleme başarılı olmadan `apply` açılmaz).
 - sshpocket bileşenin **içini bilmez**; yalnızca sözleşmeyi ve eylemleri çalıştırır.
 
@@ -107,8 +135,13 @@ components:
     repo: syhgorath/linux-hardening
     version: 0.1.0
     sha256: <paket özeti>
-    signers: "sshpocket-release namespaces=\"sshpocket-component\" ssh-ed25519 AAAA..."
+    signers: "sshpocket-component namespaces=\"sshpocket-component\" ssh-ed25519 AAAA..."   # principal = ad alanı
 ```
+- **Principal ve ad alanı aynı değerdir:** `sshpocket-component`. Doğrulama `ssh-keygen -Y verify -I sshpocket-component
+  -n sshpocket-component` ile yapılır. `-I`, signers satırının **ilk alanıyla** birebir aynı olmalıdır; eşleşmezse
+  OpenSSH yalnızca genel bir `Could not verify signature.` (çıkış 255) verir ve nedenin principal olduğunu söylemez,
+  bu yüzden aracımız bunu doğrulamadan önce kendisi kontrol edip anlaşılır bir hata üretir.
+  Aynı anahtar çekirdek (`sshpocket-release`) ve bileşen (`sshpocket-component`) için, **farklı principal+ad alanı** satırlarıyla kullanılabilir.
 - Yeni bileşen eklemek = kilit dosyasına satır (imzalı sshpocket sürümü) → bilinçli güven kararı.
   Kilit dosyasında olmayan bileşen **çalıştırılmaz**.
 
@@ -116,6 +149,8 @@ components:
 - **İmza ad alanı:** bileşenler `sshpocket-component` ad alanıyla imzalanır (çekirdek: `sshpocket-release`). Ayrı ad alanı bilerek seçildi:
   bir bileşen imzası çekirdek güncellemesi olarak yeniden oynatılamaz. Doğrulayıcı güvenilen anahtarı `release_signers`'tan değil
   `components.lock`'taki `signers` alanından okur; bu, **sshpocket tarafında ayrı (Aşama 2) bir değişikliktir**.
+- Paket adlandırma (bileşenin `docs/RELEASING.md`'siyle aynı): `linux-hardening-<sürüm>.tar.gz` + `.tar.gz.sig`, arşiv kök dizini
+  `linux-hardening-<sürüm>/`, etiket `v<sürüm>`. Doğrulayıcı bu üçünü de bekler.
 - Paket: bileşenin GitHub Release varlığı `<id>-<sürüm>.tar.gz` + `.tar.gz.sig` (bugünkü güncelleyiciyle aynı kurallar:
   yalnızca HTTPS, `ssh-keygen -Y verify`, `..`/mutlak yol/symlink reddi, içindeki `component.yml` sürümü etiketle aynı,
   geri sürüme düşmeme).
@@ -128,7 +163,7 @@ components:
   (`python3.14`, `python3.13`, `python3.12`, `python3`). macOS'un `/usr/bin/python3`'ü (3.9) yeni `ansible-core` için eski olabilir.
 - **Kurulum:** yalnızca venv'in içine; `pip install --require-hashes --only-binary :all:` (kaynak paket derlemesi yok).
   Önce USB wheelhouse'u (`--no-index --find-links`), yoksa internet; inen paketler isteğe bağlı wheelhouse'a kopyalanır.
-- `requirements.txt` **hash'li** olmalı (linux-hardening PR kalemi).
+- `requirements.txt` hash'lidir (`pip-compile --generate-hashes`, Python 3.14 ile derlenmiş; platform tekerlekleri dahil): `--require-hashes` ile kurulur.
 
 ### 6.3b Ön koşul denetimi: `./start.sh --doctor`
 `ssh`/`ssh-keygen`/`ssh-copy-id`, uygun Python (sürüm aralığı), `venv`+`ensurepip`, disk alanı, internet; ✅/❌ ve düzeltme önerisiyle.
@@ -152,19 +187,32 @@ Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
   `hardening_ssh_allow_from` için **öneri** olarak gösterir; kullanıcı onaylar.
 - Host key doğrulaması kapatılmaz (`host_key_checking = True`); sunucuya daha önce sshpocket ile bağlanılmış olmalı.
 
-**Entegrasyon notları (linux-hardening `main` incelemesinden, 2026-10-10):**
+**Entegrasyon notları (linux-hardening `main`, issue #2 ile hizalı; canlı VM'de DOĞRULANMADI):**
 - **Çalışma dizini:** `ansible.cfg` (`become = True`, `roles_path = roles`, `inventory`) bileşen klasöründen okunur. sshpocket komutu
   bileşen klasöründen (ya da `ANSIBLE_CONFIG` ile) çalıştırmak zorundadır; aksi halde `become` sessizce kapanır.
-- **Grup adı:** `hosts: ubuntu` sabit olduğundan, sshpocket geçici inventory'de sunucuyu `ubuntu` grubuna koyar (PR-B beklemeden çalışır).
-- **Anahtar agent'ta olmalı:** `hardening_verify_access` yeni bağlantıyı `BatchMode=yes` + `-i <key> -o IdentitiesOnly=yes` ile açar.
-  Passphrase'li key agent'ta yoksa doğrulama başarısız sayılır ve gereksiz geri alma tetiklenir; sshpocket çalıştırmadan önce
-  key'in agent'ta olduğunu doğrular (`ssh-add -l`).
-- **Port:** 0b'ye kadar `PORT != 22` olan sunucu için hardening reddedilir.
+- **Grup adı:** `component.yml`'deki `inventory_group` (`hardening`) kullanılır; playbook'lar `hosts: "hardening:ubuntu"` olduğundan eski `ubuntu` de geçer.
+- **Anahtar agent'ta olmalı:** uygulama sonrası bağlantı doğrulaması yeni bağlantıyı `BatchMode=yes` + `-i <key> -o IdentitiesOnly=yes` ile açar.
+  Passphrase'li key agent'ta yoksa yanlış negatif olur ve gereksiz geri alma tetiklenir; sshpocket çalıştırmadan önce `ssh-add -l` ile doğrular.
+- **Port:** `hardening_ssh_port` kaldırıldı, ufw kuralı sshd'nin gerçekten dinlediği porttan yazılır; **port değiştirme desteklenmiyor**.
+  sshpocket bu değişkeni arayüze koymaz. Farklı portlu sunucular canlıda doğrulanana kadar temkinli ele alınır (uyarı).
+- **Tarama çıktısı:** `hardening_scan_dir` **zorunlu olarak** kullanıcı klasörüne verilir (varsayılan `~/.local/share/sshpocket/scans/`, dizin 0700,
+  dosyalar 0600); USB'ye hassas rapor yazılmaz. `summary.json` sshpocket tarafından okunup gösterilir.
+- **Kaynak adres:** sshpocket'ın önerdiği `hardening_ssh_allow_from`, preflight'ın doğruladığı adresle aynıdır (sunucunun `SSH_CONNECTION`'da gördüğü);
+  NAT/jump host varsa sunucunun *gördüğü* adres yazılmalıdır. Bağlanan kullanıcı `root` ise ve liste boşsa playbook durur.
 - **`ansible_python_interpreter`** hedef sunucunun Python'udur; kontrol makinesinin Python'u buraya yazılmaz.
-- **Tarama çıktısı:** D'ye kadar `scans/` bileşen klasörüne (USB) yazılır; bu hassas veridir, entegrasyon D'den önce açılmaz.
+- **`--tags`:** erişim korumaları etiketle atlanmaz (0e düzeltmesi); bu sürüm ve sonrası şart.
 
 ### 6.6 Güvenlik kapıları (sshpocket tarafı)
 - `mutates: true` eylem, aynı oturumda ilgili **önizleme başarıyla çalışmadan** açılmaz.
+- **Arayüzde açıkça söylenecekler (bileşenin davranış notları):**
+  - `audit` salt-okunur değildir: hedefe `lynis` paketini kurar (`effects: [installs-package]`).
+  - `preview` **tam önizleme değildir**: `--check`'te servis başlatma/handler adımları atlanır ve `ufw` komutları çalışmaz;
+    **firewall değişikliği önizlemede görünmez**.
+  - `apply` paket kurar **ve** yapılandırmayı değiştirir (iki etki de gösterilir).
+  - fail2ban `ignoreip`'ine kontrol makinesinin sunucunun gördüğü adresi eklenir (tüm yönetim ağı muaf değil); dinamik IP'den
+    çalışılırsa yapılandırma her seferinde değişir.
+  - `hardening_ssh_kbdinteractive` (2FA) arayüze konulursa uyarı gerekir: açıkken bağlantı doğrulaması yalnızca SSH
+    banner'ını sınar, kimlik doğrulama sınanamaz.
 - Uygulamadan önce özet gösterilir (sunucu, profil, bileşen sürümü, `allow_from`, port) ve **onay yazdırılır**.
 - Kullanıcı `root` ise hardening reddedilir (erişim kaybı riski). Algılanan OS, seçili profille uyuşmuyorsa durur.
 - Profil `planned` ise menüde pasif ("yakında").
@@ -197,6 +245,10 @@ Bu depo aktif geliştirme yeri değil; değişiklikler PR ile gelir. **Sıra:** 
 | **D** | `audit` özet çıktısı (`summary.json`; rapordaki karşılıkları açıkça eşle) + `hardening_scan_dir` (izin 700; USB'ye değil kullanıcı klasörüne) + `--check`'te `fetch` davranışı (`check_mode: false` ya da atla). `audit.yml` zaten idempotent değil (zaman damgalı klasör); beklenen | `lynis-report.dat` hostname, paket, kullanıcı adı içerir; USB'ye yazılmamalı |
 | **C** | VERSION, CHANGELOG, `component.yml` (yukarıdaki şema), **`pip-compile --generate-hashes`** ile hash'li `requirements.txt` (Python 3.14 ile test), imzalı paket üretim notu (`sshpocket-component` ad alanı), profil eşleme betiği (`ubuntu-26.04 ↔ Ubuntu/26.04`) | Sözleşme gerçeği tarif etsin |
 
+> **Durum (2026-10-10):** A, 0a, 0b, 0c, 0d, 0e, B, D ve C **birleşti** (linux-hardening `main`; ayrıca CI, `scripts/release.sh`,
+> SECURITY/CONTRIBUTING/README.en). **Canlı Ubuntu 26.04 doğrulaması henüz yok** ve henüz **etiket/release yok** (`v0.1.0` yalnızca
+> `VERSION`/`component.yml`'de). Yukarıdaki "neden" sütunu artık geçmiş bilgidir; geçerli gerçek `component.yml`'dir.
+
 ## 9. Aşamalar ve kabul ölçütleri
 
 | Aşama | İçerik | Bittiğinde |
@@ -217,6 +269,9 @@ Her aşama ayrı sürüm; geri uyumluluk ve geçiş testleri aşama 1'in bir par
 
 ## 11. Riskler ve açık noktalar
 - **Python/Ansible kurulumu:** karar → `--doctor` denetler, onayla `brew install python@3.x` yapabilir (Homebrew'u kurmaz); venv kurulumu sshpocket'ındır.
+- **linux-hardening canlıda hiç doğrulanmadı** (testler mutasyonla doğrulanmış ama gerçek Ubuntu 26.04 üzerinde değil); `ssh.service`/`ssh.socket`
+  farkı, `--check` temiz sunucuda, bağlantı doğrulama bloğu özellikle izlenecek. **Etiket/release yok**: sshpocket bileşeni imzalı paketle
+  kurabilmek için önce `v0.1.0` imzalanıp yayınlanmalı.
 - **Canlı test erişimi:** PR serisi gerçek bir test VM'i ister. Başka bir (otomatik) oturumun VM'e erişimi, VM'in kendi key'i/agent'ı ile
   yapılmalı; `sudo` parolasını yalnızca kullanıcı yazar. Yalnızca test VM'i, önce snapshot.
 - **Bilgisayar kaybı senaryosu:** key dosyaları ve bileşenler USB'de kalır, ama **passphrase'ler Keychain'de (Mac'te)**. Parola yöneticisinde de saklanmalı;
