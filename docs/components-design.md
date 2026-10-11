@@ -1,7 +1,11 @@
 # Tasarım: `servers/` veri ayrımı ve bileşen (component) modeli
 
-> **Durum: TASARIM, henüz uygulanmadı.** Kararlar 2026-10-10'da alındı. Uygulama, bir haftalık deneme
-> süresinden sonra, aşağıdaki aşamalarla ve her aşama ayrı sürüm/PR olarak yapılacak.
+> **Durum (2026-10-12):** Aşama 1 (veri ayrımı) ve Aşama 2 (paket altyapısı: kilit, imza, kurulum, bildirim, venv, `--doctor`,
+> `--components`) **uygulandı**; Aşama 3 (🛡️ Hardening menüsü) ve 4 (🧰 Araçlar) sırada. Kararlar 2026-10-10'da alındı.
+>
+> **Uygulamada tasarımdan sapmalar:** (1) bildirim `component.json`'dır (YAML değil; bkz. package-standard §13); (2) daha yeni bir paket
+> yayını **yalnızca bilgilendirir**, kurulmaz: sürüm daima imzalı sshpocket sürümüyle gelen `components.lock`'tadır;
+> (3) `--doctor` eksik olanı kendisi kurmaz, çözüm komutunu gösterir.
 
 > **Paket yazarı için normatif özet:** [package-standard.md](package-standard.md) (v1).
 

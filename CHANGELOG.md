@@ -4,22 +4,27 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
-### Eklendi (hazırlık; kullanıcıya görünür davranış yok)
+## [3.3.0] - 2026-10-12
+
+> **Paket altyapısı geldi.** `components.lock` şimdilik **boştur**; ilk paket (linux-hardening) hazır olunca eklenecek. Altyapı, paket kurulumunu
+> imzalı, kilitli ve doğrulanabilir yapar (bkz. [docs/package-standard.md](docs/package-standard.md)). Mevcut sunucu/bağlantı davranışı değişmedi.
+
+### Eklendi
 - **Paket kilit dosyası ve imza doğrulama (Aşama 2.0):** `components.lock` (şimdilik boş) ve `sistem/Helpers/Components.sh`: katı ayrıştırıcı
   (bilinmeyen/yinelenen anahtar, bozuk değer = hata; dosya `source` edilmez), arşiv sha256'sı kilitle aynı olmalı, imza `sshpocket-component`
   ad alanıyla doğrulanır (çekirdek `sshpocket-release` imzası yeniden oynatılamaz). Kilitte olmayan paket reddedilir.
 - **Paketin güvenli kurulumu (Aşama 2.1):** `sistem/Helpers/ComponentsInstall.sh`: HTTPS indirme (boyut sınırlı), arşiv denetimi (`..`, mutlak yol,
   farklı kök, symlink/hardlink/aygıt reddi), `component.json` kimlik+sürüm eşleşmesi, `components/<id>/<sürüm>/` + `current` (düz metin),
-  eski sürüm kalır, geri sürüme düşülmez, kurulum özetleri her çalıştırmadan önce yeniden doğrulanabilir. Henüz menüye/komuta bağlı değil.
+  eski sürüm kalır, geri sürüme düşülmez, kurulum özetleri her çalıştırmadan önce yeniden doğrulanabilir.
 - **Bildirim okuma ve sözleşme doğrulama (Aşama 2.2):** `component.json` (`python3 -I` + stdlib `json`) tam şema denetimi:
   `sshpocket_api`, `runner`, profiller, eylemler (`cmd`'de kabuk meta karakteri yok, `effects`, `requires` döngüsüz), değişkenler, `invoke.append`;
   bilinmeyen zorunlu özellik ve daha yeni `sshpocket_api` reddedilir. Etkin `confirm`: paket yalnızca sıkılaştırabilir (`destructive` →
-  sunucu adı yazdırma). `comp_prepare` kurulu paketi bütünlükle doğrular ve bilgiyi verir. Henüz menüye bağlı değil.
+  sunucu adı yazdırma). `comp_prepare` kurulu paketi bütünlükle doğrular ve bilgiyi verir.
 - **`./start.sh --doctor` ve venv önbelleği (Aşama 2.3):** `--doctor` ön koşulları denetler (ssh araçları, `nc`, Keychain, Python aralığı,
   `venv`/`ensurepip`, disk, ağ); **yalnızca okur ve çözüm komutunu gösterir, Homebrew/pip/sudo çalıştırmaz.** Paket bağımlılıkları için
   `ComponentsVenv.sh`: aralığa uyan Python seçimi, yalnızca hash'li `requirements.txt` (`-r/-e/--index-url` reddedilir),
   `~/.cache/sshpocket/venv/<paket>-<ortam-kimliği>` önbelleği, `pip --require-hashes --only-binary :all:` yalnızca venv içine; aynı ortam
-  kimliğinde sağlıklı venv varsa hiçbir şey kurulmaz. Henüz menüye bağlı değil.
+  kimliğinde sağlıklı venv varsa hiçbir şey kurulmaz.
 - **Paket yönetimi komutları (Aşama 2.4a):** `./start.sh --components list` (kilit ↔ kurulu durumu, ağsız), `sync [--yes]` (eksik/eski paketi
   kilitteki sürümle, imza doğrulayarak, onayla kurar; bozulmuş kurulumu silmeden `<sürüm>.bozuk-<tarih>` olarak kenara alıp yeniden kurar),
   `check-new` (kilitten daha yeni yayın var mı: **yalnızca bilgi**, kurulmaz; yeni sürüm yeni sshpocket sürümüyle gelir).
@@ -159,7 +164,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.3.0...HEAD
+[3.3.0]: https://github.com/syhgorath/sshpocket/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/syhgorath/sshpocket/compare/v3.1.1...v3.2.0
 [3.1.1]: https://github.com/syhgorath/sshpocket/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/syhgorath/sshpocket/compare/v3.0.0...v3.1.0

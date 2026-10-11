@@ -24,7 +24,7 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 | Ortam | Durum |
 |---|---|
 | **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Geliştirildi ve elle denendi |
-| **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Otomatik testler** (178 test + ShellCheck, her PR'da). ⚠️ Elle/gerçek denenmedi: Keychain izin penceresi, Terminal açma, `start.command` çift tıklama |
+| **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Otomatik testler** (Bats + ShellCheck, her PR'da). ⚠️ Elle/gerçek denenmedi: Keychain izin penceresi, Terminal açma, `start.command` çift tıklama |
 | Ubuntu 24.04 (yalnızca CI: ShellCheck + Bats testleri) | ✅ otomatik |
 | Linux üzerinde kullanım (Keychain/`osascript`/`diskutil` yok) | ❌ Desteklenmiyor |
 | Hedef sunucu: Ubuntu 26.04.1 (linux-hardening, tek test VM'i) | ✅ sınırlı; rpi/Proxmox profilleri denenmedi |
@@ -66,7 +66,11 @@ passphrase'i **macOS Keychain**'e kaydeder.
   güncelleme seçenekleri kullanılabilir.
 - **Modül yönetimi:** `ModuleManager.sh list | remove <ad> | rename <eski> <yeni>`.
 - **Aynı sunucuya birden çok kullanıcı/key:** her biri ayrı bir modül olur (örn. `web_root`, `web_deploy`).
-- 84 otomatik test (Bats) + ShellCheck, her push'ta CI'da çalışır.
+- **Ayarlar ve ok tuşlu menü:** ⚙️ Ayarlar (`sshpocket.conf`); ↑↓ gez, Enter aç, `q`/`←` geri; sorun olursa `UI=numbers`.
+- **`./start.sh --doctor`:** ön koşul denetimi (ssh araçları, Python aralığı, venv, disk, ağ); yalnızca okur, hiçbir şey kurmaz.
+- **Paketler (altyapı):** imzalı, kilitli (`components.lock`) paketlerin güvenli kurulumu: `./start.sh --components list|sync|check-new`.
+  Kilit dosyası şu an boştur; ilk paket (linux-hardening) hazır olunca eklenecek. Standart: [docs/package-standard.md](docs/package-standard.md).
+- Otomatik testler (Bats, bash 5 ve macOS bash 3.2) + ShellCheck her PR'da CI'da çalışır.
 
 ## Key'i sunucuya gönderme
 
@@ -134,7 +138,8 @@ sistem/Autoload.sh         eski sistem/Modules/ altını yükler (taşınana kad
 sistem/ModuleGenerator.sh  yeni modül (+ key üretimi, Keychain, ssh-copy-id)
 sistem/ImportSSHConfig.sh  ~/.ssh/config içe aktarma
 sistem/ModuleManager.sh    list / remove / rename
-sistem/Helpers/            Log, Menu, kayıt, doğrulama, SSH, eject yardımcıları
+sistem/Helpers/            Log, Menu/UI, kayıt, doğrulama, SSH, Keychain, ayarlar, güncelleme, paket (Components*) yardımcıları
+components.lock            paket kilit dosyası (imzalı sürümle gelir); kurulu paketler: components/
 servers/<ad>/              her sunucu için: server.env, id_ed25519_<ad>   (eski: sistem/Modules/<ad>/ → ./start.sh --migrate)
 sistem/templates/          server.env.example şablonu
 test/                      Bats testleri (bats test)

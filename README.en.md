@@ -24,7 +24,7 @@ Every server is a *module*: drop a module folder in and it shows up in the menu 
 | Environment | Status |
 |---|---|
 | **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Developed and manually tried |
-| **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Automated tests** (178 tests + ShellCheck, on every PR). ⚠️ Not tried by hand: the Keychain permission dialog, opening Terminal, double-clicking `start.command` |
+| **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Automated tests** (Bats + ShellCheck, on every PR). ⚠️ Not tried by hand: the Keychain permission dialog, opening Terminal, double-clicking `start.command` |
 | Ubuntu 24.04 (CI only: ShellCheck + Bats tests) | ✅ automated |
 | Running on Linux (no Keychain/`osascript`/`diskutil`) | ❌ Not supported |
 | Target server: Ubuntu 26.04.1 (linux-hardening, a single test VM) | ✅ limited; rpi/Proxmox profiles not tried |
@@ -68,7 +68,11 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
   stay available even when the settings are broken or the key is missing.
 - **Module management:** `ModuleManager.sh list | remove <name> | rename <old> <new>`.
 - **Several users/keys for one server:** make one module per identity (e.g. `web_root`, `web_deploy`).
-- 84 automated tests (Bats) + ShellCheck run in CI on every push.
+- **Settings and arrow-key menu:** ⚙️ Settings (`sshpocket.conf`); ↑↓ move, Enter open, `q`/`←` back; set `UI=numbers` if needed.
+- **`./start.sh --doctor`:** prerequisite check (ssh tools, Python range, venv, disk, network); read-only, installs nothing.
+- **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new`.
+  The lock file is empty for now; the first package (linux-hardening) will be added when ready. Standard: [docs/package-standard.md](docs/package-standard.md).
+- Automated tests (Bats, bash 5 and macOS bash 3.2) + ShellCheck run in CI on every PR.
 
 ## Sending the key to the server
 
