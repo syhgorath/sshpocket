@@ -76,11 +76,9 @@ fi
 # servers/ (yeni biçim) önce, sonra eski modüller (aynı adlı eski modül yinelenmez)
 RegisterServers
 
-# Eski modülleri yükle
+# Eski modülleri yükle (yalnızca henüz taşınmamış eski biçimliler; klasör yoksa sorun değil)
 if [ -d "$SISTEM_PATH/Modules" ]; then
     Autoload "$SISTEM_PATH/Modules"
-else
-    Log "WARN" "Modules directory not found: $SISTEM_PATH/Modules"
 fi
 RegisterBuiltinMenu
 

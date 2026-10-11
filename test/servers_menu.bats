@@ -36,8 +36,8 @@ run_main() { bash -c "printf '$1' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's
     [[ "$output" != *"Ayar dosyası bulunamadı"* ]]
 }
 @test "eski biçimli sunucu hâlâ çalışır" {
-    # sıra: 1) ALPHA (servers/), 2) EXAMPLE (şablon), 3) LEGACY1 (eski biçim)
-    run run_main '3\n0\n\n0\n'
+    # sıra: 1) ALPHA (servers/), 2) LEGACY1 (eski biçim)
+    run run_main '2\n0\n\n0\n'
     [[ "$output" == *"198.51.100.4"* ]]
 }
 @test "güncelleme yeni biçimin anahtar adlarıyla yazılır (ALPHA_IP değil IP)" {

@@ -13,7 +13,7 @@ The project is young and open to all kinds of contributions (bugs, tests, docs, 
 
 ```bash
 brew install shellcheck bats-core
-shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh
+shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
 bats test
 ```
 

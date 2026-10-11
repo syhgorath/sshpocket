@@ -350,3 +350,48 @@ make_cli_sandbox() {
     [ "$(cat "$INST/servers/alpha/id_ed25519_alpha")" = "GIZLI-KEY" ]
     [ ! -e "$INST/servers/README.md" ]
 }
+
+# ---------- 1.4: sadeleşen kurulum ----------
+@test "apply: sistem/templates ve kod değişir, eski templates silinir; Modules (eski sunucular) ve servers/ korunur" {
+    make_install
+    mkdir -p "$INST/sistem/templates" "$INST/servers/alpha"
+    printf 'ESKI\n' > "$INST/sistem/templates/eski.example"
+    printf 'IP=192.0.2.7\n' > "$INST/servers/alpha/server.env"
+    make_release 2.2.0
+    mkdir "$T/x"; tar -xzf "$T/serve/sshpocket-2.2.0.tar.gz" -C "$T/x"
+    mkdir -p "$T/x/sshpocket-2.2.0/sistem/templates"
+    printf 'YENI\n' > "$T/x/sshpocket-2.2.0/sistem/templates/server.env.example"
+    run update_apply "$T/x/sshpocket-2.2.0" "$INST" 2.1.0
+    [ "$status" -eq 0 ]
+    [ ! -e "$INST/sistem/templates/eski.example" ]
+    [ "$(cat "$INST/sistem/templates/server.env.example")" = "YENI" ]
+    [ "$(cat "$INST/sistem/Modules/mine/.env")" = "MINE_IP=192.0.2.1" ]
+    [ "$(cat "$INST/servers/alpha/server.env")" = "IP=192.0.2.7" ]
+}
+@test "eski, yapılandırılmamış example şablonu güncellemede temizlenir" {
+    make_install
+    rm -f "$INST/sistem/Modules/example/.env"                       # kullanıcı hiç yapılandırmadı
+    printf '#\n' > "$INST/sistem/Modules/example/ExampleModule.sh"
+    printf 'EXAMPLE_IP=\n' > "$INST/sistem/Modules/example/.env.example"
+    printf 'finder' > "$INST/sistem/Modules/example/.DS_Store"
+    run update_cleanup_stale_example "$INST"
+    [ "$status" -eq 0 ]
+    [ ! -e "$INST/sistem/Modules/example" ]
+    [ -d "$INST/sistem/Modules/mine" ]                              # diğer sunucu dokunulmadı
+}
+@test "yapılandırılmış (.env'li) example güncellemede SİLİNMEZ" {
+    make_install                                                    # example/.env mevcut
+    run update_cleanup_stale_example "$INST"
+    [ -f "$INST/sistem/Modules/example/.env" ]
+}
+@test "example içinde key veya başka kullanıcı dosyası varsa SİLİNMEZ" {
+    make_install
+    rm -f "$INST/sistem/Modules/example/.env"
+    printf 'KEY' > "$INST/sistem/Modules/example/id_ed25519_example"
+    run update_cleanup_stale_example "$INST"
+    [ -f "$INST/sistem/Modules/example/id_ed25519_example" ]
+    rm -f "$INST/sistem/Modules/example/id_ed25519_example"
+    printf 'not' > "$INST/sistem/Modules/example/notlarim.txt"
+    run update_cleanup_stale_example "$INST"
+    [ -f "$INST/sistem/Modules/example/notlarim.txt" ]
+}

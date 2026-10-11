@@ -129,12 +129,13 @@ or use **⬆️ Check for updates / update** in the main menu.
 ```
 start.sh / start.command   entry points
 sistem/Main.sh             menu loop
-sistem/Autoload.sh         auto-loads everything under Modules/
+sistem/Autoload.sh         loads the old sistem/Modules/ (until migrated)
 sistem/ModuleGenerator.sh  new module (+ key generation, Keychain, ssh-copy-id)
 sistem/ImportSSHConfig.sh  import from ~/.ssh/config
 sistem/ModuleManager.sh    list / remove / rename
 sistem/Helpers/            logging, menu, registry, validation, SSH, eject helpers
-sistem/Modules/<name>/     per server: <Name>Module.sh, .env, id_ed25519_<name>
+servers/<name>/            per server: server.env, id_ed25519_<name>   (old: sistem/Modules/<name>/ → ./start.sh --migrate)
+sistem/templates/          server.env.example template
 test/                      Bats tests (bats test)
 ```
 
@@ -142,7 +143,7 @@ test/                      Bats tests (bats test)
 
 ```bash
 brew install shellcheck bats-core
-shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh
+shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
 bats test
 ```
 

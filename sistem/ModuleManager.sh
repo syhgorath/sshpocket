@@ -44,7 +44,6 @@ cmd_list() {
         for d in "$LEGACY_DIR"/*/; do
             [ -d "$d" ] || continue
             n=$(basename "$d")
-            [ "$n" = "example" ] && continue
             module_name_valid "$n" || continue
             [ -f "${d}.env" ] || continue
             if [ -d "$SERVERS_DIR/$n" ]; then

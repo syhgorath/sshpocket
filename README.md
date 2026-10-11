@@ -129,12 +129,13 @@ ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle**.
 ```
 start.sh / start.command   giriş noktaları
 sistem/Main.sh             menü döngüsü
-sistem/Autoload.sh         Modules/ altını otomatik yükler
+sistem/Autoload.sh         eski sistem/Modules/ altını yükler (taşınana kadar)
 sistem/ModuleGenerator.sh  yeni modül (+ key üretimi, Keychain, ssh-copy-id)
 sistem/ImportSSHConfig.sh  ~/.ssh/config içe aktarma
 sistem/ModuleManager.sh    list / remove / rename
 sistem/Helpers/            Log, Menu, kayıt, doğrulama, SSH, eject yardımcıları
-sistem/Modules/<ad>/       her sunucu için: <Ad>Module.sh, .env, id_ed25519_<ad>
+servers/<ad>/              her sunucu için: server.env, id_ed25519_<ad>   (eski: sistem/Modules/<ad>/ → ./start.sh --migrate)
+sistem/templates/          server.env.example şablonu
 test/                      Bats testleri (bats test)
 ```
 
@@ -142,7 +143,7 @@ test/                      Bats testleri (bats test)
 
 ```bash
 brew install shellcheck bats-core
-shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh
+shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
 bats test
 ```
 

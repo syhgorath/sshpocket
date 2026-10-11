@@ -10,14 +10,13 @@
 #  * Keychain'e dokunulmaz: hesap adı klasör adından türediği için passphrase'ler aynen geçerlidir.
 # Gerektirir: Validate.sh, ModuleFiles.sh (module_prefix), Servers.sh (servers_dir, srv_get), SSHModule.sh, SISTEM_PATH
 
-# Taşınacak eski sunucu adları (örnek şablon ve .env'i olmayanlar hariç)
+# Taşınacak eski sunucu adları (.env'i olanlar; gönderilen, yapılandırılmamış eski 'example' şablonunda .env yoktur)
 migrate_legacy_names() {
     local mdir="$SISTEM_PATH/Modules" p n
     [ -d "$mdir" ] || return 0
     for p in "$mdir"/*/; do
         [ -d "$p" ] || continue
         n=$(basename "$p")
-        [ "$n" = "example" ] && continue
         module_name_valid "$n" || continue
         [ -f "${p}.env" ] || continue
         printf '%s\n' "$n"

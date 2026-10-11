@@ -117,7 +117,7 @@ update_backup() {
     dest="$root/.update-backup"
     mkdir -p "$dest" || return 1
     for f in start.sh start.command VERSION CHANGELOG.md README.md README.en.md LICENSE ROADMAP.md \
-             CONTRIBUTING.md SECURITY.md RELEASING.md sistem/Helpers sistem/Modules/example sistem/release_signers; do
+             CONTRIBUTING.md SECURITY.md RELEASING.md sistem/Helpers sistem/templates sistem/release_signers; do
         [ -e "$root/$f" ] && items+=("$f")
     done
     for f in "$root"/sistem/*.sh; do
@@ -129,10 +129,12 @@ update_backup() {
     printf '%s' "$dest/code-${version}.tar.gz"
 }
 
-# Yeni ağacı kurar (kullanıcı modüllerine dokunmaz). Parametreler: yeni ağaç, hedef kök
+# Yeni ağacı kurar. Kod (sistem/*.sh, Helpers, templates) bütünüyle değiştirilir.
+# sistem/Modules/ (henüz taşınmamış eski sunucular) ve servers/ kullanıcı verisidir: ASLA silinmez/ezilmez.
+# Parametreler: yeni ağaç, hedef kök
 update_install_tree() {
     local tree="$1" root="$2" f d name
-    # kök dosyalar
+    # kök dosyalar ve kod dışı klasörler
     for f in "$tree"/*; do
         name=$(basename "$f")
         if [ -f "$f" ]; then
@@ -144,18 +146,18 @@ update_install_tree() {
             esac
         fi
     done
-    # sistem/: eski kodu temizle, yenisini kur
+    # sistem/: eski kodu temizle, yenisini kur (Modules/ hariç)
     if [ -d "$tree/sistem" ]; then
-        mkdir -p "$root/sistem/Modules" || return 1
+        mkdir -p "$root/sistem" || return 1
         rm -r -- "${root:?}/sistem/Helpers" 2>/dev/null
+        rm -r -- "${root:?}/sistem/templates" 2>/dev/null
         for f in "$root"/sistem/*.sh; do [ -e "$f" ] && rm -f -- "$f"; done
         for f in "$tree"/sistem/*; do
             name=$(basename "$f")
             if [ "$name" = "Modules" ]; then
+                # Arşivde eski modül varsa (eski sürümler) birleştir; kullanıcı dosyaları silinmez
                 for d in "$f"/*; do
                     [ -d "$d" ] || continue
-                    # Birleştir: yalnızca arşivdeki dosyalar yazılır; kullanıcının aynı klasördeki
-                    # .env / key / kendi dosyaları silinmez
                     mkdir -p "$root/sistem/Modules/$(basename "$d")" || return 1
                     cp -R "$d/." "$root/sistem/Modules/$(basename "$d")/" || return 1
                 done
@@ -164,7 +166,26 @@ update_install_tree() {
             fi
         done
     fi
+    update_cleanup_stale_example "$root"
     return 0
+}
+
+# Eski sürümlerin gönderdiği, hiç yapılandırılmamış 'example' şablonunu (yalnızca ExampleModule.sh/.env.example) kaldırır.
+# İçinde .env, key (id_*) ya da başka bir kullanıcı dosyası varsa DOKUNMAZ.
+update_cleanup_stale_example() {
+    local d="$1/sistem/Modules/example" f extra=0
+    [ -d "$d" ] || return 0
+    for f in "$d"/* "$d"/.[!.]*; do
+        [ -e "$f" ] || continue
+        case "$(basename "$f")" in
+            ExampleModule.sh|.env.example|.DS_Store) ;;
+            *) extra=1 ;;
+        esac
+    done
+    if [ "$extra" = "0" ]; then
+        rm -r -- "${d:?}"
+        rmdir "$1/sistem/Modules" 2>/dev/null || true
+    fi
 }
 
 # Parametreler: yeni ağaç, hedef kök, eski sürüm. Hata olursa yedekten geri yükler.

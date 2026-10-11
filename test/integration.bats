@@ -10,6 +10,9 @@ setup() {
     printf '#!/bin/bash\nexit 1\n' > "$SANDBOX/bin/security"
     chmod +x "$SANDBOX/bin/"*
     export PATH="$SANDBOX/bin:$PATH" TERM=xterm
+    # Gönderilen 'example' modülü artık yok: eski biçimli bir sunucu fixture'ı olarak üretilir
+    ( cd "$SANDBOX" && source sistem/Helpers/Validate.sh && source sistem/Helpers/ModuleFiles.sh \
+        && module_write_files "$SANDBOX/sistem/Modules" example 192.0.2.10 pi 2222 >/dev/null )
     MOD="$SANDBOX/sistem/Modules/example"
     printf 'EXAMPLE_IP=192.0.2.10\nEXAMPLE_USER=pi\nEXAMPLE_PORT=2222\n' > "$MOD/.env"
     ssh-keygen -q -t ed25519 -N "" -f "$MOD/id_ed25519_example"
@@ -142,7 +145,7 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
     [[ "$output" != *"Loading module: "*"/._"* ]]
     [[ "$output" == *"1) EXAMPLE"* ]]
 }
-@test "ModuleManager list: gizli klasörleri ve example şablonunu saymaz, gerçek sunucuları gösterir" {
+@test "ModuleManager list: gizli klasörleri saymaz, yapılandırılmış sunucuları gösterir" {
     mkdir -p "$SANDBOX/sistem/Modules/.Spotlight-V100" "$SANDBOX/sistem/Modules/.Trashes"
     # yeni biçimli bir sunucu + eski biçimli bir sunucu
     mkdir -p "$SANDBOX/servers/alpha"
@@ -152,7 +155,7 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
     run bash -c "SSHPOCKET_MODULES_DIR='$SANDBOX/sistem/Modules' bash '$SANDBOX/sistem/ModuleManager.sh' list"
     echo "$output" | grep -q 'alpha'
     echo "$output" | grep -q 'old1'
-    ! echo "$output" | grep -q 'example'
+    echo "$output" | grep -q 'example'     # yapılandırılmış (eski biçimli) fixture sunucusu
     ! echo "$output" | grep -q 'Spotlight'
     ! echo "$output" | grep -q 'Trashes'
 }
