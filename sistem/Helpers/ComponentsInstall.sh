@@ -97,7 +97,10 @@ _comp_digest_tree() {
 comp_verify_installed() {
     local id="$1" ver="$2" base cur
     base="$(comp_dir)/$id"
-    [ -d "$base/$ver" ] && [ -f "$base/$ver.files" ] || { echo "kurulu paket bulunamadı: $id $ver" >&2; return 1; }
+    if [ ! -d "$base/$ver" ] || [ ! -f "$base/$ver.files" ]; then
+        echo "kurulu paket bulunamadı: $id $ver" >&2
+        return 1
+    fi
     cur=$(_comp_digest_tree "$base/$ver") || return 1
     if [ "$cur" != "$(cat "$base/$ver.files")" ]; then
         echo "kurulu paketin dosyaları değişmiş: $id $ver" >&2
