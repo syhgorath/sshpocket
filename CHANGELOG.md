@@ -4,6 +4,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-11
+
+> **Veri düzeni değişti (büyük sürüm).** Sunucular artık `servers/<ad>/server.env` altında; eski `sistem/Modules/<ad>/` sunucularınız
+> **otomatik taşınır** (`./start.sh --migrate`, önce `--dry-run`). Eski sürümler yeni düzeni okuyamaz; geri dönmek isterseniz
+> `servers/.migrated-<tarih>/` altındaki eski klasörleri `sistem/Modules/` altına geri koyun. Keychain'deki passphrase'ler aynen geçerlidir.
+
 ### Eklendi
 - **Aşama 1.0/1.1 (`servers/` veri katmanı, geriye uyumlu):** menü artık `servers/<ad>/server.env` (genel anahtarlar `IP`, `USER`, `PORT`, `KEY`, `OS`)
   klasörlerinden de kurulur; sunucu başına üretilmiş bash dosyası gerekmez. **Eski `sistem/Modules/<ad>/.env` biçimi aynen çalışmaya devam eder**
@@ -99,6 +105,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/syhgorath/sshpocket/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/syhgorath/sshpocket/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/syhgorath/sshpocket/releases/tag/v2.1.0
