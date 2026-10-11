@@ -79,16 +79,31 @@ setup() {
     grep -q '^STATUS_TIMEOUT=3$' "$SSHPOCKET_CONF"
 }
 
-@test "ayar: durum kontrolü süre ayarını nc'ye geçirir" {
+@test "durum: askıda kalan nc süre dolunca öldürülür, 🔴 döner (macOS nc -w'ye güvenilmez)" {
     mkdir -p "$BATS_TEST_TMPDIR/bin"
-    printf '#!/bin/sh\necho "$@" > "%s/nc.args"\nexit 0\n' "$BATS_TEST_TMPDIR" > "$BATS_TEST_TMPDIR/bin/nc"
+    printf '#!/bin/sh\nsleep 30\n' > "$BATS_TEST_TMPDIR/bin/nc"
     chmod +x "$BATS_TEST_TMPDIR/bin/nc"
     d="$BATS_TEST_TMPDIR/s/x"; mkdir -p "$d"
     printf 'IP=192.0.2.1\nUSER=u\nPORT=22\n' > "$d/server.env"
-    printf 'STATUS_TIMEOUT=4\n' > "$SSHPOCKET_CONF"
+    printf 'STATUS_TIMEOUT=2\n' > "$SSHPOCKET_CONF"
+    start=$SECONDS
+    PATH="$BATS_TEST_TMPDIR/bin:$PATH" run ssh_module_status "X" "$d"
+    elapsed=$((SECONDS - start))
+    [ "$output" = "🔴" ]
+    [ "$elapsed" -le 6 ]
+}
+
+@test "durum: hızlı açık port 🟢, süre ayarı kontrolü uzatmaz" {
+    mkdir -p "$BATS_TEST_TMPDIR/bin"
+    printf '#!/bin/sh\nexit 0\n' > "$BATS_TEST_TMPDIR/bin/nc"
+    chmod +x "$BATS_TEST_TMPDIR/bin/nc"
+    d="$BATS_TEST_TMPDIR/s/x"; mkdir -p "$d"
+    printf 'IP=192.0.2.1\nUSER=u\nPORT=22\n' > "$d/server.env"
+    printf 'STATUS_TIMEOUT=5\n' > "$SSHPOCKET_CONF"
+    start=$SECONDS
     PATH="$BATS_TEST_TMPDIR/bin:$PATH" run ssh_module_status "X" "$d"
     [ "$output" = "🟢" ]
-    grep -q -- '-w 4' "$BATS_TEST_TMPDIR/nc.args"
+    [ $((SECONDS - start)) -le 2 ]
 }
 
 @test "ayar: menüde durum varsayılan AÇIK, ayarla kapatılabilir" {
