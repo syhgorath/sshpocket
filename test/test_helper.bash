@@ -21,6 +21,8 @@ load_helpers() {
     source "$H/Servers.sh"
     # shellcheck source=/dev/null
     source "$H/Settings.sh"
+    # shellcheck source=/dev/null
+    source "$H/UI.sh"
 }
 
 # İçinde sistem/ kopyası olan izole bir çalışma alanı (eject kapalı, sahte komutlar PATH başında)

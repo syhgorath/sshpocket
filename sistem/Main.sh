@@ -36,6 +36,8 @@ mkdir -p "$(dirname "$USB_LOG_FILE")"
 source "$SISTEM_PATH/Helpers/Log.sh"
 # shellcheck source=Helpers/RegisterModules.sh
 source "$SISTEM_PATH/Helpers/RegisterModules.sh"
+# shellcheck source=Helpers/UI.sh
+source "$SISTEM_PATH/Helpers/UI.sh"
 # shellcheck source=Helpers/Menu.sh
 source "$SISTEM_PATH/Helpers/Menu.sh"
 # shellcheck source=Helpers/CheckRoot.sh

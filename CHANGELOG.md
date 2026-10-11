@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Ekran cilası (1/2):** her ekranda başlık + ekmek kırıntısı (`Ana menü › ubuntutest`) ve alttaki tuş ipucu satırı; sunucu satırlarında
+  `kullanıcı@ip[:port]` özeti. Renk yalnızca terminalde ve `NO_COLOR` tanımsızsa; boru/test çıktısı düz metindir.
+
 ## [3.1.1] - 2026-10-11
 
 ### Düzeltildi

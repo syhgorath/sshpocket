@@ -43,8 +43,12 @@ Menu() {
   IFS="$OLD_IFS"
   
   # Display menu (stderr'e yaz, böylece stdout sadece seçimi içerir)
-  echo "" >&2
-  echo "=== $group ===" >&2
+  if declare -F ui_header >/dev/null; then
+    ui_header "$(ui_group_title "$group")" 2 >&2
+  else
+    echo "" >&2
+    echo "=== $group ===" >&2
+  fi
   # Durum ayarı açıksa (varsayılan; bkz. Settings.sh), <modül>_status fonksiyonu olanların durumu paralel kontrol edilir
   local status_dir=""
   if declare -F settings_get >/dev/null && [ "$(settings_get STATUS)" = "on" ]; then
@@ -77,12 +81,24 @@ Menu() {
     if [ -n "$status_dir" ] && [ -f "$status_dir/$i" ]; then
       mark="$(cat "$status_dir/$i") "
     fi
-    printf "  %2d) %s%s\n" "$i" "$mark" "$label" >&2
+    local detail=""
+    case "$func_name" in
+      server:*) detail=$(server_summary "${func_name#server:}" 2>/dev/null) ;;
+    esac
+    if [ -n "$detail" ]; then
+      printf "  %2d) %s%s   %s\n" "$i" "$mark" "$label" "$detail" >&2
+    else
+      printf "  %2d) %s%s\n" "$i" "$mark" "$label" >&2
+    fi
     ((i++))
   done
   if [ -n "$status_dir" ]; then rm -r "$status_dir"; fi
   echo "  0) Çıkış (q)" >&2
-  echo "" >&2
+  if declare -F ui_footer >/dev/null; then
+    ui_footer "numara yaz + Enter · 0 veya q = çıkış" 2 >&2
+  else
+    echo "" >&2
+  fi
   
   # Get user selection
   while true; do

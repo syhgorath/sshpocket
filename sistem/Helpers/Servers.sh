@@ -112,3 +112,20 @@ server_status() {
     module_name_valid "$n" || { printf '⚪'; return 0; }
     ssh_module_status "$(module_prefix "$n")" "$(servers_dir)/$n"
 }
+
+# Menü satırı için kısa özet: kullanıcı@ip[:port] (bilgi eksik/geçersizse boş)
+server_summary() {
+    local n="$1" d ip user port
+    module_name_valid "$n" || return 0
+    d="$(servers_dir)/$n"
+    ip=$(srv_get "$d" "$(module_prefix "$n")" IP) || return 0
+    user=$(srv_get "$d" "$(module_prefix "$n")" USER)
+    port=$(srv_get "$d" "$(module_prefix "$n")" PORT)
+    [ -n "$ip" ] && [ -n "$user" ] || return 0
+    ssh_validate_target "$ip" "$user" "${port:-22}" 2>/dev/null || return 0
+    if [ -n "$port" ] && [ "$port" != "22" ]; then
+        printf '%s@%s:%s' "$user" "$ip" "$port"
+    else
+        printf '%s@%s' "$user" "$ip"
+    fi
+}
