@@ -4,6 +4,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi (hazırlık; kullanıcıya görünür davranış yok)
+- **Paket kilit dosyası ve imza doğrulama (Aşama 2.0):** `components.lock` (şimdilik boş) ve `sistem/Helpers/Components.sh`: katı ayrıştırıcı
+  (bilinmeyen/yinelenen anahtar, bozuk değer = hata; dosya `source` edilmez), arşiv sha256'sı kilitle aynı olmalı, imza `sshpocket-component`
+  ad alanıyla doğrulanır (çekirdek `sshpocket-release` imzası yeniden oynatılamaz). Kilitte olmayan paket reddedilir. Kurulum sonraki dilimde.
+
 ### Değişti
 - Ok tuşlu seçim artık ⚙️ Ayarlar, **Sunucuları yönet** ve Keychain passphrase menülerinde de çalışır (başlıkla birlikte); `UI=numbers` ile
   hepsi numaralıya döner.
