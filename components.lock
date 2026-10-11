@@ -1,0 +1,8 @@
+# sshpocket paket kilit dosyası (docs/package-standard.md). İmzalı sshpocket sürümüyle gelir.
+# Burada olmayan paket ÇALIŞTIRILMAZ. Henüz kurulu paket yok.
+#
+# [paket-kimliği]
+# repo    = sahip/depo
+# version = 1.2.3
+# sha256  = <arşivin 64 haneli sha256 özeti>
+# signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 <açık anahtar>
