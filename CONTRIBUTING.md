@@ -38,10 +38,11 @@ Varsayılan `bats test` bu klasörü çalıştırmaz; CI'da da yoktur. ssh, `~/.
 Yalnızca bakımcı: bkz. [RELEASING.md](RELEASING.md). Güncelleme/imza koduna dokunan PR'lar özellikle dikkatle incelenir;
 `test/update.bats` ve `test/release.bats` saldırı senaryolarını (sahte imza, `..`, symlink, eski sürüm sunma) kapsar.
 
-> **macOS'ta test notu:** macOS'un varsayılan bash'i **3.2**'dir ve bu sürümde bir testin ortasında başarısız olan `[[ ... ]]`
-> doğrulaması testi **düşürmez** (yalnızca testin son komutuysa düşürür). Ubuntu CI'daki bash 5 ise düşürür. Bu yüzden yerelde
-> yeşil, CI'da kırmızı görebilirsiniz. Yerelde de aynı sonucu almak için daha yeni bir bash kurun (`brew install bash`; `bats` onu
-> `#!/usr/bin/env bash` ile otomatik bulur), ya da testlerde ara doğrulamalar için `[ ... ]` veya `grep -q` kullanın.
+> **macOS'ta test notu (iki geçiş):** macOS'un varsayılan bash'i **3.2**'dir ve bu sürümde bir testin ortasında başarısız olan
+> `[[ ... ]]` doğrulaması testi **düşürmez**. Ubuntu CI'daki bash 5 ise düşürür. Bu yüzden iki kez çalıştırın:
+> 1. **Katı doğrulama (CI ile aynı):** `brew install bash` sonrası `bats test`. `bats`, `env bash` ile bash 5'i bulur.
+> 2. **bash 3.2 uyumluluğu:** `PATH=/bin:$PATH bats test`. Betikler macOS'un kendi bash'inde de çalışmalıdır; burada ara `[[ ]]`
+>    doğrulamaları gevşektir ama sözdizimi/çalışma hataları yine görünür.
 
 ## Kod kuralları
 
