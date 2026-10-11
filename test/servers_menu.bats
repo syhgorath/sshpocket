@@ -55,7 +55,7 @@ run_main() { bash -c "printf '$1' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's
     ( cd "$SANDBOX" && source sistem/Helpers/Validate.sh && source sistem/Helpers/ModuleFiles.sh \
         && module_write_files "$SANDBOX/sistem/Modules" alpha 203.0.113.200 eski 22 >/dev/null )
     run run_main '0\n'
-    [ "$(printf '%s\n' "$output" | grep -c ' ALPHA$')" -eq 1 ]
+    [ "$(printf '%s\n' "$output" | grep -c '^ *[0-9]*) .*ALPHA')" -eq 1 ]
     # yeni biçim kazanır: bilgiler servers/'dan
     run run_main '1\n0\n\n0\n'
     [[ "$output" == *"192.0.2.7"* ]]

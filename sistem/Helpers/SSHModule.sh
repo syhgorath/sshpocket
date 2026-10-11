@@ -92,9 +92,13 @@ ssh_module_run() {
         local ip="" user="" port="22" ssh_key="$default_key" custom_key problem="" verr choice
 
         clear
-        echo "====================================="
-        echo "$prefix SSH Bağlantı"
-        echo "====================================="
+        if declare -F ui_header >/dev/null; then
+            ui_header "Ana menü › $prefix"
+        else
+            echo "====================================="
+            echo "$prefix SSH Bağlantı"
+            echo "====================================="
+        fi
         echo ""
 
         if [ ! -f "$env_file" ]; then
@@ -142,6 +146,7 @@ ssh_module_run() {
         echo "  3) Bilgileri güncelle (IP / kullanıcı / port / key yolu)"
         echo "  4) Keychain passphrase'ini güncelle / sil"
         echo "  0) Geri (q)"
+        if declare -F ui_footer >/dev/null; then ui_footer "numara yaz + Enter (boş = 1 Bağlan) · 0 veya q = geri"; fi
         if ! read -r -p "Seçim [1]: " choice; then return 0; fi
         case "${choice:-1}" in
             1|2)
