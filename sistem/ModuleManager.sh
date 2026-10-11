@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# ModuleManager.sh - Modülleri listele / sil / yeniden adlandır
+# ModuleManager.sh - Sunucuları listele / sil / yeniden adlandır
 # Kullanım:
 #   bash sistem/ModuleManager.sh list
 #   bash sistem/ModuleManager.sh remove <ad>
-#   bash sistem/ModuleManager.sh rename <eski_ad> <yeni_ad>
-# SSHPOCKET_MODULES_DIR ile Modules klasörü değiştirilebilir (testler için).
+#   bash sistem/ModuleManager.sh rename <eski_ad> <yeni_ad>     (yalnızca yeni biçim; eskiler için önce --migrate)
+# Yeni biçim: servers/<ad>/server.env.  Eski biçim: sistem/Modules/<ad>/.env (listelenir/silinir, yeniden adlandırılmaz).
+# SSHPOCKET_SERVERS_DIR / SSHPOCKET_MODULES_DIR ile klasörler değiştirilebilir (testler için).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODULES_DIR="${SSHPOCKET_MODULES_DIR:-$SCRIPT_DIR/Modules}"
+SISTEM_PATH="$SCRIPT_DIR"
+LEGACY_DIR="${SSHPOCKET_MODULES_DIR:-$SCRIPT_DIR/Modules}"
 
 # shellcheck source=Helpers/Validate.sh
 source "$SCRIPT_DIR/Helpers/Validate.sh"
@@ -15,38 +17,65 @@ source "$SCRIPT_DIR/Helpers/Validate.sh"
 source "$SCRIPT_DIR/Helpers/ModuleFiles.sh"
 # shellcheck source=Helpers/SSHModule.sh
 source "$SCRIPT_DIR/Helpers/SSHModule.sh"
+# shellcheck source=Helpers/Servers.sh
+source "$SCRIPT_DIR/Helpers/Servers.sh"
+SERVERS_DIR="$(servers_dir)"
 
-cmd_list() {
-    local d name upper ip user port found=0
-    for d in "$MODULES_DIR"/*/; do
-        [ -d "$d" ] || continue
-        name=$(basename "$d")
-        upper=$(module_prefix "$name")
-        ip=$(_ssh_env_get "$d/.env" "${upper}_IP" 2>/dev/null)
-        user=$(_ssh_env_get "$d/.env" "${upper}_USER" 2>/dev/null)
-        port=$(_ssh_env_get "$d/.env" "${upper}_PORT" 2>/dev/null)
-        printf '  %-18s %s\n' "$name" "${user:+$user@}${ip:-(ayar yok)}${port:+:$port}"
-        found=1
-    done
-    [ "$found" -eq 1 ] || echo "  (modül yok)"
+# Bir satır yazdırır. Parametreler: $1 - klasör, $2 - ad, $3 - etiket (ops.)
+_list_line() {
+    local d="$1" n="$2" tag="${3:-}" ip user port prefix
+    prefix=$(module_prefix "$n")
+    ip=$(srv_get "$d" "$prefix" IP 2>/dev/null)
+    user=$(srv_get "$d" "$prefix" USER 2>/dev/null)
+    port=$(srv_get "$d" "$prefix" PORT 2>/dev/null)
+    printf '  %-18s %s%s%s%s\n' "$n" "${user:+$user@}" "${ip:-(ayar yok)}" "${port:+:$port}" "${tag:+   $tag}"
 }
 
-# Adı doğrular ve modül klasörünün var olduğunu denetler
-_require_module() {
-    if ! module_name_valid "$1"; then echo "⚠️  Geçersiz modül adı: '$1'" >&2; return 1; fi
-    if [ ! -d "$MODULES_DIR/$1" ]; then echo "⚠️  Modül yok: $1" >&2; return 1; fi
+cmd_list() {
+    local d n found=0
+    if [ -d "$SERVERS_DIR" ]; then
+        while IFS= read -r n; do
+            [ -n "$n" ] || continue
+            _list_line "$SERVERS_DIR/$n" "$n"
+            found=1
+        done < <(srv_names)
+    fi
+    if [ -d "$LEGACY_DIR" ]; then
+        for d in "$LEGACY_DIR"/*/; do
+            [ -d "$d" ] || continue
+            n=$(basename "$d")
+            [ "$n" = "example" ] && continue
+            module_name_valid "$n" || continue
+            [ -f "${d}.env" ] || continue
+            if [ -d "$SERVERS_DIR/$n" ]; then
+                _list_line "$d" "$n" "[eski kopya; yeni biçim kazanır]"
+            else
+                _list_line "$d" "$n" "[eski biçim: ./start.sh --migrate]"
+            fi
+            found=1
+        done
+    fi
+    [ "$found" -eq 1 ] || echo "  (sunucu yok)"
+}
+
+# Adı doğrular ve sunucu klasörünü yazdırır (önce yeni biçim)
+_locate() {
+    if ! module_name_valid "$1"; then echo "⚠️  Geçersiz sunucu adı: '$1'" >&2; return 1; fi
+    if [ -d "$SERVERS_DIR/$1" ]; then printf '%s' "$SERVERS_DIR/$1"; return 0; fi
+    if [ -d "$LEGACY_DIR/$1" ]; then printf '%s' "$LEGACY_DIR/$1"; return 0; fi
+    echo "⚠️  Sunucu yok: $1" >&2
+    return 1
 }
 
 cmd_remove() {
-    local name="$1"
-    _require_module "$name" || return 1
-    local upper confirm
+    local name="$1" dir upper confirm
+    dir=$(_locate "$name") || return 1
     upper=$(module_prefix "$name")
-    echo "Silinecek: $MODULES_DIR/$name"
-    ls -A "$MODULES_DIR/$name"
-    read -r -p "Onaylamak için modül adını yazın ($name): " confirm
+    echo "Silinecek: $dir"
+    ls -A "$dir"
+    read -r -p "Onaylamak için sunucu adını yazın ($name): " confirm
     if [ "$confirm" != "$name" ]; then echo "İptal edildi."; return 1; fi
-    rm -r "${MODULES_DIR:?}/${name:?}"
+    rm -r -- "${dir:?}"
     echo "✅ Silindi: $name"
     if command -v security >/dev/null 2>&1 \
         && security find-generic-password -a "USBMonitor_${upper}_Passphrase" -s USBMonitor >/dev/null 2>&1; then
@@ -60,27 +89,36 @@ cmd_remove() {
 }
 
 cmd_rename() {
-    local old="$1" new="$2"
-    _require_module "$old" || return 1
+    local old="$1" new="$2" unew
+    if ! module_name_valid "$old"; then echo "⚠️  Geçersiz sunucu adı: '$old'" >&2; return 1; fi
+    if [ ! -d "$SERVERS_DIR/$old" ]; then
+        if [ -d "$LEGACY_DIR/$old" ]; then
+            echo "⚠️  '$old' eski biçimde. Önce taşıyın: ./start.sh --migrate" >&2
+        else
+            echo "⚠️  Sunucu yok: $old" >&2
+        fi
+        return 1
+    fi
     if ! module_name_valid "$new"; then echo "⚠️  Geçersiz yeni ad: '$new'" >&2; return 1; fi
-    if [ -e "$MODULES_DIR/$new" ]; then echo "⚠️  Hedef zaten var: $new" >&2; return 1; fi
-
-    local uold unew ip user port key
-    uold=$(module_prefix "$old"); unew=$(module_prefix "$new")
-    local env="$MODULES_DIR/$old/.env"
-    ip=$(_ssh_env_get "$env" "${uold}_IP"); user=$(_ssh_env_get "$env" "${uold}_USER")
-    port=$(_ssh_env_get "$env" "${uold}_PORT"); key=$(_ssh_env_get "$env" "${uold}_KEY")
-    port="${port:-22}"
-
-    module_write_files "$MODULES_DIR" "$new" "$ip" "$user" "$port" "$key" || return 1
-    # Modül klasöründeki key'leri taşı (varsa)
-    if [ -f "$MODULES_DIR/$old/id_ed25519_${old}" ]; then
-        mv "$MODULES_DIR/$old/id_ed25519_${old}" "$MODULES_DIR/$new/id_ed25519_${new}"
+    if [ -e "$SERVERS_DIR/$new" ] || [ -e "$LEGACY_DIR/$new" ]; then
+        echo "⚠️  Hedef zaten var: $new" >&2; return 1
     fi
-    if [ -f "$MODULES_DIR/$old/id_ed25519_${old}.pub" ]; then
-        mv "$MODULES_DIR/$old/id_ed25519_${old}.pub" "$MODULES_DIR/$new/id_ed25519_${new}.pub"
+
+    # Klasörü tek hamlede (rename) taşı; sonra key dosyalarını yeni ada çevir. Hata olursa geri al.
+    if ! mv "$SERVERS_DIR/$old" "$SERVERS_DIR/$new"; then
+        echo "⚠️  Yeniden adlandırılamadı" >&2; return 1
     fi
-    rm -r "${MODULES_DIR:?}/${old:?}"
+    local ext
+    for ext in "" ".pub"; do
+        if [ -f "$SERVERS_DIR/$new/id_ed25519_${old}${ext}" ]; then
+            if ! mv "$SERVERS_DIR/$new/id_ed25519_${old}${ext}" "$SERVERS_DIR/$new/id_ed25519_${new}${ext}"; then
+                echo "⚠️  Key dosyası yeniden adlandırılamadı; geri alınıyor" >&2
+                mv "$SERVERS_DIR/$new" "$SERVERS_DIR/$old"
+                return 1
+            fi
+        fi
+    done
+    unew=$(module_prefix "$new")
     echo "✅ $old → $new"
     echo "ℹ️  Keychain kaydı otomatik taşınmaz. Passphrase kullanıyorsanız yeniden ekleyin:"
     echo "   security add-generic-password -U -a USBMonitor_${unew}_Passphrase -s USBMonitor -w"

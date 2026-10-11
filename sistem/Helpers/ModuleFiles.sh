@@ -76,3 +76,34 @@ TPL
     printf '%s\n' "$tpl" > "$dir/${func}.sh"
     chmod +x "$dir/${func}.sh"
 }
+
+# YENİ BİÇİM: servers/<ad>/server.env yazar (sunucu başına üretilmiş bash dosyası YOK). Key üretmez.
+# Hedef zaten varsa 3 döner ve hiçbir şeyi değiştirmez.
+# Parametreler: $1 - servers klasörü, $2 - ad, $3 - ip, $4 - kullanıcı, $5 - port,
+#               $6 - (ops.) mevcut private key yolu, $7 - (ops.) OS profili
+server_write_files() {
+    local sdir="$1" name="$2" ip="$3" user="$4" port="$5" key="${6:-}" os="${7:-}"
+
+    if ! module_name_valid "$name"; then
+        echo "geçersiz sunucu adı: '$name'" >&2; return 1
+    fi
+    ssh_validate_target "$ip" "$user" "$port" || return 1
+    case "$key$os" in *$'\n'*) echo "geçersiz değer (satır sonu)" >&2; return 1 ;; esac
+
+    local dir="$sdir/$name"
+    if [ -e "$dir" ]; then
+        return 3
+    fi
+    mkdir -p "$sdir" && chmod 700 "$sdir" 2>/dev/null
+    mkdir "$dir" || return 1
+    chmod 700 "$dir"
+    {
+        echo "# SSH bağlantı bilgileri (gizli bilgi buraya YAZILMAZ)"
+        echo "IP=${ip}"
+        echo "USER=${user}"
+        echo "PORT=${port}"
+        if [ -n "$key" ]; then echo "KEY=${key}"; fi
+        if [ -n "$os" ]; then echo "OS=${os}"; fi
+    } > "$dir/server.env"
+    chmod 600 "$dir/server.env"
+}

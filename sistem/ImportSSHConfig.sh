@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # ImportSSHConfig.sh - ~/.ssh/config'teki sunucuları modül olarak içe aktarır
 # Kullanım: bash sistem/ImportSSHConfig.sh [config_dosyası]
-# Private key'ler KOPYALANMAZ; IdentityFile yolu modülün .env'ine <ÖNEK>_KEY olarak yazılır.
-# SSHPOCKET_MODULES_DIR ile Modules klasörü değiştirilebilir (testler için).
+# Private key'ler KOPYALANMAZ; IdentityFile yolu server.env'e KEY olarak yazılır.
+# Sunucular servers/<ad>/server.env olarak yazılır. SSHPOCKET_SERVERS_DIR ile klasör değiştirilebilir (testler için).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODULES_DIR="${SSHPOCKET_MODULES_DIR:-$SCRIPT_DIR/Modules}"
+SISTEM_PATH="$SCRIPT_DIR"
+LEGACY_DIR="${SSHPOCKET_MODULES_DIR:-$SCRIPT_DIR/Modules}"
 CONFIG="${1:-$HOME/.ssh/config}"
 
 # shellcheck source=Helpers/Validate.sh
@@ -14,6 +15,9 @@ source "$SCRIPT_DIR/Helpers/Validate.sh"
 source "$SCRIPT_DIR/Helpers/ModuleFiles.sh"
 # shellcheck source=Helpers/SSHConfigImport.sh
 source "$SCRIPT_DIR/Helpers/SSHConfigImport.sh"
+# shellcheck source=Helpers/Servers.sh
+source "$SCRIPT_DIR/Helpers/Servers.sh"
+SERVERS_DIR="$(servers_dir)"
 
 if [ ! -f "$CONFIG" ]; then
     echo "⚠️  Config bulunamadı: $CONFIG"; exit 1
@@ -54,11 +58,11 @@ fi
 imported=0
 for i in ${selected[@]+"${selected[@]}"}; do
     name=$(ssh_config_module_name "${aliases[$i]}")
-    if [ -e "$MODULES_DIR/$name" ]; then
+    if [ -e "$SERVERS_DIR/$name" ] || [ -e "$LEGACY_DIR/$name" ]; then
         echo "⏭️  $name zaten var, atlandı"; continue
     fi
     key="${keys[$i]}"
-    if module_write_files "$MODULES_DIR" "$name" "${hosts[$i]}" "${users[$i]}" "${ports[$i]}" "$key"; then
+    if server_write_files "$SERVERS_DIR" "$name" "${hosts[$i]}" "${users[$i]}" "${ports[$i]}" "$key"; then
         echo "✅ $name ($(module_prefix "$name"))${key:+  key: $key}"
         imported=$((imported + 1))
     else

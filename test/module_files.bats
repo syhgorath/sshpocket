@@ -48,3 +48,35 @@ setup() { load_helpers; MD="$BATS_TEST_TMPDIR/Modules"; mkdir -p "$MD"; }
     run ssh_module_status "WEB1" "$MD/yok"
     [ "$output" = "⚪" ]
 }
+
+# ---------- server_write_files (yeni biçim) ----------
+@test "server_write_files: servers/<ad>/server.env, genel anahtarlar, izinler" {
+    SD="$BATS_TEST_TMPDIR/servers"
+    run server_write_files "$SD" "web1" "192.0.2.5" "deploy" "2222"
+    [ "$status" -eq 0 ]
+    grep -qx 'IP=192.0.2.5' "$SD/web1/server.env"
+    grep -qx 'USER=deploy' "$SD/web1/server.env"
+    grep -qx 'PORT=2222' "$SD/web1/server.env"
+    ! grep -q 'WEB1_' "$SD/web1/server.env"
+    [ ! -e "$SD/web1/Web1Module.sh" ]
+    [ "$(ls -l "$SD/web1/server.env" | cut -c1-10)" = "-rw-------" ]
+    [ "$(ls -ld "$SD" | cut -c1-10)" = "drwx------" ]
+    [ "$(ls -ld "$SD/web1" | cut -c1-10)" = "drwx------" ]
+}
+@test "server_write_files: KEY ve OS yazılır; hedef varsa dokunmaz (3)" {
+    SD="$BATS_TEST_TMPDIR/servers"
+    server_write_files "$SD" "web1" "h" "u" "22" "/x/key" "ubuntu-26.04"
+    grep -qx 'KEY=/x/key' "$SD/web1/server.env"
+    grep -qx 'OS=ubuntu-26.04' "$SD/web1/server.env"
+    cp "$SD/web1/server.env" "$BATS_TEST_TMPDIR/once"
+    run server_write_files "$SD" "web1" "BASKA" "u" "22"
+    [ "$status" -eq 3 ]
+    cmp "$SD/web1/server.env" "$BATS_TEST_TMPDIR/once"
+}
+@test "server_write_files: geçersiz girdide hiçbir şey yazılmaz" {
+    SD="$BATS_TEST_TMPDIR/servers"
+    run server_write_files "$SD" "Web1" "h" "u" "22";       [ "$status" -ne 0 ]
+    run server_write_files "$SD" "web1" "h" "-oEvil" "22";  [ "$status" -ne 0 ]
+    run server_write_files "$SD" "web1" "h" "u" "99999";    [ "$status" -ne 0 ]
+    [ ! -e "$SD/web1" ]; [ ! -e "$SD/Web1" ]
+}
