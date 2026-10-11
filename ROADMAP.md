@@ -4,6 +4,8 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 
 ## Planlanan
 
+> **Arayüz/TUI ve teknoloji seçenekleri (tartışma):** bkz. [docs/ui-design.md](docs/ui-design.md).
+
 > **Tasarım kararları alındı:** `servers/` veri ayrımı ve bileşen (component) modeli için
 > bkz. [docs/components-design.md](docs/components-design.md). Uygulama, deneme haftasından sonra aşamalarla yapılacak.
 
