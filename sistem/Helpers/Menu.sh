@@ -51,9 +51,16 @@ Menu() {
     status_dir=$(mktemp -d)
     i=1
     while [ $i -le $count ]; do
-      if declare -F "${module_array[$i]}_status" >/dev/null 2>&1; then
-        "${module_array[$i]}_status" > "$status_dir/$i" 2>/dev/null &
-      fi
+      case "${module_array[$i]}" in
+        server:*)
+          server_status "${module_array[$i]#server:}" > "$status_dir/$i" 2>/dev/null &
+          ;;
+        *)
+          if declare -F "${module_array[$i]}_status" >/dev/null 2>&1; then
+            "${module_array[$i]}_status" > "$status_dir/$i" 2>/dev/null &
+          fi
+          ;;
+      esac
       ((i++))
     done
     wait

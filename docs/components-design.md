@@ -313,6 +313,11 @@ Bu depo aktif geliştirme yeri değil; değişiklikler PR ile gelir. **Sıra:** 
 
 Her aşama ayrı sürüm; geri uyumluluk ve geçiş testleri aşama 1'in bir parçasıdır.
 
+**İlerleme (2026-10-11):** Aşama 1 alt adımları: **1.0 ✅** (`servers/` okuyucu + eski biçim uyumluluğu, `srv_get/srv_set`),
+**1.1 ✅** (menü `servers/`'dan kurulur, `server:<ad>` girdileri, yinelenen etiket koruması; eski modüller çalışır),
+**1.2 ⏳** taşıma (deneme çıktısı → onay → doğrulama → eski `sistem/Modules.migrated-<tarih>/`), **1.3 ⏳** ekle/içe aktar/yönet yeni biçime yazar,
+**1.4 ⏳** güncelleyici basitleşir. Sürüm: veri düzeni değiştiği için **3.0.0**.
+
 ## 10. Test stratejisi
 - Çekirdek: mevcut Bats stili; `ansible-playbook` yerine **sahte komut** (üretilen inventory/değişken/argümanlar ve kapılar doğrulanır).
 - Geçiş: gerçek `servers/` ve eski `Modules/` düzeniyle, yan etkisiz geçici klasörlerde.

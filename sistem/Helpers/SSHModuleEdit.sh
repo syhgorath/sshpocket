@@ -36,18 +36,19 @@ _ssh_env_set() {
 # Parametreler: $1 - öneki, $2 - modül klasörü
 ssh_module_edit() {
     local prefix="$1" module_dir="$2"
-    local env_file="$module_dir/.env"
+    local env_file
+    env_file=$(srv_env_file "$module_dir")
     local cur_ip cur_user cur_port cur_key ip user port key verr
 
     if [ ! -f "$env_file" ]; then
         : > "$env_file"
         chmod 600 "$env_file"
     fi
-    cur_ip=$(_ssh_env_get "$env_file" "${prefix}_IP")
-    cur_user=$(_ssh_env_get "$env_file" "${prefix}_USER")
-    cur_port=$(_ssh_env_get "$env_file" "${prefix}_PORT")
+    cur_ip=$(srv_get "$module_dir" "$prefix" IP)
+    cur_user=$(srv_get "$module_dir" "$prefix" USER)
+    cur_port=$(srv_get "$module_dir" "$prefix" PORT)
     cur_port="${cur_port:-22}"
-    cur_key=$(_ssh_env_get "$env_file" "${prefix}_KEY")
+    cur_key=$(srv_get "$module_dir" "$prefix" KEY)
 
     echo ""
     echo "Bilgileri güncelle (köşeli parantez = mevcut değer, Enter = değiştirme)"
@@ -68,11 +69,11 @@ ssh_module_edit() {
         return 1
     fi
 
-    _ssh_env_set "$env_file" "${prefix}_IP" "$ip"
-    _ssh_env_set "$env_file" "${prefix}_USER" "$user"
-    _ssh_env_set "$env_file" "${prefix}_PORT" "$port"
+    srv_set "$module_dir" "$prefix" IP "$ip"
+    srv_set "$module_dir" "$prefix" USER "$user"
+    srv_set "$module_dir" "$prefix" PORT "$port"
     if [ -n "$key" ] || [ -n "$cur_key" ]; then
-        _ssh_env_set "$env_file" "${prefix}_KEY" "$key"
+        srv_set "$module_dir" "$prefix" KEY "$key"
     fi
 
     local check="$key"

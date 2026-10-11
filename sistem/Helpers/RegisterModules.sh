@@ -24,6 +24,12 @@ RegisterModules() {
     return 1
   fi
   
+  # Aynı etiket ve grup zaten kayıtlıysa (örn. aynı adlı eski modül) yinelenmesin; ilk kayıt kazanır
+  if [ -n "$MODULE_REGISTRY" ] && printf '%s\n' "$MODULE_REGISTRY" \
+      | awk -F'|' -v l="$label" -v g="$group" '$2==l && $3==g {f=1} END{exit !f}'; then
+    return 0
+  fi
+
   # Modülü kaydet: "function_name|label|group"
   local entry="$function_name|$label|$group"
   

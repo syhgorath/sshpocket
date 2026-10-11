@@ -46,18 +46,25 @@ source "$SISTEM_PATH/Helpers/Eject.sh"
 source "$SISTEM_PATH/Helpers/SSHHelper.sh"
 # shellcheck source=Helpers/Validate.sh
 source "$SISTEM_PATH/Helpers/Validate.sh"
+# shellcheck source=Helpers/ModuleFiles.sh
+source "$SISTEM_PATH/Helpers/ModuleFiles.sh"
 # shellcheck source=Helpers/SSHKeyCopy.sh
 source "$SISTEM_PATH/Helpers/SSHKeyCopy.sh"
 # shellcheck source=Helpers/SSHModule.sh
 source "$SISTEM_PATH/Helpers/SSHModule.sh"
 # shellcheck source=Helpers/SSHModuleEdit.sh
 source "$SISTEM_PATH/Helpers/SSHModuleEdit.sh"
+# shellcheck source=Helpers/Servers.sh
+source "$SISTEM_PATH/Helpers/Servers.sh"
 # shellcheck source=Autoload.sh
 source "$SISTEM_PATH/Autoload.sh"
 # shellcheck source=Helpers/BuiltinMenu.sh
 source "$SISTEM_PATH/Helpers/BuiltinMenu.sh"
 
-# Modülleri yükle
+# servers/ (yeni biçim) önce, sonra eski modüller (aynı adlı eski modül yinelenmez)
+RegisterServers
+
+# Eski modülleri yükle
 if [ -d "$SISTEM_PATH/Modules" ]; then
     Autoload "$SISTEM_PATH/Modules"
 else
@@ -81,9 +88,9 @@ case "${1:-}" in
         while IFS= read -r m; do
             if [ -n "$m" ] && ! IsBuiltinAction "$m"; then first_module="$m"; break; fi
         done < <(GetModulesInGroup "MainMenu" | tr ' ' '\n')
-        if [ -n "$first_module" ] && declare -F "$first_module" >/dev/null 2>&1; then
+        if [ -n "$first_module" ] && EntryExists "$first_module"; then
             Log "INFO" "Auto-executing: $first_module"
-            "$first_module"
+            RunEntry "$first_module"
             exit $?
         fi
         ;;
@@ -106,9 +113,9 @@ while true; do
         exit 0
     fi
 
-    if declare -F "$selected" >/dev/null 2>&1; then
+    if EntryExists "$selected"; then
         Log "INFO" "Executing module: $selected"
-        "$selected"
+        RunEntry "$selected"
     else
         Log "ERROR" "Function not found: '$selected'"
     fi

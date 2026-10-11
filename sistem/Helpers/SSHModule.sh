@@ -68,7 +68,7 @@ ssh_module_run() {
     local module_dir="$2"
     local lower env_file default_key
     lower=$(printf '%s' "$prefix" | tr '[:upper:]' '[:lower:]')
-    env_file="$module_dir/.env"
+    env_file=$(srv_env_file "$module_dir")
     default_key="$module_dir/id_ed25519_${lower}"
 
     while true; do
@@ -81,21 +81,21 @@ ssh_module_run() {
         echo ""
 
         if [ ! -f "$env_file" ]; then
-            problem=".env bulunamadı. 3) ile bilgileri girin."
+            problem="Ayar dosyası bulunamadı. 3) ile bilgileri girin."
         else
-            ip=$(_ssh_env_get "$env_file" "${prefix}_IP")
-            user=$(_ssh_env_get "$env_file" "${prefix}_USER")
-            port=$(_ssh_env_get "$env_file" "${prefix}_PORT")
+            ip=$(srv_get "$module_dir" "$prefix" IP)
+            user=$(srv_get "$module_dir" "$prefix" USER)
+            port=$(srv_get "$module_dir" "$prefix" PORT)
             port="${port:-22}"
-            custom_key=$(_ssh_env_get "$env_file" "${prefix}_KEY")
+            custom_key=$(srv_get "$module_dir" "$prefix" KEY)
             if [ -n "$custom_key" ]; then
                 if [ "${custom_key:0:1}" = "~" ]; then custom_key="$HOME${custom_key:1}"; fi
                 ssh_key="$custom_key"
             fi
             if [ -z "$ip" ] || [ -z "$user" ]; then
-                problem=".env içinde IP veya kullanıcı eksik. 3) ile tamamlayın."
+                problem="Ayar dosyasında IP veya kullanıcı eksik. 3) ile tamamlayın."
             elif ! verr=$(ssh_validate_target "$ip" "$user" "$port" 2>&1); then
-                problem=".env: $verr. 3) ile düzeltin."
+                problem="Ayar dosyası: $verr. 3) ile düzeltin."
             elif [ ! -f "$ssh_key" ]; then
                 problem="SSH key bulunamadı: $ssh_key (3 ile key yolunu düzeltin)"
             fi
@@ -148,10 +148,11 @@ ssh_module_run() {
 # Parametreler: $1 - öneki, $2 - modül klasörü
 ssh_module_status() {
     local prefix="$1" module_dir="$2"
-    local env_file="$module_dir/.env" ip port
+    local env_file ip port
+    env_file=$(srv_env_file "$module_dir")
     if [ ! -f "$env_file" ]; then printf '⚪'; return 0; fi
-    ip=$(_ssh_env_get "$env_file" "${prefix}_IP")
-    port=$(_ssh_env_get "$env_file" "${prefix}_PORT")
+    ip=$(srv_get "$module_dir" "$prefix" IP)
+    port=$(srv_get "$module_dir" "$prefix" PORT)
     port="${port:-22}"
     if [ -z "$ip" ] || ! ssh_validate_target "$ip" "x" "$port" 2>/dev/null; then
         printf '⚪'; return 0

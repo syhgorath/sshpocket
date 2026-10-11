@@ -333,3 +333,20 @@ make_cli_sandbox() {
     [ "$(cat "$SB/VERSION")" = "2.1.0" ]
     [ ! -e "$SB/sistem/Helpers/New.sh" ]
 }
+
+@test "apply: arşivde servers/ olsa bile kullanıcının servers/ klasörü silinmez ve ezilmez" {
+    make_install
+    mkdir -p "$INST/servers/alpha"
+    printf 'IP=192.0.2.7\n' > "$INST/servers/alpha/server.env"
+    printf 'GIZLI-KEY\n' > "$INST/servers/alpha/id_ed25519_alpha"
+    make_release 2.2.0
+    mkdir "$T/x"; tar -xzf "$T/serve/sshpocket-2.2.0.tar.gz" -C "$T/x"
+    # yanlışlıkla arşive servers/ girmiş olsun
+    mkdir -p "$T/x/sshpocket-2.2.0/servers"
+    printf 'SAHTE\n' > "$T/x/sshpocket-2.2.0/servers/README.md"
+    run update_apply "$T/x/sshpocket-2.2.0" "$INST" 2.1.0
+    [ "$status" -eq 0 ]
+    [ "$(cat "$INST/servers/alpha/server.env")" = "IP=192.0.2.7" ]
+    [ "$(cat "$INST/servers/alpha/id_ed25519_alpha")" = "GIZLI-KEY" ]
+    [ ! -e "$INST/servers/README.md" ]
+}

@@ -139,7 +139,7 @@ update_install_tree() {
             cp -p "$f" "$root/$name" || return 1
         elif [ -d "$f" ]; then
             case "$name" in
-                sistem|.git|usb_logs|.update-backup) ;;
+                sistem|.git|usb_logs|.update-backup|servers) ;;
                 *) rm -r -- "${root:?}/${name:?}" 2>/dev/null; cp -R "$f" "$root/$name" || return 1 ;;
             esac
         fi

@@ -16,6 +16,7 @@ ReloadModules() {
     MODULE_REGISTRY=""
     # shellcheck disable=SC2034
     MODULE_COUNT=0
+    RegisterServers
     Autoload "$SISTEM_PATH/Modules" >/dev/null
     RegisterBuiltinMenu
 }
