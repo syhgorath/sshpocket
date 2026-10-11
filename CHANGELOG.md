@@ -4,6 +4,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-11
+
 ### Eklendi
 - **⚙️ Ayarlar** (ana menü): `sshpocket.conf` (kökte, gitignore'lu; güncellemede korunur). Şimdilik iki ayar: durum göstergesi (`STATUS`) ve
   durum kontrol süresi (`STATUS_TIMEOUT`, 1-5 sn). Öncelik: ortam değişkeni (`SSHPOCKET_STATUS` vb.) > dosya > varsayılan.
@@ -12,6 +14,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Değişti
 - **Durum göstergesi (🟢/🔴/⚪) artık varsayılan AÇIK** (Finder'dan `start.command` ile açınca da görünür). Kapatmak için ⚙️ Ayarlar
   veya `SSHPOCKET_STATUS=0`.
+- **`q` = geri/çıkış:** ana menüde `q` çıkış yapar (0 ile aynı); alt menülerde `0) Geri (q)` ipucu gösterilir.
 
 ## [3.0.0] - 2026-10-11
 
@@ -114,7 +117,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/syhgorath/sshpocket/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/syhgorath/sshpocket/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/syhgorath/sshpocket/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/syhgorath/sshpocket/releases/tag/v2.1.0
