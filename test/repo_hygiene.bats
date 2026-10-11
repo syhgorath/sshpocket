@@ -27,3 +27,8 @@ load test_helper
     run bash -c "git -C '$ROOT' ls-files | grep -E '(^|/)\.env$|(^|/)id_(ed25519|rsa|ecdsa)[^.]*$|\.pem$|\.secrets$|sshpocket_release$'"
     [ "$status" -ne 0 ]
 }
+
+@test "testlerde başa '!' konmuş iddia yok (bats'ta '! komut' testi düşürmez; 'run ! komut' kullanın)" {
+    run bash -c "grep -nE '^[[:space:]]+! ' '$ROOT'/test/*.bats '$ROOT'/test/*.bash | grep -v 'run !' || true"
+    [ -z "$output" ]
+}

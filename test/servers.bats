@@ -26,7 +26,7 @@ mk_new() { # ad [ip] [user] [port]
     printf 'OLD_IP=198.51.100.4\nOLD_USER=pi\nOLD_PORT=22\n' > "$d/.env"
     run srv_get "$d" OLD IP;   [ "$output" = "198.51.100.4" ]
     run srv_get "$d" OLD USER; [ "$output" = "pi" ]
-    ! srv_is_current "$d"
+    run ! srv_is_current "$d"
 }
 @test "yeni biçim önceliklidir (server.env varsa .env yok sayılır)" {
     mk_new alpha 192.0.2.7
@@ -38,7 +38,7 @@ mk_new() { # ad [ip] [user] [port]
     mk_new alpha
     srv_set "$SSHPOCKET_SERVERS_DIR/alpha" ALPHA IP "192.0.2.50"
     grep -qx 'IP=192.0.2.50' "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
-    ! grep -q 'ALPHA_IP' "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
+    run ! grep -q 'ALPHA_IP' "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
     d="$BATS_TEST_TMPDIR/legacy"; mkdir -p "$d"; printf 'OLD_IP=1.1.1.1\n' > "$d/.env"
     srv_set "$d" OLD IP "198.51.100.8"
     grep -qx 'OLD_IP=198.51.100.8' "$d/.env"
@@ -88,9 +88,9 @@ mk_new() { # ad [ip] [user] [port]
 }
 @test "EntryExists: server: adı doğrulanır; fonksiyon adı bakılır" {
     EntryExists "server:alpha"
-    ! EntryExists "server:../etc"
-    ! EntryExists "server:Bad"
-    ! EntryExists "YokBoyleBirFonksiyon"
+    run ! EntryExists "server:../etc"
+    run ! EntryExists "server:Bad"
+    run ! EntryExists "YokBoyleBirFonksiyon"
     EntryExists "srv_names"
 }
 

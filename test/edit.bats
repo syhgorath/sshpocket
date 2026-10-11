@@ -116,7 +116,7 @@ STUB
 }
 @test "keychain: 0 hiçbir şey yazmaz/silmez" {
     run ssh_keychain_manage WEB1 "$MD/yok_key" <<< "0"
-    ! grep -qE 'add-generic|delete-generic' "$LOG"
+    run ! grep -qE 'add-generic|delete-generic' "$LOG"
 }
 @test "keychain: durum 'var/yok' gösterilir" {
     STUB_SEC_EXISTS=1 run ssh_keychain_manage WEB1 "$MD/k" <<< "0"

@@ -46,7 +46,7 @@ run_main() { bash -c "printf '$1' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's
     [[ "$output" == *"Güncellendi: root2@10.0.0.9:2222"* ]]
     grep -qx 'IP=10.0.0.9' "$SRV/alpha/server.env"
     grep -qx 'USER=root2' "$SRV/alpha/server.env"
-    ! grep -q 'ALPHA_' "$SRV/alpha/server.env"
+    run ! grep -q 'ALPHA_' "$SRV/alpha/server.env"
     [ ! -e "$SRV/alpha/.env" ]
 }
 @test "aynı ada sahip eski modül varsa menüde yalnızca bir girdi görünür" {

@@ -72,9 +72,9 @@ make_install() {
 # ---------- sürüm ----------
 @test "sürüm biçimi ve karşılaştırma" {
     update_version_valid "2.1.0"
-    ! update_version_valid "2.1"
-    ! update_version_valid "v2.1.0"
-    ! update_version_valid "2.1.0; id"
+    run ! update_version_valid "2.1"
+    run ! update_version_valid "v2.1.0"
+    run ! update_version_valid "2.1.0; id"
     [ "$(update_version_cmp 2.2.0 2.1.0)" = "1" ]
     [ "$(update_version_cmp 2.1.0 2.1.0)" = "0" ]
     [ "$(update_version_cmp 2.1.0 2.2.0)" = "-1" ]
@@ -208,7 +208,7 @@ PY
     # yedek: var, eski kodu içerir, gizli dosya İÇERMEZ
     [ -f "$INST/.update-backup/code-2.1.0.tar.gz" ]
     tar -tzf "$INST/.update-backup/code-2.1.0.tar.gz" | grep -q 'Helpers/Old.sh'
-    ! tar -tzf "$INST/.update-backup/code-2.1.0.tar.gz" | grep -qE '\.env$|id_ed25519'
+    [ -z "$(tar -tzf "$INST/.update-backup/code-2.1.0.tar.gz" | grep -E '\.env$|id_ed25519')" ]
 }
 @test "apply: kurulum yarıda başarısız olursa yedekten geri yüklenir" {
     make_install
@@ -251,7 +251,7 @@ make_cli_sandbox() {
     [ "$status" -eq 10 ]
     [[ "$output" == *"Yeni sürüm var: 2.2.0"* ]]
     [ "$(cat "$SB/VERSION")" = "2.1.0" ]
-    ! grep -q -- "-o " "$FAKE_LOG"
+    run ! grep -q -- "-o " "$FAKE_LOG"
 }
 @test "CLI --check-update: güncelse 0; uzak sürüm eskiyse geri sürüme düşmez" {
     make_cli_sandbox
@@ -309,7 +309,7 @@ make_cli_sandbox() {
     make_cli_sandbox; make_release 2.2.0
     FAKE_LATEST=2.2.0 run bash -c "printf 'n\n' | bash '$SB/sistem/Main.sh' --update"
     [ "$status" -ne 0 ]
-    ! grep -q -- "-o " "$FAKE_LOG"
+    run ! grep -q -- "-o " "$FAKE_LOG"
 }
 @test "CLI --update: kurulumu onaylamazsanız dosyalar değişmez" {
     make_cli_sandbox; make_release 2.2.0
