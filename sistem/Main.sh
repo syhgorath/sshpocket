@@ -16,7 +16,11 @@ fi
 case "${1:-}" in
     --version|-V) echo "sshpocket $SCRIPT_VERSION"; exit 0 ;;
     # Güncelleme ayrı bir süreçte çalışır (kendi dosyalarını değiştirebileceği için exec ile devredilir)
-    --update)       exec bash "$SISTEM_PATH/Update.sh" ;;
+    --update)
+        # Çekirdek güncellemesi ayrı süreçte; başarılıysa YENİ kodla paketler kilide göre eşitlenir
+        bash "$SISTEM_PATH/Update.sh"; update_rc=$?
+        if [ "$update_rc" -eq 0 ]; then exec bash "$SISTEM_PATH/Main.sh" --components sync; fi
+        exit "$update_rc" ;;
     --check-update) exec bash "$SISTEM_PATH/Update.sh" --check ;;
 esac
 
@@ -64,8 +68,12 @@ source "$SISTEM_PATH/Helpers/Migrate.sh"
 source "$SISTEM_PATH/Helpers/Settings.sh"
 # shellcheck source=Helpers/Components.sh
 source "$SISTEM_PATH/Helpers/Components.sh"
+# shellcheck source=Helpers/ComponentsInstall.sh
+source "$SISTEM_PATH/Helpers/ComponentsInstall.sh"
 # shellcheck source=Helpers/ComponentsVenv.sh
 source "$SISTEM_PATH/Helpers/ComponentsVenv.sh"
+# shellcheck source=Helpers/ComponentsCLI.sh
+source "$SISTEM_PATH/Helpers/ComponentsCLI.sh"
 # shellcheck source=Helpers/Doctor.sh
 source "$SISTEM_PATH/Helpers/Doctor.sh"
 # shellcheck source=Autoload.sh
@@ -77,6 +85,7 @@ source "$SISTEM_PATH/Helpers/BuiltinMenu.sh"
 case "${1:-}" in
     --migrate) shift; run_migration "$@"; exit $? ;;
     --doctor)  shift; doctor_run "$@"; exit $? ;;
+    --components) shift; components_cli "$@"; exit $? ;;
 esac
 if [ -t 0 ] && [ -t 1 ] && [ -z "${1:-}" ] && [ -n "$(migrate_legacy_names)" ]; then
     run_migration || true
