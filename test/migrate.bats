@@ -19,6 +19,10 @@ setup() {
         printf 'finder' > "$MOD/$n/.DS_Store"
     done
     printf 'x' > "$MOD/.DS_Store"
+    # eski sürümlerin gönderdiği, hiç yapılandırılmamış 'example' şablonu (.env YOK)
+    mkdir -p "$MOD/example"
+    printf '# şablon\n' > "$MOD/example/ExampleModule.sh"
+    printf 'EXAMPLE_IP=\n' > "$MOD/example/.env.example"
 }
 migrate() { bash "$SANDBOX/sistem/Main.sh" --migrate "$@" 2>&1; }
 snapshot() { ( cd "$1" && find . -type f -not -name '.DS_Store' | LC_ALL=C sort | while read -r f; do printf '%s %s\n' "$(shasum -a 256 "$f" | cut -d' ' -f1)" "$f"; done ); }
@@ -71,6 +75,17 @@ snapshot() { ( cd "$1" && find . -type f -not -name '.DS_Store' | LC_ALL=C sort 
     [ -f "$bak/ubuntutest/.env" ]
     [ -f "$bak/ubuntutest/id_ed25519_ubuntutest" ]
     [ -f "$bak/testubuntu2/.env" ]
+}
+@test "yapılandırılmamış 'example' şablonu taşınmaz; .env'i olan 'example' sunucusu taşınır" {
+    run migrate --yes
+    [ -d "$MOD/example" ]                       # şablon yerinde kaldı (içinde .env yok)
+    [ ! -e "$SRV/example" ]
+    # kullanıcı onu gerçekten yapılandırdıysa taşınmalı
+    printf 'EXAMPLE_IP=192.0.2.50\nEXAMPLE_USER=me\nEXAMPLE_PORT=22\n' > "$MOD/example/.env"
+    run migrate --yes
+    [ "$status" -eq 0 ]
+    grep -qx 'IP=192.0.2.50' "$SRV/example/server.env"
+    [ ! -e "$MOD/example" ]
 }
 @test "taşıma sonrası menü yeni biçimden kurulur ve Keychain hesabı aynı kalır" {
     run migrate --yes

@@ -316,7 +316,7 @@ Her aşama ayrı sürüm; geri uyumluluk ve geçiş testleri aşama 1'in bir par
 **İlerleme (2026-10-11):** Aşama 1 alt adımları: **1.0 ✅** (`servers/` okuyucu + eski biçim uyumluluğu, `srv_get/srv_set`),
 **1.1 ✅** (menü `servers/`'dan kurulur, `server:<ad>` girdileri, yinelenen etiket koruması; eski modüller çalışır),
 **1.2 ✅** taşıma (deneme çıktısı → onay → kopyala → bayt bayt doğrula → eski `servers/.migrated-<tarih>/<ad>/`), **1.3 ✅** ekle/içe aktar/yönet yeni biçime yazar,
-**1.4 ⏳** güncelleyici basitleşir. Sürüm: veri düzeni değiştiği için **3.0.0**.
+**1.4 ✅** güncelleyici sadeleşti, `example` → `sistem/templates/`, eski `example` kalıntısı güvenle temizlenir. Sürüm: veri düzeni değiştiği için **3.0.0**.
 
 ## 10. Test stratejisi
 - Çekirdek: mevcut Bats stili; `ansible-playbook` yerine **sahte komut** (üretilen inventory/değişken/argümanlar ve kapılar doğrulanır).
