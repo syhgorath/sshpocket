@@ -141,13 +141,22 @@ ssh_module_run() {
         fi
         echo ""
 
-        echo "  1) Bağlan"
-        echo "  2) Public key'i sunucuya gönder"
-        echo "  3) Bilgileri güncelle (IP / kullanıcı / port / key yolu)"
-        echo "  4) Keychain passphrase'ini güncelle / sil"
-        echo "  0) Geri (q)"
-        if declare -F ui_footer >/dev/null; then ui_footer "numara yaz + Enter (boş = 1 Bağlan) · 0 veya q = geri"; fi
-        if ! read -r -p "Seçim [1]: " choice; then return 0; fi
+        if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+            choice=$(ui_pick_arrows 1 "Geri" \
+                "Bağlan" \
+                "Public key'i sunucuya gönder" \
+                "Bilgileri güncelle (IP / kullanıcı / port / key yolu)" \
+                "Keychain passphrase'ini güncelle / sil")
+            [ "$choice" = "0" ] && return 0
+        else
+            echo "  1) Bağlan"
+            echo "  2) Public key'i sunucuya gönder"
+            echo "  3) Bilgileri güncelle (IP / kullanıcı / port / key yolu)"
+            echo "  4) Keychain passphrase'ini güncelle / sil"
+            echo "  0) Geri (q)"
+            if declare -F ui_footer >/dev/null; then ui_footer "numara yaz + Enter (boş = 1 Bağlan) · 0 veya q = geri"; fi
+            if ! read -r -p "Seçim [1]: " choice; then return 0; fi
+        fi
         case "${choice:-1}" in
             1|2)
                 if [ -n "$problem" ]; then

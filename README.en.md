@@ -62,6 +62,7 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
 - **Use an existing key:** set `<PREFIX>_KEY=/path/to/key` in `.env`.
 - **Status marks:** the menu shows 🟢 (port open) / 🔴 (unreachable) / ⚪ (not configured), checked in parallel.
   Turn off or tune it under **⚙️ Settings** (`sshpocket.conf`; the env var `SSHPOCKET_STATUS=0|1` takes precedence).
+- **Arrow-key menu:** ↑↓ move · Enter open · `←`/`q` back; typing a number works too. If it misbehaves, set `UI=numbers` under ⚙️ Settings.
 - **Module menu:** Connect · Send key to server · **Update details** (IP/user/port/key path) ·
   **Update/delete the Keychain passphrase** (verifies it by unlocking the key after saving). The update options
   stay available even when the settings are broken or the key is missing.
