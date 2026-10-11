@@ -19,6 +19,19 @@ Every server is a *module*: drop a module folder in and it shows up in the menu 
 > **It does not auto-start.** macOS, Linux and modern Windows do not run scripts when a USB drive
 > is plugged in (by design). Start it manually: `./start.sh`, or double-click `start.command` in Finder.
 
+## Tested environments
+
+| Environment | Status |
+|---|---|
+| **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Developed and manually tried |
+| **Apple Silicon (arm64)** | ⚠️ **Not tested** |
+| **Newer macOS versions (macOS 26 and later)** | ⚠️ **Not tested** |
+| Ubuntu 24.04 (CI only: ShellCheck + Bats tests) | ✅ automated |
+| Running on Linux (no Keychain/`osascript`/`diskutil`) | ❌ Not supported |
+| Target server: Ubuntu 26.04.1 (linux-hardening, a single test VM) | ✅ limited; rpi/Proxmox profiles not tried |
+
+If you hit a problem on Apple Silicon or a newer macOS, please open an issue (with the macOS version, `uname -m` and `bash --version`).
+
 ## Quick start
 
 ```bash

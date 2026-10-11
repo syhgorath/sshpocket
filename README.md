@@ -19,6 +19,19 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 > **Otomatik başlamaz.** macOS, Linux ve modern Windows USB takılınca script çalıştırmaz (güvenlik gereği).
 > Elle başlatın: `./start.sh` ya da Finder'da `start.command` dosyasına çift tıklayın.
 
+## Test edilen ortamlar
+
+| Ortam | Durum |
+|---|---|
+| **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Geliştirildi ve elle denendi |
+| **Apple Silicon (arm64)** | ⚠️ **Denenmedi** |
+| **Daha yeni macOS sürümleri (macOS 26 ve sonrası)** | ⚠️ **Denenmedi** |
+| Ubuntu 24.04 (yalnızca CI: ShellCheck + Bats testleri) | ✅ otomatik |
+| Linux üzerinde kullanım (Keychain/`osascript`/`diskutil` yok) | ❌ Desteklenmiyor |
+| Hedef sunucu: Ubuntu 26.04.1 (linux-hardening, tek test VM'i) | ✅ sınırlı; rpi/Proxmox profilleri denenmedi |
+
+Apple Silicon'da veya yeni macOS'ta bir sorun görürseniz lütfen issue açın (macOS sürümü, `uname -m` ve `bash --version` çıktısıyla).
+
 ## Hızlı başlangıç
 
 ```bash
