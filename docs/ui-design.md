@@ -58,8 +58,7 @@ Ana menü
 | Ortam | Durum |
 |---|---|
 | Intel (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2 | Denendi |
-| Apple Silicon (arm64) | **Denenmedi** |
-| macOS 26 ve sonrası | **Denenmedi** |
+| Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57 | **Otomatik testler geçiyor** (CI, her PR); elle/gerçek Keychain denemesi YAPILMADI |
 
 **Apple Silicon / yeni macOS doğrulama listesi** (ilk fırsatta bir M-serisi Mac'te):
 1. `start.sh` ve `start.command` açılıyor mu (Gatekeeper)?

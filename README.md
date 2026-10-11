@@ -24,8 +24,7 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 | Ortam | Durum |
 |---|---|
 | **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Geliştirildi ve elle denendi |
-| **Apple Silicon (arm64)** | ⚠️ **Denenmedi** |
-| **Daha yeni macOS sürümleri (macOS 26 ve sonrası)** | ⚠️ **Denenmedi** |
+| **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Otomatik testler** (178 test + ShellCheck, her PR'da). ⚠️ Elle/gerçek denenmedi: Keychain izin penceresi, Terminal açma, `start.command` çift tıklama |
 | Ubuntu 24.04 (yalnızca CI: ShellCheck + Bats testleri) | ✅ otomatik |
 | Linux üzerinde kullanım (Keychain/`osascript`/`diskutil` yok) | ❌ Desteklenmiyor |
 | Hedef sunucu: Ubuntu 26.04.1 (linux-hardening, tek test VM'i) | ✅ sınırlı; rpi/Proxmox profilleri denenmedi |
