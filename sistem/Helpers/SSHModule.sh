@@ -157,7 +157,9 @@ ssh_module_status() {
     if [ -z "$ip" ] || ! ssh_validate_target "$ip" "x" "$port" 2>/dev/null; then
         printf '⚪'; return 0
     fi
-    if command -v nc >/dev/null 2>&1 && nc -z -w 1 "$ip" "$port" 2>/dev/null; then
+    local tmo=1
+    if declare -F settings_get >/dev/null; then tmo=$(settings_get STATUS_TIMEOUT); fi
+    if command -v nc >/dev/null 2>&1 && nc -z -w "${tmo:-1}" "$ip" "$port" 2>/dev/null; then
         printf '🟢'
     else
         printf '🔴'

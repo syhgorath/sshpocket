@@ -8,6 +8,7 @@ RegisterBuiltinMenu() {
     RegisterModules "📥 ~/.ssh/config'ten içe aktar" "MainMenu" "ImportSSHConfigAction"
     RegisterModules "🛠️  Sunucuları yönet (listele/sil/yeniden adlandır)" "MainMenu" "ManageServersAction"
     RegisterModules "⬆️  Güncellemeleri kontrol et / güncelle" "MainMenu" "UpdateAction"
+    RegisterModules "⚙️  Ayarlar" "MainMenu" "SettingsAction"
 }
 
 # Kayıt defterini sıfırlayıp modülleri yeniden yükler (yeni/silinen modüller hemen yansısın)
@@ -24,7 +25,7 @@ ReloadModules() {
 # Fonksiyon adı yerleşik eylem mi? (--auto modunda atlanır)
 IsBuiltinAction() {
     case "$1" in
-        AddServerAction|ImportSSHConfigAction|ManageServersAction|UpdateAction) return 0 ;;
+        AddServerAction|ImportSSHConfigAction|ManageServersAction|UpdateAction|SettingsAction) return 0 ;;
         *) return 1 ;;
     esac
 }

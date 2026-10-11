@@ -5,6 +5,8 @@ setup() {
     source "$H/RegisterModules.sh"
     # shellcheck source=/dev/null
     source "$H/Menu.sh"
+    # shellcheck source=/dev/null
+    source "$H/Settings.sh"
 }
 
 @test "modül kaydı ve gruba göre listeleme" {

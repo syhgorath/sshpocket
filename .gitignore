@@ -31,3 +31,6 @@ dist/
 servers/*
 !servers/.gitkeep
 !servers/README.md
+
+# Kişisel ayarlar (USB'yle taşınır, repoya girmez)
+sshpocket.conf

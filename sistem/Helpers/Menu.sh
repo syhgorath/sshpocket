@@ -45,9 +45,9 @@ Menu() {
   # Display menu (stderr'e yaz, böylece stdout sadece seçimi içerir)
   echo "" >&2
   echo "=== $group ===" >&2
-  # SSHPOCKET_STATUS=1 ise, <modül>_status fonksiyonu olanların durumu paralel kontrol edilir
+  # Durum ayarı açıksa (varsayılan; bkz. Settings.sh), <modül>_status fonksiyonu olanların durumu paralel kontrol edilir
   local status_dir=""
-  if [ "${SSHPOCKET_STATUS:-0}" = "1" ]; then
+  if declare -F settings_get >/dev/null && [ "$(settings_get STATUS)" = "on" ]; then
     status_dir=$(mktemp -d)
     i=1
     while [ $i -le $count ]; do
