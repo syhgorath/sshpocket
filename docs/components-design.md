@@ -111,7 +111,14 @@ actions:
     requires_sudo: true
     requires: [preview]                    # sshpocket önce preview çalıştırıp göstermeli
 
-vars: [hardening_ssh_allow_from, hardening_scan_dir]   # hardening_ssh_port YOK (kaldırıldı; port değiştirme desteklenmiyor)
+  # Geri alma güvenlik ağı (hardening_rollback, v0.1.0): kontrol kaybından sonra durumu görmek/iptal etmek için.
+  # Bu eylemler preflight/erişim korumalarını ÇALIŞTIRMAZ (kontrol kaybından sonra da çalışabilmeli).
+  rollback_status: { cmd: "ansible-playbook playbooks/rollback.yml",              effects: [],               requires_sudo: true }
+  rollback_disarm: { cmd: "ansible-playbook playbooks/rollback.yml --tags disarm", effects: [changes-config], requires_sudo: true }
+  rollback_now:    { cmd: "ansible-playbook playbooks/rollback.yml --tags now",    effects: [changes-config], requires_sudo: true }
+
+vars: [hardening_ssh_allow_from, hardening_scan_dir, hardening_rollback_enabled, hardening_rollback_timeout]
+      # hardening_ssh_port YOK (kaldırıldı; port değiştirme desteklenmiyor)
 
 invoke:                      # sshpocket'ın cmd'nin sonuna eklediği argümanlar
   append:                    # NESNE listesi (string değil)
@@ -209,6 +216,16 @@ Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
   - `preview` **tam önizleme değildir**: `--check`'te servis başlatma/handler adımları atlanır ve `ufw` komutları çalışmaz;
     **firewall değişikliği önizlemede görünmez**.
   - `apply` paket kurar **ve** yapılandırmayı değiştirir (iki etki de gösterilir).
+  - **Geri alma güvenlik ağı (v0.1.0):** `apply`, ufw/ssh'tan önce önceki durumu yedekler ve sunucuda kalıcı bir zamanlayıcı kurar
+    (`hardening_rollback_timeout`, varsayılan 300 sn). Yeni bağlantı doğrulanırsa **disarm** edilir; doğrulanamazsa ya da kontrol
+    makinesi kaybolursa/sunucu yeniden başlarsa sunucu **kendini önceki duruma döndürür** (siler değil, geri yükler).
+    Menü, `rollback_status`'tan "geri alma bekliyor (kalan süre) / yapıldı / kurulu değil" gösterir.
+  - `rollback_disarm` geri almayı **iptal eder** ("değişiklik iyi"); `rollback_now` sunucuyu **hemen önceki duruma döndürür**.
+    Her ikisi de açıkça yazılı onay ister.
+  - Geri alma **yalnızca ufw ve SSH ayarlarını** kapsar; paketler, sysctl, auditd, fail2ban ve AIDE geri alınmaz.
+  - `hardening_rollback_enabled=false` güvenlik ağını **kapatır** (bilinçli kaçış); arayüz bunu uyarıyla sunar, varsayılan değildir.
+  - "Gereksiz geri alma" bilinçli bir ödünleşimdir: kontrol makinesi süreden uzun donarsa sunucu geri alır. Kullanıcıya
+    "erişim yok, süre dolana kadar bekleyin" mesajı gösterilir.
   - fail2ban `ignoreip`'ine kontrol makinesinin sunucunun gördüğü adresi eklenir (tüm yönetim ağı muaf değil); dinamik IP'den
     çalışılırsa yapılandırma her seferinde değişir.
   - `hardening_ssh_kbdinteractive` (2FA) arayüze konulursa uyarı gerekir: açıkken bağlantı doğrulaması yalnızca SSH
@@ -245,6 +262,16 @@ Bu depo aktif geliştirme yeri değil; değişiklikler PR ile gelir. **Sıra:** 
 | **D** | `audit` özet çıktısı (`summary.json`; rapordaki karşılıkları açıkça eşle) + `hardening_scan_dir` (izin 700; USB'ye değil kullanıcı klasörüne) + `--check`'te `fetch` davranışı (`check_mode: false` ya da atla). `audit.yml` zaten idempotent değil (zaman damgalı klasör); beklenen | `lynis-report.dat` hostname, paket, kullanıcı adı içerir; USB'ye yazılmamalı |
 | **C** | VERSION, CHANGELOG, `component.yml` (yukarıdaki şema), **`pip-compile --generate-hashes`** ile hash'li `requirements.txt` (Python 3.14 ile test), imzalı paket üretim notu (`sshpocket-component` ad alanı), profil eşleme betiği (`ubuntu-26.04 ↔ Ubuntu/26.04`) | Sözleşme gerçeği tarif etsin |
 
+> **Güncelleme (2026-10-11):** `v0.1.0` **pre-release** olarak yayımlandı (imzalı paket + imza, SHA-256 `5dd1e185…6714`, etiket `v0.1.0` → `69d8e25`).
+> Geri alma güvenlik ağı (PR #20-#24) eklendi ve **tek test VM'inde (Ubuntu 26.04.1)** canlı doğrulandı: doğrulama başarısızlığı,
+> kontrol makinesinin ölmesi (`SIGKILL`) ve `armed` iken yeniden başlatma. **Doğrulanmayan:** gerçek ağ düzeyi kesinti, rpi/proxmox
+> profilleri, sshpocket ile uçtan uca kurulum/çalıştırma.
+>
+> **Açık sözleşme eksikleri (linux-hardening issue'ları):** `rollback_status` için makine-okunur çıktı
+> ([linux-hardening#28](https://github.com/syhgorath/linux-hardening/issues/28)) ve `vars` için tür/varsayılan/açıklama üst verisi
+> ([linux-hardening#29](https://github.com/syhgorath/linux-hardening/issues/29)).
+> sshpocket bunları, ancak bu sözleşmeler netleşince ayrıştırır.
+>
 > **Durum (2026-10-10):** A, 0a, 0b, 0c, 0d, 0e, B, D ve C **birleşti** (linux-hardening `main`; ayrıca CI, `scripts/release.sh`,
 > SECURITY/CONTRIBUTING/README.en). **Canlı Ubuntu 26.04 doğrulaması henüz yok** ve henüz **etiket/release yok** (`v0.1.0` yalnızca
 > `VERSION`/`component.yml`'de). Yukarıdaki "neden" sütunu artık geçmiş bilgidir; geçerli gerçek `component.yml`'dir.

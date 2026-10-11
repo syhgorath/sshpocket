@@ -7,6 +7,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Belge
 - `docs/components-design.md`: `servers/` veri ayrımı ve bileşen modeli için tasarım (henüz uygulanmadı); linux-hardening PR sırası incelemeyle güncellendi (A → 0a → 0b → 0c → B → D → C).
 - Tasarım belgesi, linux-hardening'in gerçek `component.yml`'ine hizalandı (issue #2): `invoke.append` nesne listesi, `inventory_group`, `outputs`, `hardening_scan_dir`, principal=ad alanı.
+- Tasarım belgesi, linux-hardening v0.1.0'ın geri alma güvenlik ağına hizalandı (issue #3): `rollback_status/disarm/now`, `hardening_rollback_*` değişkenleri, arayüz notları.
 
 ### Eklendi
 - Dependabot yapılandırması (aylık, yalnızca GitHub Actions bağımlılıkları).
