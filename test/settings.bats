@@ -124,3 +124,18 @@ setup() {
     IFS='|'
     [ "$(settings_get STATUS_TIMEOUT)" = "1" ]
 }
+
+@test "ayar: UI değerleri doğrulanır ve panelden çevrilir" {
+    [ "$(settings_get UI)" = "auto" ]
+    printf 'UI=bogus\n' > "$SSHPOCKET_CONF"
+    [ "$(settings_get UI)" = "auto" ]
+    run settings_set UI numbers
+    [ "$status" -eq 0 ]
+    [ "$(settings_get UI)" = "numbers" ]
+    run settings_set UI bogus
+    [ "$status" -ne 0 ]
+    rm -f "$SSHPOCKET_CONF"
+    export SISTEM_PATH="$ROOT/sistem"
+    run bash -c 'source "'"$H"'/Settings.sh"; clear(){ :; }; SettingsAction' <<< $'3\nq'
+    grep -q '^UI=numbers$' "$SSHPOCKET_CONF"
+}

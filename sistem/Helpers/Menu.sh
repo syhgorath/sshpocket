@@ -69,6 +69,7 @@ Menu() {
     done
     wait
   fi
+  local row_text=()
   i=1
   while [ $i -le $count ]; do
     local func_name="${module_array[$i]}"
@@ -86,13 +87,31 @@ Menu() {
       server:*) detail=$(server_summary "${func_name#server:}" 2>/dev/null) ;;
     esac
     if [ -n "$detail" ]; then
-      printf "  %2d) %s%s   %s\n" "$i" "$mark" "$label" "$detail" >&2
+      row_text[i - 1]="${mark}${label}   ${detail}"
     else
-      printf "  %2d) %s%s\n" "$i" "$mark" "$label" >&2
+      row_text[i - 1]="${mark}${label}"
     fi
     ((i++))
   done
   if [ -n "$status_dir" ]; then rm -r "$status_dir"; fi
+
+  # Ok tuşlu seçim (terminalde); aksi halde numaralı menü
+  if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+    local picked
+    picked=$(ui_pick_arrows 1 "Çıkış" "${row_text[@]}")
+    if [ -z "$picked" ] || [ "$picked" = "0" ]; then
+      echo -n "exit"
+    else
+      echo -n "${module_array[$picked]}"
+    fi
+    return 0
+  fi
+
+  i=1
+  while [ $i -le $count ]; do
+    printf "  %2d) %s\n" "$i" "${row_text[$((i - 1))]}" >&2
+    ((i++))
+  done
   echo "  0) Çıkış (q)" >&2
   if declare -F ui_footer >/dev/null; then
     ui_footer "numara yaz + Enter · 0 veya q = çıkış" 2 >&2

@@ -16,6 +16,7 @@ settings_default() {
     case "$1" in
         STATUS) printf 'on' ;;
         STATUS_TIMEOUT) printf '1' ;;
+        UI) printf 'auto' ;;
         *) return 1 ;;
     esac
 }
@@ -35,6 +36,11 @@ settings_normalize() {
                 [1-5]) printf '%s' "$val" ;;
                 *) return 1 ;;
             esac ;;
+        UI)
+            case "$val" in
+                auto|arrows|numbers) printf '%s' "$val" ;;
+                *) return 1 ;;
+            esac ;;
         *) return 1 ;;
     esac
 }
@@ -42,7 +48,7 @@ settings_normalize() {
 # IFS'ten bağımsız (çağıran bağlamda IFS değişmiş olabilir)
 settings_known() {
     case "$1" in
-        STATUS|STATUS_TIMEOUT) return 0 ;;
+        STATUS|STATUS_TIMEOUT|UI) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -108,6 +114,7 @@ _settings_label() {
     case "$1" in
         STATUS) printf 'Durum göstergesi (🟢/🔴)' ;;
         STATUS_TIMEOUT) printf 'Durum kontrol süresi (sn)' ;;
+        UI) printf 'Menü: auto/arrows/numbers' ;;
     esac
 }
 
@@ -127,6 +134,7 @@ SettingsAction() {
         echo ""
         printf '  1) %-28s %s%s\n' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)"
         printf '  2) %-28s %s%s\n' "$(_settings_label STATUS_TIMEOUT)" "$(settings_get STATUS_TIMEOUT)" "$(_settings_note STATUS_TIMEOUT)"
+        printf '  3) %-28s %s%s\n' "$(_settings_label UI)" "$(settings_get UI)" "$(_settings_note UI)"
         echo "  0) Geri (q)"
         echo ""
         if ! read -r -p "Değiştirilecek ayar [0]: " choice; then return 0; fi
@@ -136,6 +144,14 @@ SettingsAction() {
                 cur=$(settings_get STATUS)
                 if [ "$cur" = "on" ]; then new=off; else new=on; fi
                 settings_set STATUS "$new" || read -r -p "Enter..." _ || true
+                ;;
+            3)
+                case "$(settings_get UI)" in
+                    auto) new=numbers ;;
+                    numbers) new=arrows ;;
+                    *) new=auto ;;
+                esac
+                settings_set UI "$new" || read -r -p "Enter..." _ || true
                 ;;
             2)
                 if ! read -r -p "Süre 1-5 sn [$(settings_get STATUS_TIMEOUT)]: " new; then return 0; fi
