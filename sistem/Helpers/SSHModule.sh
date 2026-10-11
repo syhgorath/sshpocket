@@ -124,7 +124,7 @@ ssh_module_run() {
         echo "  2) Public key'i sunucuya gönder"
         echo "  3) Bilgileri güncelle (IP / kullanıcı / port / key yolu)"
         echo "  4) Keychain passphrase'ini güncelle / sil"
-        echo "  0) Geri"
+        echo "  0) Geri (q)"
         if ! read -r -p "Seçim [1]: " choice; then return 0; fi
         case "${choice:-1}" in
             1|2)

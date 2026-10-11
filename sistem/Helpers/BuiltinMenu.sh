@@ -51,7 +51,7 @@ ManageServersAction() {
     echo ""
     echo "  1) Sil"
     echo "  2) Yeniden adlandır"
-    echo "  0) Geri"
+    echo "  0) Geri (q)"
     if ! read -r -p "Seçim [0]: " choice; then return 0; fi
     case "${choice:-0}" in
         1)
