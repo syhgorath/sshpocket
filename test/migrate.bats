@@ -213,4 +213,16 @@ snapshot() { ( cd "$1" && find . -type f -not -name '.DS_Store' | LC_ALL=C sort 
     cmp "$BATS_TEST_TMPDIR/once" "$BATS_TEST_TMPDIR/sonra"
     [ -d "$MOD/example" ]
 }
+@test "taşıma bittikten sonra Modules'ta hiçbir şey kalmadıysa boş sistem/Modules klasörü kaldırılır" {
+    rm -r "$MOD/example"; rm -f "$MOD/.DS_Store"       # yalnızca taşınacak iki sunucu kalsın
+    run migrate --yes
+    [ "$status" -eq 0 ]
+    [ ! -d "$MOD" ]
+    [ -d "$SRV/ubuntutest" ]
+}
+@test "taşıma: Modules içinde taşınmayan bir şey varsa klasör silinmez" {
+    mkdir -p "$MOD/benim_klasorum"; printf 'x' > "$MOD/benim_klasorum/not.txt"
+    run migrate --yes
+    [ -f "$MOD/benim_klasorum/not.txt" ]
+}
 

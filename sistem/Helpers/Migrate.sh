@@ -160,6 +160,8 @@ run_migration() {
                 echo "⚠️  $n: eski klasör kenara alınamadı (yeni kopya geçerli; eski klasör yerinde)"
             fi
         done
+        # Taşınacak bir şey kalmadıysa boş eski klasörü de kaldır (yalnızca boşsa; rmdir)
+        rmdir "$SISTEM_PATH/Modules" 2>/dev/null || true
         echo ""
         echo "Eski klasörler: $bak"
         echo "ℹ️  Orada key dosyalarının bir kopyası kalır. Yeni düzenin çalıştığını doğruladıktan sonra o klasörü kendiniz silin."
