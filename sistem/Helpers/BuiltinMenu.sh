@@ -8,6 +8,10 @@ RegisterBuiltinMenu() {
     RegisterModules "📥 ~/.ssh/config'ten içe aktar" "MainMenu" "ImportSSHConfigAction"
     RegisterModules "🛠️  Sunucuları yönet (listele/sil/yeniden adlandır)" "MainMenu" "ManageServersAction"
     RegisterModules "⬆️  Güncellemeleri kontrol et / güncelle" "MainMenu" "UpdateAction"
+    # Paketler yalnızca kilit dosyasında paket varsa menüde görünür
+    if declare -F comp_ids >/dev/null && [ -n "$(comp_ids 2>/dev/null)" ]; then
+        RegisterModules "📦 Paketler (durum / kur)" "MainMenu" "ComponentsAction"
+    fi
     RegisterModules "⚙️  Ayarlar" "MainMenu" "SettingsAction"
 }
 
@@ -25,7 +29,7 @@ ReloadModules() {
 # Fonksiyon adı yerleşik eylem mi? (--auto modunda atlanır)
 IsBuiltinAction() {
     case "$1" in
-        AddServerAction|ImportSSHConfigAction|ManageServersAction|UpdateAction|SettingsAction) return 0 ;;
+        AddServerAction|ImportSSHConfigAction|ManageServersAction|UpdateAction|SettingsAction|ComponentsAction) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -74,6 +78,16 @@ ManageServersAction() {
     ReloadModules
 }
 
+# Paketler: durumu göster, eksik/eski olanı onayla kur (kilitteki sürüm)
+ComponentsAction() {
+    clear
+    if declare -F ui_header >/dev/null; then ui_header "Ana menü › Paketler"; fi
+    echo ""
+    comp_cli_list
+    echo ""
+    comp_cli_sync
+}
+
 # İmzalı güncelleme (ayrı süreç). Sürüm değiştiyse temiz bir yeniden başlatma yapılır.
 UpdateAction() {
     local after
@@ -82,6 +96,7 @@ UpdateAction() {
     after=$(head -n 1 "$SISTEM_PATH/../VERSION" 2>/dev/null | tr -d '[:space:]')
     if [ -n "$after" ] && [ "$after" != "$SCRIPT_VERSION" ]; then
         echo ""
+        bash "$SISTEM_PATH/Main.sh" --components sync
         read -r -p "Yeni sürümle yeniden başlatmak için Enter..." _ || true
         exec bash "$SISTEM_PATH/Main.sh"
     fi

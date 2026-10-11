@@ -20,6 +20,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
   `ComponentsVenv.sh`: aralığa uyan Python seçimi, yalnızca hash'li `requirements.txt` (`-r/-e/--index-url` reddedilir),
   `~/.cache/sshpocket/venv/<paket>-<ortam-kimliği>` önbelleği, `pip --require-hashes --only-binary :all:` yalnızca venv içine; aynı ortam
   kimliğinde sağlıklı venv varsa hiçbir şey kurulmaz. Henüz menüye bağlı değil.
+- **Paket yönetimi komutları (Aşama 2.4a):** `./start.sh --components list` (kilit ↔ kurulu durumu, ağsız), `sync [--yes]` (eksik/eski paketi
+  kilitteki sürümle, imza doğrulayarak, onayla kurar; bozulmuş kurulumu silmeden `<sürüm>.bozuk-<tarih>` olarak kenara alıp yeniden kurar),
+  `check-new` (kilitten daha yeni yayın var mı: **yalnızca bilgi**, kurulmaz; yeni sürüm yeni sshpocket sürümüyle gelir).
+  `--update` başarılıysa **yeni kodla** paketler kilide göre eşitlenir; menüde kilitte paket varsa **📦 Paketler** girdisi görünür.
 
 ### Değişti
 - Ok tuşlu seçim artık ⚙️ Ayarlar, **Sunucuları yönet** ve Keychain passphrase menülerinde de çalışır (başlıkla birlikte); `UI=numbers` ile
