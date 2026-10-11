@@ -24,8 +24,7 @@ Every server is a *module*: drop a module folder in and it shows up in the menu 
 | Environment | Status |
 |---|---|
 | **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Developed and manually tried |
-| **Apple Silicon (arm64)** | ⚠️ **Not tested** |
-| **Newer macOS versions (macOS 26 and later)** | ⚠️ **Not tested** |
+| **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Automated tests** (178 tests + ShellCheck, on every PR). ⚠️ Not tried by hand: the Keychain permission dialog, opening Terminal, double-clicking `start.command` |
 | Ubuntu 24.04 (CI only: ShellCheck + Bats tests) | ✅ automated |
 | Running on Linux (no Keychain/`osascript`/`diskutil`) | ❌ Not supported |
 | Target server: Ubuntu 26.04.1 (linux-hardening, a single test VM) | ✅ limited; rpi/Proxmox profiles not tried |
