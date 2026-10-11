@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+# component_manifest.py - component.json doğrulayıcısı (docs/package-standard.md §4-§6, sshpocket_api 1)
+#
+# Kullanım: python3 -I component_manifest.py <component.json> [beklenen-id] [beklenen-sürüm]
+# Çıkış 0: geçerli; stdout'a düz "anahtar=değer" satırları yazar (bash okur, eval edilmez).
+# Çıkış 1: geçersiz; nedenler stderr'e. Yalnızca stdlib. Bilinmeyen alanlar yok sayılır;
+# bilinmeyen ZORUNLU özellik (required_features) ve daha yeni sshpocket_api reddedilir.
+import json
+import re
+import sys
+
+SUPPORTED_API = {1}
+MAX_BYTES = 256 * 1024
+EFFECTS = ("installs-package", "changes-config", "destructive")
+CONFIRMS = ("none", "yes-no", "type-server-name")
+RUNNERS = ("ansible", "script")
+STATUSES = ("supported", "planned")
+VAR_SCALARS = ("string", "bool", "int", "path", "cidr", "enum")
+
+RE_ID = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
+RE_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+RE_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+RE_PROFILE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+RE_GROUP = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
+RE_CMD_BAD = re.compile(r"[;&|`$<>(){}\\\"'\n\r\t\x00]")
+RE_TEXT_BAD = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+RE_VALUE = re.compile(r"^(<[a-z0-9_ -]{1,40}>|[A-Za-z0-9_./:@=,+-]{1,200})$")
+
+errors = []
+
+
+def err(msg):
+    errors.append(msg)
+
+
+def is_str(v):
+    return isinstance(v, str)
+
+
+def is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def text_ok(v, what, maxlen=500):
+    if not is_str(v) or not v or len(v) > maxlen or RE_TEXT_BAD.search(v):
+        err("%s geçersiz metin" % what)
+        return False
+    return True
+
+
+def var_type_ok(t):
+    if t in VAR_SCALARS:
+        return True
+    m = re.match(r"^list\[([a-z]+)\]$", t) if is_str(t) else None
+    return bool(m and m.group(1) in VAR_SCALARS and m.group(1) != "enum")
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("kullanım: component_manifest.py <component.json> [id] [sürüm]", file=sys.stderr)
+        return 2
+    path = sys.argv[1]
+    want_id = (sys.argv[2] if len(sys.argv) > 2 else "") or None
+    want_ver = (sys.argv[3] if len(sys.argv) > 3 else "") or None
+    try:
+        with open(path, "rb") as f:
+            raw = f.read(MAX_BYTES + 1)
+    except OSError:
+        print("bildirim okunamadı", file=sys.stderr)
+        return 1
+    if len(raw) > MAX_BYTES:
+        print("bildirim çok büyük", file=sys.stderr)
+        return 1
+    try:
+        d = json.loads(raw.decode("utf-8"))
+    except Exception:
+        print("bildirim geçerli JSON değil", file=sys.stderr)
+        return 1
+    if not isinstance(d, dict):
+        print("bildirim bir nesne olmalı", file=sys.stderr)
+        return 1
+
+    # --- kimlik, sürüm, sözleşme sürümü ---
+    pid, ver, api = d.get("id"), d.get("version"), d.get("sshpocket_api")
+    if not (is_str(pid) and RE_ID.match(pid)):
+        err("id geçersiz")
+    if not (is_str(ver) and RE_VERSION.match(ver)):
+        err("version geçersiz")
+    if want_id is not None and pid != want_id:
+        err("id paketle uyuşmuyor")
+    if want_ver is not None and ver != want_ver:
+        err("version paketle uyuşmuyor")
+    if not is_int(api):
+        err("sshpocket_api tamsayı olmalı")
+    elif api not in SUPPORTED_API:
+        err("sshpocket_api %s desteklenmiyor (bu sshpocket: %s); daha yeni bir sshpocket gerekebilir"
+            % (api, ",".join(str(x) for x in sorted(SUPPORTED_API))))
+    rf = d.get("required_features")
+    if rf is not None and (not isinstance(rf, list) or rf):
+        err("bilinmeyen zorunlu özellik (required_features): bu sshpocket sürümü desteklemiyor")
+
+    runner = d.get("runner")
+    if runner not in RUNNERS:
+        err("runner 'ansible' ya da 'script' olmalı")
+    for k in ("name", "description"):
+        if k in d:
+            text_ok(d[k], k)
+    group = d.get("inventory_group")
+    if group is not None and not (is_str(group) and RE_GROUP.match(group)):
+        err("inventory_group geçersiz")
+
+    # --- profiller ---
+    profiles = d.get("profiles")
+    prof_lines = []
+    if not isinstance(profiles, list) or not profiles:
+        err("profiles boş olamaz")
+    else:
+        seen = set()
+        for p in profiles:
+            if (not isinstance(p, dict) or not (is_str(p.get("id")) and RE_PROFILE.match(p["id"]))
+                    or p.get("status") not in STATUSES):
+                err("profil geçersiz (id, status: supported|planned)")
+                continue
+            if p["id"] in seen:
+                err("yinelenen profil: %s" % p["id"])
+            seen.add(p["id"])
+            prof_lines.append("profile=%s:%s" % (p["id"], p["status"]))
+
+    # --- eylemler ---
+    actions = d.get("actions")
+    act_lines = []
+    if not isinstance(actions, dict) or not actions:
+        err("actions boş olamaz")
+        actions = {}
+    for name, a in actions.items():
+        if not (is_str(name) and RE_NAME.match(name)):
+            err("eylem adı geçersiz: %r" % (name,))
+            continue
+        if not isinstance(a, dict):
+            err("eylem nesne olmalı: %s" % name)
+            continue
+        cmd = a.get("cmd")
+        if not is_str(cmd) or not cmd.strip() or len(cmd) > 400 or RE_CMD_BAD.search(cmd):
+            err("%s: cmd geçersiz (kabuk meta karakteri/satır sonu yok, boş olamaz)" % name)
+            cmd = ""
+        effects = a.get("effects")
+        if (not isinstance(effects, list) or any(e not in EFFECTS for e in effects)
+                or len(set(effects)) != len(effects)):
+            err("%s: effects geçersiz (%s)" % (name, "|".join(EFFECTS)))
+            effects = []
+        for k in ("requires_sudo", "interactive"):
+            if k in a and not isinstance(a[k], bool):
+                err("%s: %s bool olmalı" % (name, k))
+        confirm = a.get("confirm", "none")
+        if confirm not in CONFIRMS:
+            err("%s: confirm geçersiz (%s)" % (name, "|".join(CONFIRMS)))
+            confirm = "none"
+        # sshpocket asgari kuralı: paket yalnızca sıkılaştırabilir
+        if "destructive" in effects:
+            minimum = "type-server-name"
+        elif effects:
+            minimum = "yes-no"
+        else:
+            minimum = "none"
+        effective = max(confirm, minimum, key=CONFIRMS.index)
+        warns = a.get("warnings", [])
+        if not isinstance(warns, list) or len(warns) > 20:
+            err("%s: warnings liste olmalı" % name)
+            warns = []
+        for w in warns:
+            text_ok(w, "%s: warning" % name)
+        act_lines.append("action=%s" % name)
+        act_lines.append("action.%s.cmd=%s" % (name, cmd))
+        act_lines.append("action.%s.effects=%s" % (name, ",".join(effects)))
+        act_lines.append("action.%s.sudo=%s" % (name, "yes" if a.get("requires_sudo") is True else "no"))
+        act_lines.append("action.%s.interactive=%s" % (name, "yes" if a.get("interactive") is True else "no"))
+        act_lines.append("action.%s.confirm=%s" % (name, effective))
+        act_lines.append("action.%s.confirm_raised=%s" % (name, "yes" if effective != confirm else "no"))
+        act_lines.append("action.%s.warnings=%d" % (name, len(warns)))
+    # requires: var olan eylemlere, kendine ve döngüsüz
+    graph = {}
+    for name, a in actions.items():
+        if not isinstance(a, dict):
+            continue
+        req = a.get("requires", [])
+        if not isinstance(req, list) or any(not is_str(r) for r in req):
+            err("%s: requires liste olmalı" % name)
+            continue
+        for r in req:
+            if r not in actions:
+                err("%s: requires bilinmeyen eylem: %s" % (name, r))
+            if r == name:
+                err("%s: requires kendini gösteremez" % name)
+        graph[name] = [r for r in req if r in actions]
+        act_lines.append("action.%s.requires=%s" % (name, ",".join(graph[name])))
+
+    def has_cycle():
+        state = {}
+
+        def visit(n):
+            state[n] = 1
+            for m in graph.get(n, []):
+                if state.get(m) == 1 or (state.get(m) is None and visit(m)):
+                    return True
+            state[n] = 2
+            return False
+        return any(state.get(n) is None and visit(n) for n in graph)
+    if has_cycle():
+        err("requires döngüsü var")
+
+    # --- değişkenler ---
+    var_lines = []
+    seen_vars = set()
+    vars_ = d.get("vars", [])
+    if not isinstance(vars_, list):
+        err("vars liste olmalı")
+        vars_ = []
+    for v in vars_:
+        typed = 1
+        if is_str(v):                       # eski biçim: yalnızca ad (üst veri yok, linux-hardening#29)
+            v = {"name": v, "type": "string"}
+            typed = 0
+        if not isinstance(v, dict) or not (is_str(v.get("name")) and RE_NAME.match(v["name"])):
+            err("vars: değişken adı geçersiz")
+            continue
+        n = v["name"]
+        if n in seen_vars:
+            err("vars: yinelenen değişken: %s" % n)
+        seen_vars.add(n)
+        t = v.get("type", "string")
+        if not var_type_ok(t):
+            err("%s: değişken türü geçersiz" % n)
+            continue
+        if "required" in v and not isinstance(v["required"], bool):
+            err("%s: required bool olmalı" % n)
+        if "description" in v:
+            text_ok(v["description"], "%s: description" % n)
+        if t == "enum":
+            vals = v.get("values")
+            if not isinstance(vals, list) or not vals or any(not is_str(x) or RE_TEXT_BAD.search(x) for x in vals):
+                err("%s: enum için values gerekir" % n)
+        if t == "int":
+            lo, hi = v.get("min"), v.get("max")
+            for b, bn in ((lo, "min"), (hi, "max")):
+                if b is not None and not is_int(b):
+                    err("%s: %s tamsayı olmalı" % (n, bn))
+            if is_int(lo) and is_int(hi) and lo > hi:
+                err("%s: min > max" % n)
+            dv = v.get("default")
+            if dv is not None and (not is_int(dv) or (is_int(lo) and dv < lo) or (is_int(hi) and dv > hi)):
+                err("%s: default türü/aralığı geçersiz" % n)
+        if t == "bool":
+            if "default" in v and not isinstance(v["default"], bool):
+                err("%s: bool default geçersiz" % n)
+            if "warn_if" in v and not isinstance(v["warn_if"], bool):
+                err("%s: warn_if bool olmalı" % n)
+        var_lines.append("var=%s:%s:%s:%s" % (n, t, "yes" if v.get("required") is True else "no", typed))
+
+    # --- invoke.append ---
+    inv_lines = []
+    inv = d.get("invoke", {})
+    app = inv.get("append", []) if isinstance(inv, dict) else None
+    if not isinstance(app, list):
+        err("invoke.append liste olmalı")
+        app = []
+    for i, e in enumerate(app):
+        if (not isinstance(e, dict) or not is_str(e.get("arg")) or not e["arg"].startswith("-")
+                or RE_CMD_BAD.search(e["arg"]) or " " in e["arg"]):
+            err("invoke.append[%d]: arg geçersiz" % i)
+            continue
+        val = e.get("value")
+        if val is not None and not (is_str(val) and RE_VALUE.match(val)):
+            err("invoke.append[%d]: value geçersiz" % i)
+            continue
+        for k in ("required", "interactive"):
+            if k in e and not isinstance(e[k], bool):
+                err("invoke.append[%d]: %s bool olmalı" % (i, k))
+        inv_lines.append("invoke=%s|%s|%s|%s" % (
+            e["arg"], val if val is not None else "",
+            "yes" if e.get("required") is True else "no",
+            "yes" if e.get("interactive") is True else "no"))
+
+    if errors:
+        for m in errors:
+            print(m, file=sys.stderr)
+        return 1
+    out = ["id=%s" % pid, "version=%s" % ver, "sshpocket_api=%d" % api, "runner=%s" % runner]
+    if group:
+        out.append("inventory_group=%s" % group)
+    out += prof_lines + act_lines + var_lines + inv_lines
+    print("\n".join(out))
+    return 0
+
+
+sys.exit(main())
