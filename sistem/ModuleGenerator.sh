@@ -2,15 +2,19 @@
 # ModuleGenerator.sh - Yeni SSH modülü oluşturur
 # Kullanım: bash sistem/ModuleGenerator.sh
 # Passphrase asla dosyaya yazılmaz; macOS Keychain'e kaydedilir.
-# SSHPOCKET_MODULES_DIR ile Modules klasörü değiştirilebilir (testler için).
+# Sunucu servers/<ad>/server.env olarak yazılır. SSHPOCKET_SERVERS_DIR ile klasör değiştirilebilir (testler için).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODULES_DIR="${SSHPOCKET_MODULES_DIR:-$SCRIPT_DIR/Modules}"
+SISTEM_PATH="$SCRIPT_DIR"
+LEGACY_DIR="${SSHPOCKET_MODULES_DIR:-$SCRIPT_DIR/Modules}"
 
 # shellcheck source=Helpers/Validate.sh
 source "$SCRIPT_DIR/Helpers/Validate.sh"
 # shellcheck source=Helpers/ModuleFiles.sh
 source "$SCRIPT_DIR/Helpers/ModuleFiles.sh"
+# shellcheck source=Helpers/Servers.sh
+source "$SCRIPT_DIR/Helpers/Servers.sh"
+SERVERS_DIR="$(servers_dir)"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 
@@ -23,9 +27,9 @@ if ! module_name_valid "$module_name"; then
     echo -e "${RED}❌ Geçersiz ad (harfle başlamalı)${NC}"; exit 1
 fi
 
-module_dir="$MODULES_DIR/$module_name"
-if [ -e "$module_dir" ]; then
-    echo -e "${RED}❌ Modül zaten var: $module_dir${NC}"
+module_dir="$SERVERS_DIR/$module_name"
+if [ -e "$module_dir" ] || [ -e "$LEGACY_DIR/$module_name" ]; then
+    echo -e "${RED}❌ Bu adda bir sunucu zaten var: $module_name${NC}"
     echo "   (Üzerine yazılmaz; önce 'ModuleManager.sh remove $module_name' kullanın.)"
     exit 1
 fi
@@ -41,7 +45,7 @@ if ! verr=$(ssh_validate_target "$ssh_ip" "$ssh_user" "$ssh_port" 2>&1); then
     echo -e "${RED}❌ $verr${NC}"; exit 1
 fi
 
-module_write_files "$MODULES_DIR" "$module_name" "$ssh_ip" "$ssh_user" "$ssh_port" || exit 1
+server_write_files "$SERVERS_DIR" "$module_name" "$ssh_ip" "$ssh_user" "$ssh_port" || exit 1
 key="$module_dir/id_ed25519_${module_name}"
 
 echo ""
@@ -63,7 +67,7 @@ if [ "$create_key" = "y" ] || [ "$create_key" = "Y" ]; then
     fi
 else
     echo -e "${YELLOW}💡 Mevcut key'i şuraya koyun: $key${NC}"
-    echo "   (ya da .env'e ${upper}_KEY=/yol/key ekleyin)"
+    echo "   (ya da server.env'e KEY=/yol/key ekleyin)"
     echo "   Passphrase'i Keychain'e eklemek için:"
     echo "   security add-generic-password -U -a USBMonitor_${upper}_Passphrase -s USBMonitor -w"
 fi
@@ -80,5 +84,5 @@ if [ -f "$key" ]; then
 fi
 
 echo ""
-echo -e "${GREEN}✅ Modül oluşturuldu: $module_dir${NC}"
+echo -e "${GREEN}✅ Sunucu oluşturuldu: $module_dir${NC}"
 echo "   Menüde '${upper}' olarak görünür (start.sh ile başlatın)."

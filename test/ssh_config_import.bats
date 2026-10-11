@@ -60,30 +60,41 @@ CONF
     run ssh_config_module_name "1host";   [ "$output" = "h_1host" ]
     run ssh_config_module_name "my.srv";  [ "$output" = "my_srv" ]
 }
-@test "CLI: seçilenleri modül olarak içe aktarır, mevcut olanı atlar" {
+@test "CLI: seçilenleri servers/ altına yeni biçimde içe aktarır, mevcut olanı atlar" {
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/servers"
     export SSHPOCKET_MODULES_DIR="$BATS_TEST_TMPDIR/Modules"
-    mkdir -p "$SSHPOCKET_MODULES_DIR/db"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/db"
     run bash "$ROOT/sistem/ImportSSHConfig.sh" "$CFG" <<< "a"
     [ "$status" -eq 0 ]
-    [ -f "$SSHPOCKET_MODULES_DIR/web1/Web1Module.sh" ]
-    [ -f "$SSHPOCKET_MODULES_DIR/web2/Web2Module.sh" ]
+    [ -f "$SSHPOCKET_SERVERS_DIR/web1/server.env" ]
+    [ -f "$SSHPOCKET_SERVERS_DIR/web2/server.env" ]
     [[ "$output" == *"db zaten var"* ]]
-    # private key kopyalanmaz, yol .env'e yazılır
-    grep -q 'WEB1_KEY=~/.ssh/id_web' "$SSHPOCKET_MODULES_DIR/web1/.env"
-    [ -z "$(ls "$SSHPOCKET_MODULES_DIR/web1" | grep id_ed25519 || true)" ]
+    # üretilmiş modül dosyası YOK; genel anahtarlar; private key kopyalanmaz, yol KEY olarak yazılır
+    [ ! -e "$SSHPOCKET_SERVERS_DIR/web1/Web1Module.sh" ]
+    grep -qx 'KEY=~/.ssh/id_web' "$SSHPOCKET_SERVERS_DIR/web1/server.env"
+    grep -qx 'IP=192.0.2.10' "$SSHPOCKET_SERVERS_DIR/web1/server.env"
+    [ -z "$(ls "$SSHPOCKET_SERVERS_DIR/web1" | grep id_ed25519 || true)" ]
+}
+@test "CLI: eski biçimde aynı ad varsa da atlanır" {
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/servers"
+    export SSHPOCKET_MODULES_DIR="$BATS_TEST_TMPDIR/Modules"
+    mkdir -p "$SSHPOCKET_MODULES_DIR/web1"; printf 'WEB1_IP=1.1.1.1\n' > "$SSHPOCKET_MODULES_DIR/web1/.env"
+    run bash "$ROOT/sistem/ImportSSHConfig.sh" "$CFG" <<< "a"
+    [[ "$output" == *"web1 zaten var"* ]]
+    [ ! -e "$SSHPOCKET_SERVERS_DIR/web1" ]
 }
 @test "CLI: Enter iptal eder" {
-    export SSHPOCKET_MODULES_DIR="$BATS_TEST_TMPDIR/Modules"
-    mkdir -p "$SSHPOCKET_MODULES_DIR"
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/servers"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR"
     run bash "$ROOT/sistem/ImportSSHConfig.sh" "$CFG" <<< ""
     [[ "$output" == *"İptal"* ]]
-    [ -z "$(ls -A "$SSHPOCKET_MODULES_DIR")" ]
+    [ -z "$(ls -A "$SSHPOCKET_SERVERS_DIR")" ]
 }
 @test "CLI: geçersiz hostname içeren kayıt atlanır" {
     printf 'Host evil\n    HostName a$(id)\n' > "$CFG"
-    export SSHPOCKET_MODULES_DIR="$BATS_TEST_TMPDIR/Modules"
-    mkdir -p "$SSHPOCKET_MODULES_DIR"
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/servers"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR"
     run bash "$ROOT/sistem/ImportSSHConfig.sh" "$CFG" <<< "a"
     [[ "$output" == *"içe aktarılamadı"* ]]
-    [ ! -e "$SSHPOCKET_MODULES_DIR/evil" ]
+    [ ! -e "$SSHPOCKET_SERVERS_DIR/evil" ]
 }

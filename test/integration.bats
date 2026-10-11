@@ -80,7 +80,9 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
 @test "menüden ekle: yeni modül yeniden başlatmadan menüde görünür" {
     # sahte ssh-keygen: key üretimini atlayıp 'n' diyoruz; generator'a girdi: ad, ip, kullanıcı, port, key=n
     run bash -c "printf '2\nnewsrv\n192.0.2.7\nroot\n22\nn\n\n0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
-    [ -f "$SANDBOX/sistem/Modules/newsrv/NewsrvModule.sh" ]
+    [ -f "$SANDBOX/servers/newsrv/server.env" ]
+    [ ! -e "$SANDBOX/sistem/Modules/newsrv" ]
+    grep -qx 'IP=192.0.2.7' "$SANDBOX/servers/newsrv/server.env"
     [[ "$output" == *"NEWSRV"* ]]
 }
 @test "--auto yerleşik eylemi değil ilk sunucuyu çalıştırır" {
