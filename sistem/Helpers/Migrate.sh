@@ -166,3 +166,24 @@ run_migration() {
     fi
     return "$failed"
 }
+
+# Eski sürümlerin gönderdiği, hiç yapılandırılmamış 'example' şablonunu (yalnızca ExampleModule.sh/.env.example/.DS_Store) kaldırır.
+# İçinde .env, key (id_*) ya da başka bir kullanıcı dosyası varsa DOKUNMAZ. Açılışta çağrılır; boş bir "EXAMPLE" menü satırını önler.
+migrate_cleanup_stale_example() {
+    local d="$SISTEM_PATH/Modules/example" f extra=0
+    [ -d "$d" ] || return 0
+    for f in "$d"/* "$d"/.[!.]*; do
+        [ -e "$f" ] || continue
+        case "$(basename "$f")" in
+            ExampleModule.sh|.env.example|.DS_Store) ;;
+            *) extra=1 ;;
+        esac
+    done
+    if [ "$extra" = "0" ]; then
+        rm -r -- "${d:?}"
+        rmdir "$SISTEM_PATH/Modules" 2>/dev/null || true
+        Log "INFO" "Eski, yapılandırılmamış 'example' şablonu temizlendi"
+    fi
+    return 0
+}
+
