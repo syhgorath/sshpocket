@@ -20,3 +20,21 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y bats
       - name: Run tests
         run: bats test
+  # macOS (Apple Silicon, yeni macOS) + macOS'un kendi bash 3.2'si: kullanıcıların gerçek ortamı.
+  # Not: Gerçek Keychain izin penceresi/Terminal burada sınanmaz (testler sahte `security` kullanır).
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Ortam bilgisi
+        run: |
+          uname -m
+          sw_vers
+          PATH="/bin:$PATH" bash --version | head -1
+          ssh -V
+      - name: Araçları kur
+        run: brew install bats-core shellcheck
+      - name: ShellCheck
+        run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh
+      - name: Testler (macOS bash 3.2 ile)
+        run: PATH="/bin:/usr/bin:$PATH" bats test
