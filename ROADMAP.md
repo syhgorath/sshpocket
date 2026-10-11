@@ -6,8 +6,9 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 
 > **Arayüz/TUI ve teknoloji seçenekleri (tartışma):** bkz. [docs/ui-design.md](docs/ui-design.md).
 
-> **Tasarım kararları alındı:** `servers/` veri ayrımı ve bileşen (component) modeli için
-> bkz. [docs/components-design.md](docs/components-design.md). Uygulama, deneme haftasından sonra aşamalarla yapılacak.
+> **Bileşen/paket modeli:** tasarım [docs/components-design.md](docs/components-design.md), paket standardı [docs/package-standard.md](docs/package-standard.md).
+> Durum: `servers/` veri düzeni, ayarlar, ok tuşlu menü ve paket **altyapısı** (kilit, imza, kurulum, bildirim, venv, `--doctor`, `--components`) hazır.
+> Sırada: gerçek paketle uçtan uca deneme, 🛡️ Hardening menüsü, 🧰 Araçlar, klasik port knocking.
 
 ### Taşınabilirlik (Linux)
 Şu an yalnızca macOS: `security` (Keychain), `osascript` (Terminal), `diskutil` (eject) kullanılıyor.
