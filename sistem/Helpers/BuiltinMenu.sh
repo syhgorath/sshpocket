@@ -45,14 +45,19 @@ ImportSSHConfigAction() {
 ManageServersAction() {
     local choice name new
     clear
-    echo "=== Sunucuları yönet ==="
+    if declare -F ui_header >/dev/null; then ui_header "Ana menü › Sunucuları yönet"; else echo "=== Sunucuları yönet ==="; fi
     echo ""
     bash "$SISTEM_PATH/ModuleManager.sh" list
     echo ""
-    echo "  1) Sil"
-    echo "  2) Yeniden adlandır"
-    echo "  0) Geri (q)"
-    if ! read -r -p "Seçim [0]: " choice; then return 0; fi
+    if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+        choice=$(ui_pick_arrows 1 "Geri" "Sil" "Yeniden adlandır")
+        echo ""
+    else
+        echo "  1) Sil"
+        echo "  2) Yeniden adlandır"
+        echo "  0) Geri (q)"
+        if ! read -r -p "Seçim [0]: " choice; then return 0; fi
+    fi
     case "${choice:-0}" in
         1)
             read -r -p "Silinecek modül adı: " name

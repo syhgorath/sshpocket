@@ -96,10 +96,15 @@ ssh_keychain_manage() {
     else
         echo "Keychain kaydı: ❌ yok"
     fi
-    echo "  1) Kaydet / güncelle"
-    echo "  2) Sil"
-    echo "  0) Geri (q)"
-    read -r -p "Seçim [0]: " choice || return 0
+    if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+        choice=$(ui_pick_arrows 1 "Geri" "Kaydet / güncelle" "Sil")
+        echo ""
+    else
+        echo "  1) Kaydet / güncelle"
+        echo "  2) Sil"
+        echo "  0) Geri (q)"
+        read -r -p "Seçim [0]: " choice || return 0
+    fi
     case "${choice:-0}" in
         1)
             # -w son argüman: passphrase komut satırında görünmez, güvenli sorulur

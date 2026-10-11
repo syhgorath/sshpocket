@@ -166,3 +166,28 @@ pick() { ui_pick_arrows "$@" 2>/dev/null; }
     [[ "$output" == *"Ana menü › ALPHA"* ]]
     [[ "$output" == *"Exiting"* ]]
 }
+
+@test "ok tuşu (gerçek okuyucu): Ayarlar paneli ok modunda ayarı çevirir ve geri döner" {
+    unset -f _ui_read_key
+    source "$H/UI.sh"
+    export SSHPOCKET_CONF="$BATS_TEST_TMPDIR/c.conf"
+    export SISTEM_PATH="$ROOT/sistem"
+    # Enter → 1. ayar (STATUS on→off); sonra q
+    SSHPOCKET_UI=arrows run bash -c 'source "'"$H"'/Settings.sh"; source "'"$H"'/UI.sh"; clear(){ :; }; SettingsAction' <<< $'\nq'
+    grep -q '^STATUS=off$' "$SSHPOCKET_CONF"
+}
+
+@test "ok tuşu (gerçek okuyucu): Sunucuları yönet ok modunda açılır, Sil seçilip ad boş bırakılırsa hiçbir şey silinmez" {
+    unset -f _ui_read_key
+    source "$H/UI.sh"
+    make_sandbox
+    mkdir -p "$SANDBOX/servers/alpha"
+    printf 'IP=192.0.2.7\nUSER=deploy\nPORT=22\n' > "$SANDBOX/servers/alpha/server.env"
+    run bash -c "export SSHPOCKET_UI=arrows SISTEM_PATH='$SANDBOX/sistem' TERM=xterm; \
+        source '$SANDBOX/sistem/Helpers/Settings.sh'; source '$SANDBOX/sistem/Helpers/UI.sh'; source '$SANDBOX/sistem/Helpers/BuiltinMenu.sh' >/dev/null 2>&1; \
+        ReloadModules(){ :; }; clear(){ :; }; \
+        ManageServersAction" <<< $'\n\n'
+    [[ "$output" == *"Ana menü › Sunucuları yönet"* ]]
+    [[ "$output" == *$'\033[7m'*"Sil"* ]]          # ok moduna özgü vurgulu satır
+    [ -f "$SANDBOX/servers/alpha/server.env" ]
+}
