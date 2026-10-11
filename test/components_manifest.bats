@@ -1,0 +1,191 @@
+#!/usr/bin/env bats
+# Aşama 2.2: bildirim okuma ve sözleşme doğrulama (ağ yok)
+load test_helper
+
+setup() {
+    export SISTEM_PATH="$ROOT/sistem"
+    source "$H/Components.sh"
+    source "$H/ComponentsInstall.sh"
+    source "$H/ComponentsManifest.sh"
+    T="$BATS_TEST_TMPDIR"
+}
+
+# mf <json> → $T/m.json yazar
+mf() { printf '%s\n' "$1" > "$T/m.json"; }
+BASE='"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profiles":[{"id":"ubuntu-26.04","status":"supported"}]'
+ok_act='"actions":{"audit":{"cmd":"ansible-playbook playbooks/audit.yml","effects":[]}}'
+
+valid() { run comp_manifest_info "$T/m.json" "${1:-}" "${2:-}"; [ "$status" -eq 0 ]; }
+invalid() { run comp_manifest_info "$T/m.json"; [ "$status" -ne 0 ]; }
+
+@test "bildirim: en küçük geçerli bildirim kabul edilir" {
+    mf "{$BASE,$ok_act}"
+    run comp_manifest_info "$T/m.json" demo 1.0.0
+    [ "$status" -eq 0 ]
+    [ "$(comp_info_get "$output" runner)" = "ansible" ]
+    [ "$(comp_info_get "$output" version)" = "1.0.0" ]
+    [ "$(comp_info_all "$output" action)" = "audit" ]
+    [ "$(comp_info_all "$output" profile)" = "ubuntu-26.04:supported" ]
+}
+
+@test "bildirim: linux-hardening biçimli (effects, requires, invoke, vars) okunur ve etkin confirm hesaplanır" {
+    mf '{"id":"linux-hardening","version":"0.1.0","sshpocket_api":1,"runner":"ansible","inventory_group":"hardening",
+     "profiles":[{"id":"ubuntu-26.04","status":"supported"},{"id":"rpi","status":"planned"}],
+     "actions":{
+       "audit":{"cmd":"ansible-playbook playbooks/audit.yml","effects":["installs-package"],"requires_sudo":true,"confirm":"yes-no",
+                "warnings":["audit hedefe lynis kurar"]},
+       "preview":{"cmd":"ansible-playbook playbooks/harden.yml --check --diff","effects":[],"requires_sudo":true},
+       "apply":{"cmd":"ansible-playbook playbooks/harden.yml","effects":["installs-package","changes-config"],
+                "requires_sudo":true,"requires":["preview"],"confirm":"none"},
+       "rollback_now":{"cmd":"ansible-playbook playbooks/rollback.yml --tags now","effects":["destructive"],"confirm":"yes-no"}},
+     "vars":[{"name":"hardening_ssh_allow_from","type":"list[cidr]","required":true},
+             {"name":"hardening_rollback_timeout","type":"int","default":300,"min":30,"max":3600},
+             "hardening_scan_dir"],
+     "invoke":{"append":[{"arg":"-i","value":"<inventory>","required":true},{"arg":"--ask-become-pass","interactive":true}]}}'
+    run comp_manifest_info "$T/m.json" linux-hardening 0.1.0
+    [ "$status" -eq 0 ]
+    info="$output"
+    [ "$(comp_info_get "$info" inventory_group)" = "hardening" ]
+    [ "$(comp_action_get "$info" apply requires)" = "preview" ]
+    [ "$(comp_action_get "$info" apply effects)" = "installs-package,changes-config" ]
+    [ "$(comp_action_get "$info" apply sudo)" = "yes" ]
+    # etkin confirm: paket gevşetemez
+    [ "$(comp_action_get "$info" preview confirm)" = "none" ]
+    [ "$(comp_action_get "$info" audit confirm)" = "yes-no" ]
+    [ "$(comp_action_get "$info" apply confirm)" = "yes-no" ]
+    [ "$(comp_action_get "$info" apply confirm_raised)" = "yes" ]
+    [ "$(comp_action_get "$info" rollback_now confirm)" = "type-server-name" ]
+    [ "$(comp_action_get "$info" rollback_now confirm_raised)" = "yes" ]
+    [ "$(comp_action_get "$info" audit warnings)" = "1" ]
+    comp_info_all "$info" var | grep -qx 'hardening_ssh_allow_from:list\[cidr\]:yes:1'
+    comp_info_all "$info" var | grep -qx 'hardening_scan_dir:string:no:0'      # eski biçim: yalnızca ad
+    comp_info_all "$info" invoke | grep -qx -- '-i|<inventory>|yes|no'
+    comp_info_all "$info" invoke | grep -qx -- '--ask-become-pass||no|yes'
+}
+
+@test "bildirim: paket daha sıkı confirm isteyebilir (type-server-name korunur, yükseltme sayılmaz)" {
+    mf "{$BASE,\"actions\":{\"x\":{\"cmd\":\"run.sh\",\"effects\":[],\"confirm\":\"type-server-name\"}}}"
+    run comp_manifest_info "$T/m.json"
+    [ "$status" -eq 0 ]
+    [ "$(comp_action_get "$output" x confirm)" = "type-server-name" ]
+    [ "$(comp_action_get "$output" x confirm_raised)" = "no" ]
+}
+
+@test "bildirim: kimlik/sürüm beklenenden farklıysa reddedilir" {
+    mf "{$BASE,$ok_act}"
+    run comp_manifest_info "$T/m.json" baska 1.0.0; [ "$status" -ne 0 ]
+    run comp_manifest_info "$T/m.json" demo 2.0.0;  [ "$status" -ne 0 ]
+}
+
+@test "bildirim: sshpocket_api desteklenmiyorsa (daha yeni/eski/tür) reddedilir" {
+    local a
+    for a in 2 0 '"1"' true null; do
+        mf "{\"id\":\"demo\",\"version\":\"1.0.0\",\"sshpocket_api\":$a,\"runner\":\"ansible\",\"profiles\":[{\"id\":\"p\",\"status\":\"supported\"}],$ok_act}"
+        invalid || { echo "KABUL: api=$a"; return 1; }
+    done
+    mf "{\"id\":\"demo\",\"version\":\"1.0.0\",\"sshpocket_api\":2,\"runner\":\"ansible\",\"profiles\":[{\"id\":\"p\",\"status\":\"supported\"}],$ok_act}"
+    run comp_manifest_info "$T/m.json"
+    [[ "$output" == *"daha yeni"* ]]
+}
+
+@test "bildirim: bilinmeyen zorunlu özellik (required_features) reddedilir, bilinmeyen isteğe bağlı alan yok sayılır" {
+    mf "{$BASE,$ok_act,\"required_features\":[\"yeni-sey\"]}"
+    invalid
+    mf "{$BASE,$ok_act,\"gelecek_alan\":{\"x\":1}}"
+    valid
+}
+
+@test "bildirim: geçersiz id/sürüm/runner/profil reddedilir" {
+    local c
+    for c in '"id":"Demo"' '"id":"../x"' '"version":"1.0"' '"version":"1.0.0-rc"' '"runner":"bash"' '"runner":5'; do
+        mf "{$BASE,$ok_act,$c}"
+        invalid || { echo "KABUL: $c"; return 1; }
+    done
+    for c in '"profiles":[]' '"profiles":"x"' '"profiles":[{"id":"p","status":"live"}]' \
+             '"profiles":[{"id":"p","status":"supported"},{"id":"p","status":"planned"}]' '"profiles":[{"id":"../p","status":"supported"}]'; do
+        mf "{\"id\":\"demo\",\"version\":\"1.0.0\",\"sshpocket_api\":1,\"runner\":\"ansible\",$c,$ok_act}"
+        invalid || { echo "KABUL: $c"; return 1; }
+    done
+}
+
+@test "bildirim: cmd'de kabuk meta karakteri / satır sonu / boş değer reddedilir" {
+    local c
+    for c in 'a; rm -rf /' 'a | b' 'a && b' 'a $(id)' 'a `id`' 'a > f' 'a\nb' '' '   '; do
+        mf "{$BASE,\"actions\":{\"x\":{\"cmd\":\"$c\",\"effects\":[]}}}"
+        invalid || { echo "KABUL: [$c]"; return 1; }
+    done
+}
+
+@test "bildirim: effects/confirm/bool/requires hataları reddedilir" {
+    local c
+    for c in '"effects":["root-erisimi"]' '"effects":"changes-config"' '"effects":["changes-config","changes-config"]' \
+             '"effects":[],"confirm":"belki"' '"effects":[],"requires_sudo":"yes"' '"effects":[],"requires":["yok"]' \
+             '"effects":[],"requires":["x"]' '"effects":[],"warnings":"tek"' '"effects":[],"interactive":1'; do
+        mf "{$BASE,\"actions\":{\"x\":{\"cmd\":\"run.sh\",$c}}}"
+        invalid || { echo "KABUL: $c"; return 1; }
+    done
+    mf "{$BASE,\"actions\":{\"a\":{\"cmd\":\"r\",\"effects\":[],\"requires\":[\"b\"]},\"b\":{\"cmd\":\"r\",\"effects\":[],\"requires\":[\"a\"]}}}"
+    invalid
+    mf "{$BASE,\"actions\":{}}"
+    invalid
+    mf "{$BASE,\"actions\":{\"Bad Name\":{\"cmd\":\"r\",\"effects\":[]}}}"
+    invalid
+}
+
+@test "bildirim: değişken hataları reddedilir (tür, enum, aralık, yineleme)" {
+    local c
+    for c in '{"name":"x","type":"dosya"}' '{"name":"X","type":"int"}' '{"name":"x","type":"enum"}' \
+             '{"name":"x","type":"int","min":10,"max":5}' '{"name":"x","type":"int","default":"abc"}' \
+             '{"name":"x","type":"int","min":1,"max":3,"default":9}' '{"name":"x","type":"bool","default":"yes"}' \
+             '{"name":"x","type":"list[enum]"}' '{"name":"x","required":"evet"}' '5'; do
+        mf "{$BASE,$ok_act,\"vars\":[$c]}"
+        invalid || { echo "KABUL: $c"; return 1; }
+    done
+    mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"int\"},{\"name\":\"x\",\"type\":\"int\"}]}"
+    invalid
+}
+
+@test "bildirim: invoke.append hataları reddedilir" {
+    local c
+    for c in '{"arg":"ls"}' '{"arg":"-i x"}' '{"arg":"-i","value":"a b; c"}' '{"arg":"-i","value":"$(id)"}' '"-i"'; do
+        mf "{$BASE,$ok_act,\"invoke\":{\"append\":[$c]}}"
+        invalid || { echo "KABUL: $c"; return 1; }
+    done
+}
+
+@test "bildirim: geçersiz JSON, nesne olmayan, çok büyük ve yok olan dosya reddedilir" {
+    printf 'not json' > "$T/m.json"; invalid
+    printf '[1,2]' > "$T/m.json"; invalid
+    # yalnızca boyut yüzünden reddedilmeli: geçerli bildirim + yok sayılan büyük alan
+    python3 -I -c "
+import json
+d={'id':'demo','version':'1.0.0','sshpocket_api':1,'runner':'ansible',
+   'profiles':[{'id':'p','status':'supported'}],
+   'actions':{'a':{'cmd':'run.sh','effects':[]}},'gelecek_alan':'x'*300000}
+print(json.dumps(d))" > "$T/m.json"
+    invalid
+    [[ "$output" == *"çok büyük"* ]]
+    run comp_manifest_info "$T/yok.json"
+    [ "$status" -ne 0 ]
+}
+
+@test "hazırlık: kurulu paketi bütünlükle doğrular ve bilgiyi verir; kurcalanmışsa reddeder" {
+    export SSHPOCKET_COMPONENTS_LOCK="$T/components.lock" SSHPOCKET_COMPONENTS_DIR="$T/components"
+    ssh-keygen -q -t ed25519 -N "" -f "$T/good" -C test
+    PUB=$(cut -d' ' -f1,2 "$T/good.pub")
+    mkdir -p "$T/pkg/demo-1.0.0"
+    printf '{%s,%s}\n' "$BASE" "$ok_act" > "$T/pkg/demo-1.0.0/component.json"
+    tar -czf "$T/demo-1.0.0.tar.gz" -C "$T/pkg" demo-1.0.0
+    ssh-keygen -q -Y sign -f "$T/good" -n sshpocket-component "$T/demo-1.0.0.tar.gz"
+    printf '[demo]\nrepo = a/demo\nversion = 1.0.0\nsha256 = %s\nsigners = sshpocket-component namespaces="sshpocket-component" %s\n' \
+        "$(comp_sha256_of "$T/demo-1.0.0.tar.gz")" "$PUB" > "$T/components.lock"
+    run comp_prepare demo                                    # kurulu değil
+    [ "$status" -ne 0 ]
+    comp_install_archive demo 1.0.0 "$T/demo-1.0.0.tar.gz" "$T/demo-1.0.0.tar.gz.sig" >/dev/null
+    run comp_prepare demo
+    [ "$status" -eq 0 ]
+    [ "$(comp_info_get "$output" id)" = "demo" ]
+    printf '{"id":"demo"}' > "$T/components/demo/1.0.0/component.json"   # kurulumdan sonra kurcalama
+    run comp_prepare demo
+    [ "$status" -ne 0 ]
+}
