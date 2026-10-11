@@ -80,6 +80,18 @@ Modül menüsünden **2) Public key'i sunucuya gönder** seçeneği (veya genera
 - Sunucuda `PasswordAuthentication no` yapmak **bilerek otomatik değildir.** Key ile girişin
   çalıştığını gördükten sonra elle yapın, yoksa kendinizi dışarıda bırakabilirsiniz.
 
+## Eski düzenden taşıma (v3 öncesi → `servers/`)
+
+Eski `sistem/Modules/<ad>/` sunucularınız **otomatik** taşınır; dışa/içe aktarma gerekmez.
+
+```bash
+./start.sh --migrate --dry-run   # önce ne olacağını gör (hiçbir şey değişmez)
+./start.sh --migrate             # onay isteyip taşır
+```
+
+Key'ler kopyalanıp doğrulanır, eski klasörler **silinmez** (`servers/.migrated-<tarih>/`). Keychain'deki passphrase'ler aynen geçerlidir.
+Doğruladıktan sonra o klasörü (key kopyaları içerir) kendiniz silin.
+
 ## Güncelleme
 
 Otomatik değildir; siz başlatırsınız:

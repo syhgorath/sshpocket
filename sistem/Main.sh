@@ -56,10 +56,22 @@ source "$SISTEM_PATH/Helpers/SSHModule.sh"
 source "$SISTEM_PATH/Helpers/SSHModuleEdit.sh"
 # shellcheck source=Helpers/Servers.sh
 source "$SISTEM_PATH/Helpers/Servers.sh"
+# shellcheck source=Helpers/Migrate.sh
+source "$SISTEM_PATH/Helpers/Migrate.sh"
 # shellcheck source=Autoload.sh
 source "$SISTEM_PATH/Autoload.sh"
 # shellcheck source=Helpers/BuiltinMenu.sh
 source "$SISTEM_PATH/Helpers/BuiltinMenu.sh"
+
+# Taşıma: elle (--migrate [--dry-run] [--yes]) ya da etkileşimli açılışta teklif (onaysız asla)
+case "${1:-}" in
+    --migrate) shift; run_migration "$@"; exit $? ;;
+esac
+if [ -t 0 ] && [ -t 1 ] && [ -z "${1:-}" ] && [ -n "$(migrate_legacy_names)" ]; then
+    run_migration || true
+    echo ""
+    read -r -p "Devam etmek için Enter..." _ || true
+fi
 
 # servers/ (yeni biçim) önce, sonra eski modüller (aynı adlı eski modül yinelenmez)
 RegisterServers
