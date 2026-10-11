@@ -15,6 +15,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
   `sshpocket_api`, `runner`, profiller, eylemler (`cmd`'de kabuk meta karakteri yok, `effects`, `requires` döngüsüz), değişkenler, `invoke.append`;
   bilinmeyen zorunlu özellik ve daha yeni `sshpocket_api` reddedilir. Etkin `confirm`: paket yalnızca sıkılaştırabilir (`destructive` →
   sunucu adı yazdırma). `comp_prepare` kurulu paketi bütünlükle doğrular ve bilgiyi verir. Henüz menüye bağlı değil.
+- **`./start.sh --doctor` ve venv önbelleği (Aşama 2.3):** `--doctor` ön koşulları denetler (ssh araçları, `nc`, Keychain, Python aralığı,
+  `venv`/`ensurepip`, disk, ağ); **yalnızca okur ve çözüm komutunu gösterir, Homebrew/pip/sudo çalıştırmaz.** Paket bağımlılıkları için
+  `ComponentsVenv.sh`: aralığa uyan Python seçimi, yalnızca hash'li `requirements.txt` (`-r/-e/--index-url` reddedilir),
+  `~/.cache/sshpocket/venv/<paket>-<ortam-kimliği>` önbelleği, `pip --require-hashes --only-binary :all:` yalnızca venv içine; aynı ortam
+  kimliğinde sağlıklı venv varsa hiçbir şey kurulmaz. Henüz menüye bağlı değil.
 
 ### Değişti
 - Ok tuşlu seçim artık ⚙️ Ayarlar, **Sunucuları yönet** ve Keychain passphrase menülerinde de çalışır (başlıkla birlikte); `UI=numbers` ile
