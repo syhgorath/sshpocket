@@ -81,13 +81,13 @@ Menu() {
     ((i++))
   done
   if [ -n "$status_dir" ]; then rm -r "$status_dir"; fi
-  echo "  0) Exit" >&2
+  echo "  0) Çıkış (q)" >&2
   echo "" >&2
   
   # Get user selection
   while true; do
     # Girdi biterse (EOF/pipe kapandı) sonsuz döngüye girmeden çık
-    if ! read -r -p "Select option [0-$count]: " selection; then
+    if ! read -r -p "Seçim [0-$count, q]: " selection; then
       echo -n "exit"
       return 0
     fi
@@ -95,6 +95,9 @@ Menu() {
     # Trim whitespace
     selection=$(echo "$selection" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     
+    # q/Q = 0 (geri/çıkış)
+    case "$selection" in q|Q) selection=0 ;; esac
+
     # Validate input
     if [[ "$selection" =~ ^[0-9]+$ ]]; then
       if [ "$selection" -eq 0 ]; then

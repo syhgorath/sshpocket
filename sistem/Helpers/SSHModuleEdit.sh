@@ -98,7 +98,7 @@ ssh_keychain_manage() {
     fi
     echo "  1) Kaydet / güncelle"
     echo "  2) Sil"
-    echo "  0) Geri"
+    echo "  0) Geri (q)"
     read -r -p "Seçim [0]: " choice || return 0
     case "${choice:-0}" in
         1)

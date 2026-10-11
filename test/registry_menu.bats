@@ -51,3 +51,15 @@ setup() {
     [ "$status" -eq 0 ]
     [ "$output" = "exit" ]
 }
+
+@test "menü: q çıkış/geri gibi çalışır, ipucu gösterilir" {
+    RegisterModules "ONE" "MainMenu" "OneModule"
+    # q'dan sonra 1 gelir: q işlenmezse "OneModule" seçilirdi (EOF yüzünden "exit" tesadüfi olmasın)
+    run Menu "MainMenu" <<< $'q\n1'
+    [[ "$output" == *"exit" ]]
+    [[ "$output" != *"OneModule" ]]
+    run Menu "MainMenu" <<< $'Q\n1'
+    [[ "$output" != *"OneModule" ]]
+    run Menu "MainMenu" <<< "0"
+    [[ "$output" == *"0) Çıkış (q)"* ]]
+}
