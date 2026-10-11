@@ -3,6 +3,8 @@
 > **Durum: TASARIM, henüz uygulanmadı.** Kararlar 2026-10-10'da alındı. Uygulama, bir haftalık deneme
 > süresinden sonra, aşağıdaki aşamalarla ve her aşama ayrı sürüm/PR olarak yapılacak.
 
+> **Paket yazarı için normatif özet:** [package-standard.md](package-standard.md) (v1 taslağı).
+
 ## 1. Neden
 - Kod (`sistem/`) ile kullanıcı verisi (sunucular, key'ler) aynı klasörde: güncelleme, yedekleme ve taşıma
   ("Modules'a dokunma") bu yüzden karmaşık.
