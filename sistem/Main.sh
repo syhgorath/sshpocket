@@ -62,6 +62,12 @@ source "$SISTEM_PATH/Helpers/Servers.sh"
 source "$SISTEM_PATH/Helpers/Migrate.sh"
 # shellcheck source=Helpers/Settings.sh
 source "$SISTEM_PATH/Helpers/Settings.sh"
+# shellcheck source=Helpers/Components.sh
+source "$SISTEM_PATH/Helpers/Components.sh"
+# shellcheck source=Helpers/ComponentsVenv.sh
+source "$SISTEM_PATH/Helpers/ComponentsVenv.sh"
+# shellcheck source=Helpers/Doctor.sh
+source "$SISTEM_PATH/Helpers/Doctor.sh"
 # shellcheck source=Autoload.sh
 source "$SISTEM_PATH/Autoload.sh"
 # shellcheck source=Helpers/BuiltinMenu.sh
@@ -70,6 +76,7 @@ source "$SISTEM_PATH/Helpers/BuiltinMenu.sh"
 # Taşıma: elle (--migrate [--dry-run] [--yes]) ya da etkileşimli açılışta teklif (onaysız asla)
 case "${1:-}" in
     --migrate) shift; run_migration "$@"; exit $? ;;
+    --doctor)  shift; doctor_run "$@"; exit $? ;;
 esac
 if [ -t 0 ] && [ -t 1 ] && [ -z "${1:-}" ] && [ -n "$(migrate_legacy_names)" ]; then
     run_migration || true

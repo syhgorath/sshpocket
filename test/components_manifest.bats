@@ -63,6 +63,18 @@ invalid() { run comp_manifest_info "$T/m.json"; [ "$status" -ne 0 ]; }
     comp_info_all "$info" invoke | grep -qx -- '--ask-become-pass||no|yes'
 }
 
+@test "bildirim: requires.control.python aralığı okunur, geçersiz aralık reddedilir" {
+    mf "{$BASE,$ok_act,\"requires\":{\"control\":{\"python\":\">=3.12\"}}}"
+    run comp_manifest_info "$T/m.json"
+    [ "$status" -eq 0 ]
+    [ "$(comp_info_get "$output" requires.python)" = ">=3.12" ]
+    local r
+    for r in '3.12' '>3.12' '>=3' '>=3.12;rm' '*' ''; do
+        mf "{$BASE,$ok_act,\"requires\":{\"control\":{\"python\":\"$r\"}}}"
+        invalid || { echo "KABUL: [$r]"; return 1; }
+    done
+}
+
 @test "bildirim: paket daha sıkı confirm isteyebilir (type-server-name korunur, yükseltme sayılmaz)" {
     mf "{$BASE,\"actions\":{\"x\":{\"cmd\":\"run.sh\",\"effects\":[],\"confirm\":\"type-server-name\"}}}"
     run comp_manifest_info "$T/m.json"

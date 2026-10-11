@@ -24,6 +24,7 @@ RE_PROFILE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 RE_GROUP = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
 RE_CMD_BAD = re.compile(r"[;&|`$<>(){}\\\"'\n\r\t\x00]")
 RE_TEXT_BAD = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+RE_PYRANGE = re.compile(r"^>=[0-9]+\.[0-9]+(,<[0-9]+\.[0-9]+)?$")
 RE_VALUE = re.compile(r"^(<[a-z0-9_ -]{1,40}>|[A-Za-z0-9_./:@=,+-]{1,200})$")
 
 errors = []
@@ -108,6 +109,21 @@ def main():
     group = d.get("inventory_group")
     if group is not None and not (is_str(group) and RE_GROUP.match(group)):
         err("inventory_group geçersiz")
+
+    # --- kontrol makinesi gereksinimi ---
+    req_py = ""
+    req = d.get("requires", {})
+    if not isinstance(req, dict):
+        err("requires nesne olmalı")
+    else:
+        ctrl = req.get("control", {})
+        if not isinstance(ctrl, dict):
+            err("requires.control nesne olmalı")
+        elif "python" in ctrl:
+            if is_str(ctrl["python"]) and RE_PYRANGE.match(ctrl["python"]):
+                req_py = ctrl["python"]
+            else:
+                err("requires.control.python geçersiz (örn. \">=3.12\" veya \">=3.12,<4.0\")")
 
     # --- profiller ---
     profiles = d.get("profiles")
@@ -287,6 +303,8 @@ def main():
     out = ["id=%s" % pid, "version=%s" % ver, "sshpocket_api=%d" % api, "runner=%s" % runner]
     if group:
         out.append("inventory_group=%s" % group)
+    if req_py:
+        out.append("requires.python=%s" % req_py)
     out += prof_lines + act_lines + var_lines + inv_lines
     print("\n".join(out))
     return 0
