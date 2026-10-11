@@ -1,6 +1,6 @@
-# sshpocket paket standardı (v1 taslağı)
+# sshpocket paket standardı (v1)
 
-> **Durum: TASARIM TASLAĞI, uygulanmadı.** Amaç, "sshpocket'ın içinde çalışacak bir paket nasıl olmalı?" sorusunu
+> **Durum: v1 KABUL EDİLDİ (kararlar §13), henüz uygulanmadı.** Amaç, "sshpocket'ın içinde çalışacak bir paket nasıl olmalı?" sorusunu
 > **bir kez, yazılı** cevaplamak; yükleyici (Aşama 2) ve menü (Aşama 3) bu belgeye göre yazılır.
 > Ayrıntılı gerekçeler ve bileşen modelinin tamamı için bkz. [components-design.md](components-design.md);
 > bu belge onun **paket yazarına dönük, normatif** özetidir. Çelişki olursa bu belge (onaylandıktan sonra) kazanır.
@@ -177,12 +177,15 @@ Her iki runner için ortak kurallar:
 - [ ] Salt okunur olmayan eylemin geri alma/kurtarma yolu belgelenmiş (kapsamı dürüstçe yazılı)
 - [ ] sshpocket reposuna **tek satır** (kilit dosyası) ekleyen PR açıldı; başka kod değişikliği gerekmedi
 
-## 13. Açık noktalar (karar bekliyor)
+## 13. Kararlar (2026-10-11)
 
-1. **`component.json` mı, YAML alt kümesi mi?** Bu taslak JSON'u varsayıyor (`python3 -I` + stdlib `json`; ayrıntı:
-   [components-design.md](components-design.md) §6.1). Alternatifler: awk ile YAML alt kümesi (kırılgan), venv'deki PyYAML (tavuk-yumurta).
-2. **`runner: script` ilk sürümde mi gelsin?** Önerim: şema ve bağlam tanımlı olsun, ilk uygulama yalnızca `ansible`; ikinci paket
-   (örn. Docker kur) `script` ile gelirse kod eklenir.
-3. **`confirm` paket tarafından mı, sshpocket tarafından mı belirlenmeli?** Taslak: sshpocket asgari kuralı koyar, paket yalnızca sıkılaştırabilir.
-4. **`SSHPOCKET_RESULT` biçimi** tek satır `key=value` mi, JSON satırı mı? (#28'in biçimi bununla uyumlu olmalı.)
-5. **Bildirim imzası:** bildirim zaten imzalı arşivin içinde; ayrıca `components.lock`'ta bildirimin özeti de tutulsun mu?
+| # | Soru | Karar |
+|---|---|---|
+| 1 | Bildirim biçimi | **`component.json`** (okuma `python3 -I` + stdlib `json`). `component.yml` yalnızca insan-okunur kaynak; paket üretimi JSON'u ondan türetir. |
+| 2 | `runner: script` | Şema ve bağlam (§7) **tanımlı**; ilk uygulama yalnızca `ansible`. `script` ikinci paketle birlikte kodlanır. |
+| 3 | `confirm` | sshpocket **asgari kuralı** koyar (§5); paket yalnızca sıkılaştırabilir, gevşetemez. |
+| 4 | Sonuç satırı | Tek satır `SSHPOCKET_RESULT <id>.<eylem> key=value …` (§8); linux-hardening#28 buna uyarlanır. |
+| 5 | Bildirim özeti kilitte | **Hayır**: bildirim zaten imzalı arşivin içinde; kilit dosyası arşivin sha256'sını taşır. |
+
+Bu kararlarla standart **v1 kabul edilmiştir**; uygulama sırası: 2.0 (kilit dosyası + imza doğrulama) → 2.1 (kurulum)
+→ 2.2 (bildirim okuma) → 2.3 (`--doctor` + venv) → 2.4 (`--update` entegrasyonu). linux-hardening tarafı farkları (§11) **issue** olarak izlenir.
