@@ -37,4 +37,9 @@ jobs:
       - name: ShellCheck
         run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh sistem/Modules/*/*.sh
       - name: Testler (macOS bash 3.2 ile)
+        # LC_ALL=C: macOS bash 3.2 + UTF-8 yerelinde bats, Türkçe karakterli test adlarını yanlış kodlar
+        # ("unknown test name"; 178 testten yalnızca 75'i çalışır). C yerelinde baytlar tutarlı kalır.
+        env:
+          LC_ALL: C
+          LANG: C
         run: PATH="/bin:/usr/bin:$PATH" bats test
