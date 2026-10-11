@@ -93,8 +93,29 @@ Mevcut yığın: **bash + ShellCheck + Bats**. Karar için ölçütler: (a) Inte
 4. **Ucuz deney (spike):** karar vermeden önce, tek oturumluk küçük bir Go prototipi (menü + durum + bağlan) yapılıp
    "gerçekten daha mı iyi hissettiriyor?" sorusu cevaplanabilir. Çekirdeğe dokunmaz.
 
-## 9. Açık kararlar
-- Durum göstergesi varsayılan açık mı? (Öneri: evet.)
-- `←` geri mi, `0`/`q` mu? Yazarak arama şimdi mi sonra mı?
-- fzf'yi USB'ye gömmek mi, "sistemde varsa" mı?
-- Go spike'ı yapılsın mı?
+## 9. Kararlar (2026-10-11, kullanıcı)
+| # | Konu | Karar |
+|---|---|---|
+| 1 | Durum göstergesi (🟢/🔴) | **Varsayılan açık.** Kapatmak için ayar veya `SSHPOCKET_STATUS=0`. |
+| 2 | Ayarlar paneli | **Evet**, küçük bir `⚙️ Ayarlar` menüsü (§10). |
+| 3 | Geri tuşu | **`q`** geri; `←` ek olarak çalışır. |
+| 4 | fzf | **USB'ye gömülür** (deneysel, doğrulanmadı notuyla) ve her durumda yedek vardır: fzf → ok tuşlu menü → numaralı menü. Sistemdeki fzf önceliklidir. |
+| 5 | Go | **Kalsın.** İhtiyaç doğarsa (§8 tetikleyiciler) değerlendirilir. |
+
+Hâlâ açık: yazarak arama ilk sürümde mi gelsin (fzf varsa zaten var), ok tuşlu saf-bash menünün tam kapsamı.
+
+## 10. Ayarlar paneli
+Menüde `⚙️ Ayarlar`. Satırlar: ayar adı, mevcut değer, Enter ile değiştir (açık/kapalı döner, aralıklar için seçenek listesi), `q` geri.
+
+| Ayar | Anahtar | Değerler | Varsayılan |
+|---|---|---|---|
+| Durum göstergesi | `STATUS` | `on` \| `off` | `on` |
+| Durum kontrol süresi | `STATUS_TIMEOUT` | `1`-`5` (sn) | `1` |
+| Renk | `COLOR` | `auto` \| `on` \| `off` | `auto` |
+| Menü stili | `UI` | `auto` \| `arrows` \| `numbers` | `auto` |
+| fzf kullan | `FZF` | `auto` \| `off` | `auto` |
+
+- Dosya: kökte **`sshpocket.conf`** (gitignore'lu; USB'yle taşınır). Aşama 1'den sonra `servers/` ile aynı veri katmanına taşınabilir.
+- Biçim: `ANAHTAR=değer`; mevcut güvenli ayrıştırıcıyla okunur, **yalnızca bilinen anahtarlar** kabul edilir, değerler doğrulanır (kabuğa verilmez).
+- **Öncelik:** ortam değişkeni (`SSHPOCKET_STATUS` vb., betik/test için) > ayar dosyası > varsayılan.
+- Kasıtlı olarak az sayıda ayar: her ayar bir test ve bir belge maliyetidir. Yeni ayar için gerekçe istenir.

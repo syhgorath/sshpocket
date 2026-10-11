@@ -235,6 +235,31 @@ Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
 - Profil `planned` ise menüde pasif ("yakında").
 - Her uygulamanın kaydı (tarih, sunucu, bileşen+sürüm, sonuç) `servers/<ad>/` altında, **gizli bilgi içermeden** tutulur.
 
+### 6.7 Bağlantı katmanı: pre-connect kancası ve port knocking (TASARIM, 2026-10-11)
+**Kararlar:** (a) önce **klasik port knocking** (basit "kapıyı çalma"); SPA/VPN sonraya, (b) knock'u tek bir **pre-connect kancası** yapar,
+(c) knock dizisi **gizlidir** (Keychain), (d) knock'lanan sunucuda durum göstergesi **knock göndermez**.
+
+- **Kanca:** sshpocket'ın bir sunucuya bağlanan her yolu (`Bağlan`, `key gönder`, durum, bileşenler) tek bir `pre_connect <sunucu>` adımından
+  geçer. Sunucuda `KNOCK` tanımlıysa dizi sırayla gönderilir, kısa bir bekleme yapılır, sonra asıl bağlantı açılır. Böylece knock bir yerde yazılır.
+- **Sunucu ayarı (`server.env`, Aşama 1 şemasında yer ayrılır):**
+  ```
+  KNOCK_PORTS=7000,8000,9000     # sıra önemli; GİZLİ, aşağıya bak
+  KNOCK_PROTO=tcp                # tcp | udp
+  KNOCK_DELAY_MS=300             # knock'lar arası ve sonrası bekleme
+  ```
+  Dizi düz metin dosyada tutulmaz: Keychain hesabı `USBMonitor_<AD_BÜYÜK>_Knock`; `server.env` yalnızca `KNOCK=keychain` der.
+- **İstemci:** TCP için `nc -z -w1 <ip> <port>` (kapalı porta SYN gider; bağlantı kurulmaz), UDP için `nc -u`. Ek araç gerekmez.
+- **Durum göstergesi:** knock'lanan sunucuda port normalde kapalıdır. Durum **knock göndermez** (her menü çiziminde knock göndermek hem gürültülü
+  hem sızıntıdır); `🔒` ("knock gerekir") gösterir. Kullanıcı `Bağlan` deyince kanca çalışır.
+- **Bileşenler (Ansible):** en temiz yol `ssh`'ın `ProxyCommand`'ı: knock'u gönderip sonra bağlanan bir sarmalayıcı; geçici inventory'de
+  `ansible_ssh_common_args: -F <geçici ssh_config>` ile verilir. **Dikkat:** linux-hardening `hardening_verify_access` rolü bu değeri
+  boşlukla bölüyor (`.split()`); boşluklu `ProxyCommand`'ı bozar, bu yüzden `-F <yol>` kullanılır (yolda boşluk olmamalı, geçici dizin).
+  Knocking uygulanırsa linux-hardening'e issue açılacak (bölme yerine güvenli ayrıştırma).
+- **Sunucu tarafı:** `knockd`/benzeri kurulum ve yapılandırma ayrı bir **utility bileşenidir**; geri alma güvenlik ağı bunu **kapsamaz**
+  (yalnızca ufw+SSH). Bu yüzden konsol erişimi olan test sunucusunda denenmeden üretime alınmaz.
+- **Sınırlar (dürüstçe):** klasik knocking şifreli değildir; ağı dinleyen kaydedip tekrar oynatabilir. Taramalardan saklanma katmanıdır, kimlik
+  doğrulama değil. Gerçek güvenlik için SPA (örn. fwknop) veya VPN (WireGuard/Tailscale) değerlendirilir (sonraki aşama).
+
 ## 7. Menü
 ```
 <ad>
