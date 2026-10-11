@@ -156,6 +156,6 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
     echo "$output" | grep -q 'alpha'
     echo "$output" | grep -q 'old1'
     echo "$output" | grep -q 'example'     # yapılandırılmış (eski biçimli) fixture sunucusu
-    ! echo "$output" | grep -q 'Spotlight'
-    ! echo "$output" | grep -q 'Trashes'
+    [ -z "$(printf '%s\n' "$output" | grep 'Spotlight')" ]
+    [ -z "$(printf '%s\n' "$output" | grep 'Trashes')" ]
 }

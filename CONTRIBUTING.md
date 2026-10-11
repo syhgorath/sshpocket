@@ -62,3 +62,9 @@ Yalnızca bakımcı: bkz. [RELEASING.md](RELEASING.md). Güncelleme/imza koduna 
 
 Yapay zekâ yardımıyla yazılmış katkılar kabul edilir; gönderdiğiniz kodu okuyup anladığınızdan
 ve test ettiğinizden emin olun.
+
+### Test yazarken tuzaklar
+- **`! komut` testi düşürmez.** Bats'ta (bash'in `errexit` kuralı gereği) bir satır `!` ile başlıyorsa başarısız olsa bile test geçer.
+  Olumsuz iddia için `run ! komut` kullanın (`test/repo_hygiene.bats` bunu denetler). Boru hattı için `[ -z "$(... | grep ...)" ]`.
+- bash 3.2'de testin ortasındaki `[[ ]]` başarısızlığı testi düşürmez; ara doğrulamalarda `[ ]`/`grep -q` kullanın.
+- Mutasyonla sınayın: korumayı bozup testin kırmızıya döndüğünü görmeden "güvenli" saymayın.

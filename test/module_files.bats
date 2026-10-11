@@ -20,8 +20,8 @@ setup() { load_helpers; MD="$BATS_TEST_TMPDIR/Modules"; mkdir -p "$MD"; }
 }
 @test ".env.example gizli bilgi/gerçek değer içermez" {
     module_write_files "$MD" "web1" "192.0.2.5" "deploy" "2222"
-    ! grep -q '192.0.2.5' "$MD/web1/.env.example"
-    ! grep -q 'deploy' "$MD/web1/.env.example"
+    run ! grep -q '192.0.2.5' "$MD/web1/.env.example"
+    run ! grep -q 'deploy' "$MD/web1/.env.example"
 }
 @test "özel key yolu .env'e yazılır" {
     module_write_files "$MD" "web1" "h" "u" "22" "/home/x/.ssh/id_ed25519"
@@ -57,7 +57,7 @@ setup() { load_helpers; MD="$BATS_TEST_TMPDIR/Modules"; mkdir -p "$MD"; }
     grep -qx 'IP=192.0.2.5' "$SD/web1/server.env"
     grep -qx 'USER=deploy' "$SD/web1/server.env"
     grep -qx 'PORT=2222' "$SD/web1/server.env"
-    ! grep -q 'WEB1_' "$SD/web1/server.env"
+    run ! grep -q 'WEB1_' "$SD/web1/server.env"
     [ ! -e "$SD/web1/Web1Module.sh" ]
     [ "$(ls -l "$SD/web1/server.env" | cut -c1-10)" = "-rw-------" ]
     [ "$(ls -ld "$SD" | cut -c1-10)" = "drwx------" ]

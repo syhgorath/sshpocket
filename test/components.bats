@@ -37,7 +37,7 @@ LOCK
     [ "$(comp_get demo version)" = "1.0.0" ]
     [ "$(comp_get demo sha256)" = "$SHA" ]
     comp_known demo
-    ! comp_known other
+    run ! comp_known other
 }
 
 @test "kilit: dosya yok ya da yalnızca yorum ise paket yok" {
@@ -46,7 +46,7 @@ LOCK
     printf '# boş\n' > "$SSHPOCKET_COMPONENTS_LOCK"
     run comp_lock_validate
     [ "$status" -eq 0 ]
-    ! comp_known demo
+    run ! comp_known demo
 }
 
 @test "kilit: geçersiz değerler reddedilir (id, repo, sürüm, sha, signers)" {

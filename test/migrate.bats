@@ -48,7 +48,7 @@ snapshot() { ( cd "$1" && find . -type f -not -name '.DS_Store' | LC_ALL=C sort 
     grep -qx 'USER=syhgorath'  "$SRV/ubuntutest/server.env"
     grep -qx 'PORT=22'         "$SRV/ubuntutest/server.env"
     grep -qx 'PORT=2222'       "$SRV/testubuntu2/server.env"
-    ! grep -q 'UBUNTUTEST_' "$SRV/ubuntutest/server.env"
+    run ! grep -q 'UBUNTUTEST_' "$SRV/ubuntutest/server.env"
 }
 @test "taşıma: key dosyaları bayt bayt aynı, izinler 600, servers/ 700" {
     cp "$MOD/ubuntutest/id_ed25519_ubuntutest" "$BATS_TEST_TMPDIR/orijinal_key"
