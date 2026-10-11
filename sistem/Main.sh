@@ -58,6 +58,8 @@ source "$SISTEM_PATH/Helpers/SSHModuleEdit.sh"
 source "$SISTEM_PATH/Helpers/Servers.sh"
 # shellcheck source=Helpers/Migrate.sh
 source "$SISTEM_PATH/Helpers/Migrate.sh"
+# shellcheck source=Helpers/Settings.sh
+source "$SISTEM_PATH/Helpers/Settings.sh"
 # shellcheck source=Autoload.sh
 source "$SISTEM_PATH/Autoload.sh"
 # shellcheck source=Helpers/BuiltinMenu.sh

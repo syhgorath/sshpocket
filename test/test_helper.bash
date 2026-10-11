@@ -19,12 +19,17 @@ load_helpers() {
     source "$H/RegisterModules.sh"
     # shellcheck source=/dev/null
     source "$H/Servers.sh"
+    # shellcheck source=/dev/null
+    source "$H/Settings.sh"
 }
 
 # İçinde sistem/ kopyası olan izole bir çalışma alanı (eject kapalı, sahte komutlar PATH başında)
 make_sandbox() {
     SANDBOX="$BATS_TEST_TMPDIR/sb"
     mkdir -p "$SANDBOX/bin"
+    # Durum göstergesi varsayılan açık; testler ağa çıkmasın (testler gerekirse =1 verir)
+    export SSHPOCKET_STATUS=off
+    export SSHPOCKET_CONF="$BATS_TEST_TMPDIR/sshpocket.conf"
     cp -R "$ROOT/sistem" "$ROOT/start.sh" "$SANDBOX/"
     printf 'EjectUSB(){ :; }\n' > "$SANDBOX/sistem/Helpers/Eject.sh"
 }

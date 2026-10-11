@@ -58,8 +58,8 @@ passphrase'i **macOS Keychain**'e kaydeder.
 - **`~/.ssh/config` içe aktarma:** mevcut sunucularınızı tek komutla modüle çevirir. Private key'ler
   **kopyalanmaz**; `IdentityFile` yolu modülün `.env`'ine `<ÖNEK>_KEY` olarak yazılır.
 - **Mevcut key kullanımı:** `.env`'e `<ÖNEK>_KEY=/yol/key` yazın (örn. `~/.ssh/id_ed25519`).
-- **Durum göstergesi:** `SSHPOCKET_STATUS=1 ./start.sh` menüde 🟢 (port açık) / 🔴 (erişilemiyor) / ⚪ (ayar yok)
-  gösterir. Sunucular paralel kontrol edilir.
+- **Durum göstergesi:** menüde 🟢 (port açık) / 🔴 (erişilemiyor) / ⚪ (ayar yok) gösterilir; sunucular paralel kontrol edilir.
+  **⚙️ Ayarlar**'dan kapatılabilir/süresi değiştirilebilir (`sshpocket.conf`; ortam değişkeni `SSHPOCKET_STATUS=0|1` önceliklidir).
 - **Modül menüsü:** Bağlan · Key'i sunucuya gönder · **Bilgileri güncelle** (IP/kullanıcı/port/key yolu) ·
   **Keychain passphrase'ini güncelle/sil** (kayıttan sonra key'i açarak doğrular). Ayar bozuk veya key eksikken de
   güncelleme seçenekleri kullanılabilir.

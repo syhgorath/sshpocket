@@ -368,6 +368,15 @@ make_cli_sandbox() {
     [ "$(cat "$INST/sistem/Modules/mine/.env")" = "MINE_IP=192.0.2.1" ]
     [ "$(cat "$INST/servers/alpha/server.env")" = "IP=192.0.2.7" ]
 }
+@test "apply: sshpocket.conf (kullanıcı ayarları) güncellemede korunur" {
+    make_install
+    printf 'STATUS=off\n' > "$INST/sshpocket.conf"
+    make_release 2.2.0
+    mkdir "$T/x"; tar -xzf "$T/serve/sshpocket-2.2.0.tar.gz" -C "$T/x"
+    run update_apply "$T/x/sshpocket-2.2.0" "$INST" 2.1.0
+    [ "$status" -eq 0 ]
+    [ "$(cat "$INST/sshpocket.conf")" = "STATUS=off" ]
+}
 @test "eski, yapılandırılmamış example şablonu güncellemede temizlenir" {
     make_install
     rm -f "$INST/sistem/Modules/example/.env"                       # kullanıcı hiç yapılandırmadı

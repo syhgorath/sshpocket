@@ -60,8 +60,8 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
 - **`~/.ssh/config` import:** turns existing hosts into modules. Private keys are **not copied**;
   the `IdentityFile` path is stored as `<PREFIX>_KEY` in the module's `.env`.
 - **Use an existing key:** set `<PREFIX>_KEY=/path/to/key` in `.env`.
-- **Status marks:** `SSHPOCKET_STATUS=1 ./start.sh` shows 🟢 (port open) / 🔴 (unreachable) / ⚪ (not configured),
-  checked in parallel.
+- **Status marks:** the menu shows 🟢 (port open) / 🔴 (unreachable) / ⚪ (not configured), checked in parallel.
+  Turn off or tune it under **⚙️ Settings** (`sshpocket.conf`; the env var `SSHPOCKET_STATUS=0|1` takes precedence).
 - **Module menu:** Connect · Send key to server · **Update details** (IP/user/port/key path) ·
   **Update/delete the Keychain passphrase** (verifies it by unlocking the key after saving). The update options
   stay available even when the settings are broken or the key is missing.
