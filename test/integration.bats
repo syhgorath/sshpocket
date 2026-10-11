@@ -142,10 +142,17 @@ strip() { sed 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
     [[ "$output" != *"Loading module: "*"/._"* ]]
     [[ "$output" == *"1) EXAMPLE"* ]]
 }
-@test "ModuleManager list gizli klasörleri modül saymaz" {
+@test "ModuleManager list: gizli klasörleri ve example şablonunu saymaz, gerçek sunucuları gösterir" {
     mkdir -p "$SANDBOX/sistem/Modules/.Spotlight-V100" "$SANDBOX/sistem/Modules/.Trashes"
+    # yeni biçimli bir sunucu + eski biçimli bir sunucu
+    mkdir -p "$SANDBOX/servers/alpha"
+    printf 'IP=192.0.2.7\nUSER=deploy\nPORT=2222\n' > "$SANDBOX/servers/alpha/server.env"
+    mkdir -p "$SANDBOX/sistem/Modules/old1"
+    printf 'OLD1_IP=198.51.100.4\nOLD1_USER=pi\nOLD1_PORT=22\n' > "$SANDBOX/sistem/Modules/old1/.env"
     run bash -c "SSHPOCKET_MODULES_DIR='$SANDBOX/sistem/Modules' bash '$SANDBOX/sistem/ModuleManager.sh' list"
-    [[ "$output" == *"example"* ]]
-    [[ "$output" != *"Spotlight"* ]]
-    [[ "$output" != *"Trashes"* ]]
+    echo "$output" | grep -q 'alpha'
+    echo "$output" | grep -q 'old1'
+    ! echo "$output" | grep -q 'example'
+    ! echo "$output" | grep -q 'Spotlight'
+    ! echo "$output" | grep -q 'Trashes'
 }
