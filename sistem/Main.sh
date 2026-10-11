@@ -73,6 +73,9 @@ if [ -t 0 ] && [ -t 1 ] && [ -z "${1:-}" ] && [ -n "$(migrate_legacy_names)" ]; 
     read -r -p "Devam etmek için Enter..." _ || true
 fi
 
+# Eski sürümlerden kalan boş 'example' şablonunu (içinde kullanıcı verisi yoksa) temizle
+migrate_cleanup_stale_example
+
 # servers/ (yeni biçim) önce, sonra eski modüller (aynı adlı eski modül yinelenmez)
 RegisterServers
 

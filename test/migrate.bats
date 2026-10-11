@@ -76,9 +76,9 @@ snapshot() { ( cd "$1" && find . -type f -not -name '.DS_Store' | LC_ALL=C sort 
     [ -f "$bak/ubuntutest/id_ed25519_ubuntutest" ]
     [ -f "$bak/testubuntu2/.env" ]
 }
-@test "yapılandırılmamış 'example' şablonu taşınmaz; .env'i olan 'example' sunucusu taşınır" {
+@test "yapılandırılmamış 'example' şablonu servers/'a TAŞINMAZ; .env'i olan 'example' sunucusu taşınır" {
     run migrate --yes
-    [ -d "$MOD/example" ]                       # şablon yerinde kaldı (içinde .env yok)
+    [ -d "$MOD/example" ]                       # --migrate şablona dokunmaz (içinde .env yok, taşınacak sunucu da değil)
     [ ! -e "$SRV/example" ]
     # kullanıcı onu gerçekten yapılandırdıysa taşınmalı
     printf 'EXAMPLE_IP=192.0.2.50\nEXAMPLE_USER=me\nEXAMPLE_PORT=22\n' > "$MOD/example/.env"
@@ -190,3 +190,39 @@ snapshot() { ( cd "$1" && find . -type f -not -name '.DS_Store' | LC_ALL=C sort 
     [ ! -e "$SRV/.migrating-ubuntutest" ]
     [ -f "$MOD/ubuntutest/.env" ]
 }
+@test "açılışta: yapılandırılmamış example şablonu temizlenir, menüde EXAMPLE görünmez" {
+    run bash -c "printf '0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g'"
+    [ ! -e "$MOD/example" ]
+    [[ "$output" != *"EXAMPLE"* ]]
+    [ -d "$MOD/ubuntutest" ]                    # gerçek sunucular dokunulmadı
+}
+@test "açılışta: .env'i olan example (kullanıcı yapılandırmış) temizlenmez" {
+    printf 'EXAMPLE_IP=192.0.2.50\nEXAMPLE_USER=me\nEXAMPLE_PORT=22\n' > "$MOD/example/.env"
+    run bash -c "printf '0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1"
+    [ -f "$MOD/example/.env" ]
+}
+@test "açılışta: example içinde key veya kullanıcı dosyası varsa temizlenmez" {
+    printf 'KEY' > "$MOD/example/id_ed25519_example"
+    run bash -c "printf '0\n' | bash '$SANDBOX/sistem/Main.sh' 2>&1"
+    [ -f "$MOD/example/id_ed25519_example" ]
+}
+@test "--migrate --dry-run şablona bile dokunmaz" {
+    snapshot "$SANDBOX" > "$BATS_TEST_TMPDIR/once"
+    run migrate --dry-run
+    snapshot "$SANDBOX" > "$BATS_TEST_TMPDIR/sonra"
+    cmp "$BATS_TEST_TMPDIR/once" "$BATS_TEST_TMPDIR/sonra"
+    [ -d "$MOD/example" ]
+}
+@test "taşıma bittikten sonra Modules'ta hiçbir şey kalmadıysa boş sistem/Modules klasörü kaldırılır" {
+    rm -r "$MOD/example"; rm -f "$MOD/.DS_Store"       # yalnızca taşınacak iki sunucu kalsın
+    run migrate --yes
+    [ "$status" -eq 0 ]
+    [ ! -d "$MOD" ]
+    [ -d "$SRV/ubuntutest" ]
+}
+@test "taşıma: Modules içinde taşınmayan bir şey varsa klasör silinmez" {
+    mkdir -p "$MOD/benim_klasorum"; printf 'x' > "$MOD/benim_klasorum/not.txt"
+    run migrate --yes
+    [ -f "$MOD/benim_klasorum/not.txt" ]
+}
+
