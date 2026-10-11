@@ -64,7 +64,7 @@ Sürüm N → N+1, otomatik ve geri alınabilir:
 2. Yeni biçime çevrilir: `servers/<ad>/server.env` (`<ÖNEK>_IP` → `IP`, … `<ÖNEK>_KEY` → `KEY`), key dosyaları taşınır.
    Üretilmiş `<Ad>Module.sh` dosyaları **taşınmaz**.
 3. Doğrulama: ayrıştırılan değerler eski/yeni aynı mı, key dosyaları var mı. Başarılıysa eski klasör
-   `sistem/Modules.migrated-<tarih>/` olarak **silinmeden** kenara alınır.
+   `servers/.migrated-<tarih>/<ad>/` olarak **silinmeden** kenara alınır (kök, `sistem/` değil: güncelleyici `sistem/`'i bütünüyle değiştirebilsin diye).
 4. İdempotent: ikinci çalıştırmada yapacak bir şey yok. Hata olursa hiçbir şey silinmez.
 5. **Geriye uyumluluk okuyucusu:** `server.env` içinde eski `<ÖNEK>_IP=` biçimi görülürse okunur (uyarıyla).
 6. Güncelleyici (yeni sürüm), `sistem/`'i bütünüyle değiştirmeden **önce** eski `Modules/`'i bu geçişle `servers/`'a alır;
@@ -315,7 +315,7 @@ Her aşama ayrı sürüm; geri uyumluluk ve geçiş testleri aşama 1'in bir par
 
 **İlerleme (2026-10-11):** Aşama 1 alt adımları: **1.0 ✅** (`servers/` okuyucu + eski biçim uyumluluğu, `srv_get/srv_set`),
 **1.1 ✅** (menü `servers/`'dan kurulur, `server:<ad>` girdileri, yinelenen etiket koruması; eski modüller çalışır),
-**1.2 ⏳** taşıma (deneme çıktısı → onay → doğrulama → eski `sistem/Modules.migrated-<tarih>/`), **1.3 ⏳** ekle/içe aktar/yönet yeni biçime yazar,
+**1.2 ✅** taşıma (deneme çıktısı → onay → kopyala → bayt bayt doğrula → eski `servers/.migrated-<tarih>/<ad>/`), **1.3 ⏳** ekle/içe aktar/yönet yeni biçime yazar,
 **1.4 ⏳** güncelleyici basitleşir. Sürüm: veri düzeni değiştiği için **3.0.0**.
 
 ## 10. Test stratejisi
