@@ -45,7 +45,7 @@ setup() {
 }
 @test "menü: girdi biterse (EOF) sonsuz döngüye girmez" {
     RegisterModules "ONE" "MainMenu" "OneModule"
-    run --separate-stderr timeout 5 bash -c 'source "$1/Menu.sh"; source "$1/RegisterModules.sh"; RegisterModules ONE MainMenu OneModule; Menu MainMenu < /dev/null' _ "$H"
+    run --separate-stderr perl -e 'alarm shift; exec @ARGV' 5 bash -c 'source "$1/Menu.sh"; source "$1/RegisterModules.sh"; RegisterModules ONE MainMenu OneModule; Menu MainMenu < /dev/null' _ "$H"
     [ "$status" -eq 0 ]
     [ "$output" = "exit" ]
 }
