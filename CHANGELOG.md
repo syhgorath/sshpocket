@@ -4,15 +4,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
-### Eklendi
-- **Ok tuşlu seçim (Ekran cilası 2/2):** ana menü ve sunucu menüsünde ↑↓ (veya `j`/`k`) ile gez, Enter ile aç, `←`/`q`/`0`/Esc ile geri.
-  Numara yazıp Enter de çalışır (iki haneli dahil, Backspace ile düzeltilir). Saf bash; terminal değilse (boru, betik, test) eski
-  numaralı menü kullanılır. ⚙️ Ayarlar'a `UI` eklendi (`auto` | `numbers` | `arrows`): ok tuşları sorun çıkarırsa `numbers` yapın
-  (ya da `SSHPOCKET_UI=numbers`). İmleç her çıkışta (Ctrl-C dahil) geri açılır.
+## [3.2.0] - 2026-10-11
 
 ### Eklendi
 - **Ekran cilası (1/2):** her ekranda başlık + ekmek kırıntısı (`Ana menü › ubuntutest`) ve alttaki tuş ipucu satırı; sunucu satırlarında
   `kullanıcı@ip[:port]` özeti. Renk yalnızca terminalde ve `NO_COLOR` tanımsızsa; boru/test çıktısı düz metindir.
+- **Ok tuşlu seçim (ekran cilası 2/2):** ana menü ve sunucu menüsünde ↑↓ (veya `j`/`k`) ile gez, Enter ile aç, `←`/`q`/`0`/Esc ile geri.
+  Numara yazıp Enter de çalışır (iki haneli dahil, Backspace ile düzeltilir). Saf bash; terminal değilse (boru, betik, test) eski
+  numaralı menü kullanılır. ⚙️ Ayarlar'a `UI` eklendi (`auto` | `numbers` | `arrows`): ok tuşları sorun çıkarırsa `numbers` yapın
+  (ya da `SSHPOCKET_UI=numbers`). İmleç her çıkışta (Ctrl-C dahil) geri açılır.
 
 ## [3.1.1] - 2026-10-11
 
@@ -134,7 +134,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.1.1...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/syhgorath/sshpocket/compare/v3.1.1...v3.2.0
 [3.1.1]: https://github.com/syhgorath/sshpocket/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/syhgorath/sshpocket/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/syhgorath/sshpocket/compare/v2.2.0...v3.0.0
