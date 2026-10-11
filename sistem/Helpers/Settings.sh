@@ -130,14 +130,23 @@ SettingsAction() {
     local choice cur new
     while true; do
         clear
-        echo "=== ⚙️  Ayarlar ==="
-        echo ""
-        printf '  1) %-28s %s%s\n' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)"
-        printf '  2) %-28s %s%s\n' "$(_settings_label STATUS_TIMEOUT)" "$(settings_get STATUS_TIMEOUT)" "$(_settings_note STATUS_TIMEOUT)"
-        printf '  3) %-28s %s%s\n' "$(_settings_label UI)" "$(settings_get UI)" "$(_settings_note UI)"
-        echo "  0) Geri (q)"
-        echo ""
-        if ! read -r -p "Değiştirilecek ayar [0]: " choice; then return 0; fi
+        if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+            ui_header "Ana menü › Ayarlar"
+            echo ""
+            choice=$(ui_pick_arrows 1 "Geri" \
+                "$(printf '%-28s %s%s' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)")" \
+                "$(printf '%-28s %s%s' "$(_settings_label STATUS_TIMEOUT)" "$(settings_get STATUS_TIMEOUT)" "$(_settings_note STATUS_TIMEOUT)")" \
+                "$(printf '%-28s %s%s' "$(_settings_label UI)" "$(settings_get UI)" "$(_settings_note UI)")")
+        else
+            echo "=== ⚙️  Ayarlar ==="
+            echo ""
+            printf '  1) %-28s %s%s\n' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)"
+            printf '  2) %-28s %s%s\n' "$(_settings_label STATUS_TIMEOUT)" "$(settings_get STATUS_TIMEOUT)" "$(_settings_note STATUS_TIMEOUT)"
+            printf '  3) %-28s %s%s\n' "$(_settings_label UI)" "$(settings_get UI)" "$(_settings_note UI)"
+            echo "  0) Geri (q)"
+            echo ""
+            if ! read -r -p "Değiştirilecek ayar [0]: " choice; then return 0; fi
+        fi
         case "${choice:-0}" in
             0|q|Q) return 0 ;;
             1)
