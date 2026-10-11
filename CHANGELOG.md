@@ -4,6 +4,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-10-11
+
 ### Düzeltildi
 - **Ana menüye dönerken takılma:** macOS `nc -w` bağlantı beklemesini sınırlamadığından kapalı/erişilemeyen sunucuda durum kontrolü
   ~75 sn sürebiliyordu (durum göstergesi 3.1.0'da varsayılan açık olunca belirgin oldu). Kontrol artık süre dolunca öldürülür
@@ -122,7 +124,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.1.1...HEAD
+[3.1.1]: https://github.com/syhgorath/sshpocket/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/syhgorath/sshpocket/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/syhgorath/sshpocket/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/syhgorath/sshpocket/compare/v2.1.0...v2.2.0
