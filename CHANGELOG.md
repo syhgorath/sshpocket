@@ -4,6 +4,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **Ana menüye dönerken takılma:** macOS `nc -w` bağlantı beklemesini sınırlamadığından kapalı/erişilemeyen sunucuda durum kontrolü
+  ~75 sn sürebiliyordu (durum göstergesi 3.1.0'da varsayılan açık olunca belirgin oldu). Kontrol artık süre dolunca öldürülür
+  (⚙️ Ayarlar'daki süre, 1-5 sn); bağlanmadan önceki port kontrolü en çok 5 sn bekler.
+
 ## [3.1.0] - 2026-10-11
 
 ### Eklendi

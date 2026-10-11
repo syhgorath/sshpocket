@@ -34,6 +34,23 @@ _ssh_env_get() {
     return 1
 }
 
+# Port açık mı? $1 ip, $2 port, $3 en çok saniye.
+# macOS'ta `nc -w` bağlantı beklemesini sınırlamaz (kapalı/erişilemeyen sunucuda ~75 sn sürebilir);
+# bu yüzden nc arka planda çalıştırılır ve süre dolunca öldürülür.
+ssh_port_open() {
+    local ip="$1" port="$2" secs="${3:-1}" pid killer rc
+    command -v nc >/dev/null 2>&1 || return 2
+    nc -z "$ip" "$port" >/dev/null 2>&1 &
+    pid=$!
+    ( sleep "$secs"; kill "$pid" 2>/dev/null ) >/dev/null 2>&1 &
+    killer=$!
+    wait "$pid" 2>/dev/null
+    rc=$?
+    kill "$killer" 2>/dev/null
+    wait "$killer" 2>/dev/null
+    return "$rc"
+}
+
 # Port kontrolü yapıp bağlanır
 # Parametreler: $1 - önek, $2 - kullanıcı, $3 - ip, $4 - port, $5 - key yolu
 _ssh_module_connect() {
@@ -41,7 +58,7 @@ _ssh_module_connect() {
     echo ""
     echo "🔍 Port kontrolü..."
     if command -v nc >/dev/null 2>&1; then
-        if nc -z -w 2 "$ip" "$port" 2>/dev/null; then
+        if ssh_port_open "$ip" "$port" 5; then
             echo "✅ Port $port açık"
         else
             echo "⚠️  Port $port kapalı veya erişilemiyor"
@@ -159,7 +176,7 @@ ssh_module_status() {
     fi
     local tmo=1
     if declare -F settings_get >/dev/null; then tmo=$(settings_get STATUS_TIMEOUT); fi
-    if command -v nc >/dev/null 2>&1 && nc -z -w "${tmo:-1}" "$ip" "$port" 2>/dev/null; then
+    if ssh_port_open "$ip" "$port" "${tmo:-1}"; then
         printf '🟢'
     else
         printf '🔴'
