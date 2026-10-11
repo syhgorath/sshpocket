@@ -26,3 +26,8 @@ test/e2e/.hostkeys/
 # Release çıktıları ve güncelleme yedekleri
 dist/
 .update-backup/
+
+# Kullanıcı verisi (sunucular); yalnızca açıklama ve .gitkeep izlenir
+servers/*
+!servers/.gitkeep
+!servers/README.md
