@@ -54,6 +54,10 @@ ManageServersAction() {
     bash "$SISTEM_PATH/ModuleManager.sh" list
     echo ""
     if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=("Sunucu klasörünü (ayarlar ve içindeki key dosyaları) siler; sunucu adını yazarak onaylarsınız. Keychain kaydı için ayrıca sorulur." "Sunucuya yeni bir ad verir ve key dosyalarını yeni ada çevirir. Keychain kayıtları otomatik taşınmaz, yeniden girmeniz gerekir.")
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local UI_PICK_BACK_DESC="Ana menüye döner."
         choice=$(ui_pick_arrows 1 "Geri" "Sil" "Yeniden adlandır")
         echo ""
     else

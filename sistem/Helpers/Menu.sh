@@ -98,6 +98,15 @@ Menu() {
   # Ok tuşlu seçim (terminalde); aksi halde numaralı menü
   if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
     local picked
+    local -a UI_PICK_DESCS=()
+    local di=0
+    while [ "$di" -lt "$count" ]; do
+      # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+      UI_PICK_DESCS[di]=$(ui_describe_entry "${module_array[$((di + 1))]}")
+      di=$((di + 1))
+    done
+    # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+    local UI_PICK_BACK_DESC="Uygulamadan çıkar (USB çıkarma denenir)."
     picked=$(ui_pick_arrows 1 "Çıkış" "${row_text[@]}")
     if [ -z "$picked" ] || [ "$picked" = "0" ]; then
       echo -n "exit"

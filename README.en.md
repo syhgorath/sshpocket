@@ -63,6 +63,7 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
 - **Status marks:** the menu shows 🟢 (port open) / 🔴 (unreachable) / ⚪ (not configured), checked in parallel.
   Turn off or tune it under **⚙️ Settings** (`sshpocket.conf`; the env var `SSHPOCKET_STATUS=0|1` takes precedence).
 - **Port knocking (client side):** **Knock settings** in the server menu; the sequence lives in Keychain and is sent automatically before connecting; status shows 🔒. Server-side setup is a separate package.
+- **fzf (optional):** after `brew install fzf` menus open in fzf (search + description preview); otherwise the built-in arrow-key menu is used.
 - **Arrow-key menu:** ↑↓ move · Enter open · `←`/`q` back; typing a number works too. If it misbehaves, set `UI=numbers` under ⚙️ Settings.
 - **Module menu:** Connect · Send key to server · **Update details** (IP/user/port/key path) ·
   **Update/delete the Keychain passphrase** (verifies it by unlocking the key after saving). The update options

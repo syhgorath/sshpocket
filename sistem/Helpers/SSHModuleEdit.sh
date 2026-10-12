@@ -97,6 +97,10 @@ ssh_keychain_manage() {
         echo "Keychain kaydı: ❌ yok"
     fi
     if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=("Passphrase'i Keychain'e kaydeder veya günceller; kayıttan sonra key'i açarak doğrular." "Keychain'deki passphrase kaydını siler (key dosyası silinmez).")
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
         choice=$(ui_pick_arrows 1 "Geri" "Kaydet / güncelle" "Sil")
         echo ""
     else
