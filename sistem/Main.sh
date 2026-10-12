@@ -150,10 +150,14 @@ while true; do
 
     if EntryExists "$selected"; then
         Log "INFO" "Executing module: $selected"
+        # Menüden "geri" ile dönüldüyse okunacak bir çıktı yoktur: duraklatma (eylemler SSHPOCKET_NO_PAUSE=1 verir)
+        SSHPOCKET_NO_PAUSE=0
         RunEntry "$selected"
     else
         Log "ERROR" "Function not found: '$selected'"
     fi
-    echo ""
-    read -r -p "Devam etmek için Enter..."
+    if [ "${SSHPOCKET_NO_PAUSE:-0}" != "1" ]; then
+        echo ""
+        read -r -p "Devam etmek için Enter..."
+    fi
 done

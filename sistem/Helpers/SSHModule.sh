@@ -158,7 +158,7 @@ ssh_module_run() {
                 "Bilgileri güncelle (IP / kullanıcı / port / key yolu)" \
                 "Keychain passphrase'ini güncelle / sil" \
                 "Knock ayarları (port knocking)")
-            [ "$choice" = "0" ] && return 0
+            if [ "$choice" = "0" ]; then ui_no_pause; return 0; fi
         else
             echo "  1) Bağlan"
             echo "  2) Public key'i sunucuya gönder"
@@ -185,7 +185,7 @@ ssh_module_run() {
             3) ssh_module_edit "$prefix" "$module_dir"; read -r -p "Devam için Enter..." _ || return 0 ;;
             4) ssh_keychain_manage "$prefix" "$ssh_key"; read -r -p "Devam için Enter..." _ || return 0 ;;
             5) knock_manage "$prefix" "$module_dir"; read -r -p "Devam için Enter..." _ || return 0 ;;
-            *) return 0 ;;
+            *) ui_no_pause; return 0 ;;
         esac
     done
 }
