@@ -12,7 +12,7 @@ _doc_fail() { printf '  ❌ %s\n' "$1"; DOCTOR_FAILS=$((DOCTOR_FAILS + 1)); }
 _doc_hint() { printf '     ↳ %s\n' "$1"; }
 
 doctor_run() {
-    local range=">=3.12" py ver free_kb cache dir_for_df cand path v found_old="" stub_seen=0
+    local range=">=3.12" py ver free_kb cache dir_for_df cand path v found_old="" stub_seen=0 fzf_path
     while [ $# -gt 0 ]; do
         case "$1" in
             --python-range) range="${2:-$range}"; shift 2 ;;
@@ -33,7 +33,7 @@ doctor_run() {
     else _doc_warn "ssh-copy-id yok (key gönderme elle kurulum komutuyla yapılır)"; fi
     if command -v nc >/dev/null 2>&1; then _doc_ok "nc (durum göstergesi)"
     else _doc_warn "nc yok: durum göstergesi ⚪ kalır"; fi
-    if command -v fzf >/dev/null 2>&1; then _doc_ok "fzf (isteğe bağlı: arama + açıklama penceresi)"
+    if fzf_path=$(ui_fzf_bin 2>/dev/null); then _doc_ok "fzf: $fzf_path (isteğe bağlı: arama + açıklama penceresi)"
     else _doc_warn "fzf yok (isteğe bağlı; menü kendi ok tuşlu seçicisiyle çalışır). Kurmak isterseniz: brew install fzf"; fi
     if [ "$(uname -s)" = "Darwin" ]; then
         if command -v security >/dev/null 2>&1; then _doc_ok "security (Keychain)"; else _doc_fail "security (Keychain) bulunamadı"; fi

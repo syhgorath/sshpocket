@@ -38,9 +38,22 @@ ui_arrows_enabled() {
     case "$mode" in
         numbers) return 1 ;;
         arrows) return 0 ;;
-        fzf) if command -v fzf >/dev/null 2>&1; then return 0; fi ;;
+        fzf) if ui_fzf_bin >/dev/null 2>&1; then return 0; fi ;;
     esac
     [ -t 0 ] && [ -t 2 ] && [ -n "${TERM:-}" ] && [ "$TERM" != "dumb" ]
+}
+
+# fzf'in tam yolu: önce PATH, sonra Homebrew konumları (Finder'dan açılan start.command PATH'inde /opt/homebrew/bin yoktur).
+# SSHPOCKET_FZF_DIRS (boşlukla ayrılmış) test/özel kurulum için değiştirir.
+ui_fzf_bin() {
+    local d p
+    if p=$(command -v fzf 2>/dev/null) && [ -n "$p" ]; then printf '%s' "$p"; return 0; fi
+    local IFS=' '
+    # shellcheck disable=SC2086  # kasıtlı: boşlukla ayrılmış dizin listesi
+    for d in ${SSHPOCKET_FZF_DIRS:-/opt/homebrew/bin /usr/local/bin}; do
+        if [ -x "$d/fzf" ]; then printf '%s' "$d/fzf"; return 0; fi
+    done
+    return 1
 }
 
 # fzf arka ucu kullanılacak mı? UI=numbers|arrows → hayır; fzf yoksa hayır; auto → yalnızca gerçek terminalde;
@@ -49,7 +62,7 @@ ui_fzf_enabled() {
     local mode=auto
     if declare -F settings_get >/dev/null; then mode=$(settings_get UI); fi
     case "$mode" in numbers|arrows) return 1 ;; esac
-    command -v fzf >/dev/null 2>&1 || return 1
+    ui_fzf_bin >/dev/null 2>&1 || return 1
     [ "$mode" = "fzf" ] && return 0
     [ -t 0 ] && [ -t 2 ] && [ -n "${TERM:-}" ] && [ "$TERM" != "dumb" ]
 }
@@ -86,11 +99,12 @@ _ui_read_key() {
     esac
 }
 
-_ui_cursor_show() { printf '\033[?25h' >&2; }
+_ui_cursor_show() { printf '\033[?25h\033[?7h' >&2; }
 
 # Liste + alt ipucu çizer (stderr). Çağıranın yerel değişkenlerini kullanır: sel n back buf items
 _ui_pick_draw() {
     local redraw="$1" i label num hint desc
+    printf '\033[?7l' >&2        # otomatik sarma KAPALI: uzun satır sarılıp yeni satır üretmesin (imleç hesabı kaymasın)
     if [ "$redraw" = "1" ]; then printf '\033[%dA' "$((n + 4))" >&2; fi
     i=1
     while [ "$i" -le "$((n + 1))" ]; do
@@ -109,6 +123,7 @@ _ui_pick_draw() {
     printf '\r\033[2K\033[2m%s\033[0m\n' "$hint" >&2
     if [ "$sel" -le "$n" ]; then desc="${UI_PICK_DESCS[$((sel - 1))]:-}"; else desc="${UI_PICK_BACK_DESC:-}"; fi
     printf '\r\033[2K%s\n' "$desc" >&2
+    printf '\033[?7h' >&2        # sarma yeniden AÇIK
 }
 
 # fzf arka ucu: "<no>\t<etiket>" satırları; açıklama --preview ile (dosyadan, kabuğa veri verilmez).
@@ -116,7 +131,8 @@ _ui_pick_draw() {
 _ui_pick_fzf() {
     local sel="${1:-1}" back="$2"; shift 2
     local -a items=("$@")
-    local n=$# tmp i label out rc num
+    local n=$# tmp i label out rc num fzf_bin
+    fzf_bin=$(ui_fzf_bin) || return 2
     tmp=$(mktemp -d "${TMPDIR:-/tmp}/sshpocket-fzf.XXXXXX") || return 1
     if ! [[ "$tmp" =~ ^[A-Za-z0-9_./-]+$ ]]; then rm -r -- "${tmp:?}"; return 2; fi   # güvenli olmayan yol: kendi seçicimiz
     {
@@ -134,7 +150,7 @@ _ui_pick_fzf() {
         i=0
         while [ "$i" -lt "$n" ]; do printf '%s\n' "${UI_PICK_DESCS[$i]:-}"; i=$((i + 1)); done
     } > "$tmp/desc"
-    out=$(fzf --delimiter=$'\t' --with-nth=2.. --layout=reverse --height='~60%' --min-height=8 \
+    out=$("$fzf_bin" --delimiter=$'\t' --with-nth=2.. --layout=reverse --height='~60%' --min-height=8 \
               --border --no-sort --cycle --prompt='› ' \
               --header='Enter: aç · ←/Esc: geri · yazarak ara' \
               --preview "awk -v n={1} 'NR==n+1' '$tmp/desc'" --preview-window='down,3,wrap,border-top' \

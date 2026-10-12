@@ -4,6 +4,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **Ok tuşlu menüde listenin satırları her tuşta çoğalıyordu (3.5.0):** menü açıklamaları eklenince, terminal genişliğinden uzun açıklama bir alt satıra
+  sarılıyor, imleci geri taşıma sayısı kayıyor ve her ↑/↓'de üst satır kopyalanıyordu. Çizim sırasında otomatik sarma kapatılır (uzun satırlar
+  sağ kenarda kırpılır), çıkışta ve Ctrl-C'de yeniden açılır. 60/80/100 sütunlu gerçek pty testi eklendi.
+- **fzf, Finder'dan açılınca (start.command) bulunamıyordu:** PATH'te yoksa `/opt/homebrew/bin` ve `/usr/local/bin` da aranır.
+
 ## [3.5.0] - 2026-10-12
 
 ### Düzeltildi
