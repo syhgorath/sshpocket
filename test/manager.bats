@@ -103,3 +103,30 @@ setup() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"Kullanım"* ]]
 }
+
+@test "remove: sunucuyla birlikte Keychain'deki knock dizisi de silinir (yetim kalmaz)" {
+    SECLOG="$BATS_TEST_TMPDIR/sec.log"
+    printf '#!/bin/bash\necho "$*" >> "%s"\nexit 0\n' "$SECLOG" > "$BATS_TEST_TMPDIR/bin/security"
+    run bash -c "printf 'web1\nn\n' | bash '$MM' remove web1"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Knock dizisi Keychain'den silindi"* ]]
+    grep -q 'delete-generic-password -a USBMonitor_WEB1_Knock -s USBMonitor' "$SECLOG"
+    [ ! -d "$SSHPOCKET_SERVERS_DIR/web1" ]
+}
+
+@test "remove: ad doğrulanmazsa knock kaydına dokunulmaz" {
+    SECLOG="$BATS_TEST_TMPDIR/sec.log"
+    printf '#!/bin/bash\necho "$*" >> "%s"\nexit 0\n' "$SECLOG" > "$BATS_TEST_TMPDIR/bin/security"
+    run bash -c "printf 'yanlis\n' | bash '$MM' remove web1"
+    [ "$status" -ne 0 ]
+    [ ! -e "$SECLOG" ]
+    [ -d "$SSHPOCKET_SERVERS_DIR/web1" ]
+}
+
+@test "rename: eski adla duran knock dizisi için yeniden girme uyarısı verir" {
+    printf '#!/bin/bash\nexit 0\n' > "$BATS_TEST_TMPDIR/bin/security"
+    run bash "$MM" rename web1 web2
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Knock dizisi de eski adla"* ]]
+    [[ "$output" == *"Knock ayarları"* ]]
+}

@@ -191,3 +191,156 @@ pick() { ui_pick_arrows "$@" 2>/dev/null; }
     [[ "$output" == *$'\033[7m'*"Sil"* ]]          # ok moduna özgü vurgulu satır
     [ -f "$SANDBOX/servers/alpha/server.env" ]
 }
+
+# ---------- fzf arka ucu ve açıklamalar ----------
+# Sahte fzf: argümanları ve stdin'i kaydeder; FZF_FAKE_PICK satır numarasını (1. alan) seçer; FZF_FAKE_RC çıkış kodu
+make_fake_fzf() {
+    mkdir -p "$BATS_TEST_TMPDIR/fbin"
+    cat > "$BATS_TEST_TMPDIR/fbin/fzf" <<STUB
+#!/bin/bash
+printf '%s\n' "\$@" > "$BATS_TEST_TMPDIR/fzf.args"
+cat > "$BATS_TEST_TMPDIR/fzf.stdin"
+# --preview değerinden açıklama dosyası yolunu çıkarıp sakla
+prev=""; while [ \$# -gt 0 ]; do [ "\$1" = "--preview" ] && prev="\$2"; shift; done
+f=\$(printf '%s' "\$prev" | grep -oE "'[^']+'\$" | tr -d "'")
+[ -f "\$f" ] && cp "\$f" "$BATS_TEST_TMPDIR/fzf.desc"
+if [ "\${FZF_FAKE_RC:-0}" -ne 0 ]; then
+  [ "\${FZF_FAKE_PRINT:-0}" = 1 ] && awk -F'\t' -v n="\${FZF_FAKE_PICK:-1}" '\$1==n {print; exit}' "$BATS_TEST_TMPDIR/fzf.stdin"
+  exit "\$FZF_FAKE_RC"
+fi
+awk -F'\t' -v n="\${FZF_FAKE_PICK:-1}" '\$1==n {print; exit}' "$BATS_TEST_TMPDIR/fzf.stdin"
+STUB
+    chmod +x "$BATS_TEST_TMPDIR/fbin/fzf"
+    export PATH="$BATS_TEST_TMPDIR/fbin:$PATH"
+}
+
+@test "fzf: UI=fzf iken fzf arka ucu seçilir; seçilen numara döner" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=2
+    run ui_pick_arrows 1 "Geri" "Bir" "İki" "Üç"
+    [ "$output" = "2" ]
+    # liste: numara<TAB>etiket, geri = 0
+    [ "$(cat "$BATS_TEST_TMPDIR/fzf.stdin")" = $'1\tBir\n2\tİki\n3\tÜç\n0\tGeri' ]
+}
+
+@test "fzf: Esc/iptal (çıkış 130) ve eşleşmeme (1) geri (0) sayılır; geçersiz numara 0" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf
+    FZF_FAKE_RC=130 run ui_pick_arrows 1 "Geri" "A" "B"; [ "$output" = "0" ]
+    FZF_FAKE_RC=1 run ui_pick_arrows 1 "Geri" "A" "B"; [ "$output" = "0" ]
+    FZF_FAKE_PICK=9 run ui_pick_arrows 1 "Geri" "A" "B"; [ "$output" = "0" ]
+}
+
+@test "fzf: açıklamalar önizleme dosyasına satır satır yazılır (geri açıklaması ilk satır)" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf
+    UI_PICK_DESCS=("Birinci açıklama" "İkinci; \$(touch /tmp/pwned) \`id\`")
+    UI_PICK_BACK_DESC="Geri açıklaması"
+    run ui_pick_arrows 1 "Geri" "A" "B"
+    [ "$(cat "$BATS_TEST_TMPDIR/fzf.desc")" = $'Geri açıklaması\nBirinci açıklama\nİkinci; $(touch /tmp/pwned) `id`' ]
+    [ ! -e /tmp/pwned ]
+    grep -q -- '--preview' "$BATS_TEST_TMPDIR/fzf.args"
+    # açıklama metni komut satırına GİRMEZ (yalnızca dosya yolu)
+    run ! grep -q 'Birinci açıklama' "$BATS_TEST_TMPDIR/fzf.args"
+}
+
+@test "fzf: UI=numbers/arrows iken fzf kullanılmaz; fzf yoksa kendi seçicimize düşer" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=numbers
+    run ui_fzf_enabled; [ "$status" -ne 0 ]
+    export SSHPOCKET_UI=arrows
+    run ui_fzf_enabled; [ "$status" -ne 0 ]
+    export SSHPOCKET_UI=fzf
+    run ui_fzf_enabled; [ "$status" -eq 0 ]
+    rm "$BATS_TEST_TMPDIR/fbin/fzf"
+    PATH="/usr/bin:/bin" run ui_fzf_enabled; [ "$status" -ne 0 ]
+}
+
+@test "fzf: auto modda terminal yoksa (boru/test) fzf KULLANILMAZ" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=auto
+    run ui_fzf_enabled
+    [ "$status" -ne 0 ]
+}
+
+@test "fzf: etiketteki TAB/satır sonu liste biçimini bozmaz" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=1
+    run ui_pick_arrows 1 "Geri" $'A\tB' $'C\nD'
+    [ "$(cat "$BATS_TEST_TMPDIR/fzf.stdin")" = $'1\tA B\n2\tC D\n0\tGeri' ]
+}
+
+@test "açıklamalar: ok tuşlu seçici seçili satırın açıklamasını alt satırda gösterir" {
+    UI_PICK_DESCS=("AÇIKLAMA-BİR" "AÇIKLAMA-İKİ")
+    UI_PICK_BACK_DESC="AÇIKLAMA-GERİ"
+    feed DOWN DOWN ENTER
+    out=$(SSHPOCKET_UI=arrows ui_pick_arrows 1 "Geri" "A" "B" 2>&1 >/dev/null)
+    [[ "$out" == *"AÇIKLAMA-BİR"* ]]
+    [[ "$out" == *"AÇIKLAMA-İKİ"* ]]
+    [[ "$out" == *"AÇIKLAMA-GERİ"* ]]
+}
+
+@test "açıklamalar: ana menü girdileri için açıklama tanımlı; bilinmeyen girdi boş" {
+    local f
+    for f in server:alpha AddServerAction ImportSSHConfigAction ManageServersAction UpdateAction SettingsAction ComponentsAction; do
+        [ -n "$(ui_describe_entry "$f")" ] || { echo "AÇIKLAMA YOK: $f"; return 1; }
+    done
+    [ -z "$(ui_describe_entry YokBoyleBirSey)" ]
+}
+
+@test "ayar: UI=fzf kabul edilir ve panel döngüsü auto→numbers→arrows→fzf→auto" {
+    export SSHPOCKET_CONF="$BATS_TEST_TMPDIR/c.conf"
+    export SISTEM_PATH="$ROOT/sistem"
+    local want cur=auto
+    for want in numbers arrows fzf auto; do
+        run bash -c 'source "'"$H"'/Settings.sh"; clear(){ :; }; SettingsAction' <<< $'3\nq'
+        [ "$(grep '^UI=' "$SSHPOCKET_CONF" | tail -n1)" = "UI=$want" ]
+    done
+}
+
+@test "fzf: hata kodu ile çıkan fzf çıktı bassa bile seçim sayılmaz" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=2 FZF_FAKE_PRINT=1
+    FZF_FAKE_RC=130 run ui_pick_arrows 1 "Geri" "A" "B"
+    [ "$output" = "0" ]
+    FZF_FAKE_RC=2 run ui_pick_arrows 1 "Geri" "A" "B"
+    [ "$output" = "0" ]
+}
+
+@test "fzf (gerçek pty): terminalde auto → fzf, numbers → fzf değil" {
+    unset -f _ui_read_key
+    make_fake_fzf
+    run python3 -I - "$H" "$BATS_TEST_TMPDIR/fbin" <<'PY'
+import os, pty, sys, select
+H, fbin = sys.argv[1], sys.argv[2]
+def run(mode):
+    pid, fd = pty.fork()
+    if pid == 0:
+        env = {"PATH": fbin + ":/usr/bin:/bin", "TERM": "xterm", "SSHPOCKET_UI": mode, "SISTEM_PATH": H + "/.."}
+        os.execve("/bin/bash", ["bash", "-c",
+            'source "%s/Settings.sh"; source "%s/UI.sh"; if ui_fzf_enabled; then echo FZF=yes; else echo FZF=no; fi' % (H, H)], env)
+    out = b""
+    while True:
+        r, _, _ = select.select([fd], [], [], 5)
+        if not r: break
+        try: d = os.read(fd, 4096)
+        except OSError: break
+        if not d: break
+        out += d
+    os.waitpid(pid, 0)
+    return out.decode()
+print("auto:" + run("auto").strip())
+print("numbers:" + run("numbers").strip())
+print("arrows:" + run("arrows").strip())
+PY
+    [[ "$output" == *"auto:FZF=yes"* ]]
+    [[ "$output" == *"numbers:FZF=no"* ]]
+    [[ "$output" == *"arrows:FZF=no"* ]]
+}

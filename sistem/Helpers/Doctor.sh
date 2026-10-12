@@ -33,6 +33,8 @@ doctor_run() {
     else _doc_warn "ssh-copy-id yok (key gönderme elle kurulum komutuyla yapılır)"; fi
     if command -v nc >/dev/null 2>&1; then _doc_ok "nc (durum göstergesi)"
     else _doc_warn "nc yok: durum göstergesi ⚪ kalır"; fi
+    if command -v fzf >/dev/null 2>&1; then _doc_ok "fzf (isteğe bağlı: arama + açıklama penceresi)"
+    else _doc_warn "fzf yok (isteğe bağlı; menü kendi ok tuşlu seçicisiyle çalışır). Kurmak isterseniz: brew install fzf"; fi
     if [ "$(uname -s)" = "Darwin" ]; then
         if command -v security >/dev/null 2>&1; then _doc_ok "security (Keychain)"; else _doc_fail "security (Keychain) bulunamadı"; fi
     else

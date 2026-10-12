@@ -38,7 +38,7 @@ settings_normalize() {
             esac ;;
         UI)
             case "$val" in
-                auto|arrows|numbers) printf '%s' "$val" ;;
+                auto|arrows|numbers|fzf) printf '%s' "$val" ;;
                 *) return 1 ;;
             esac ;;
         *) return 1 ;;
@@ -114,7 +114,7 @@ _settings_label() {
     case "$1" in
         STATUS) printf 'Durum göstergesi (🟢/🔴)' ;;
         STATUS_TIMEOUT) printf 'Durum kontrol süresi (sn)' ;;
-        UI) printf 'Menü: auto/arrows/numbers' ;;
+        UI) printf 'Menü: auto/fzf/arrows/numbers' ;;
     esac
 }
 
@@ -133,6 +133,14 @@ SettingsAction() {
         if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
             ui_header "Ana menü › Ayarlar"
             echo ""
+            # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+            local -a UI_PICK_DESCS=(
+                "Menüde sunucuların yanında 🟢 açık / 🔴 erişilemiyor / 🔒 knock gerekir / ⚪ ayar yok işaretini gösterir. Enter: aç/kapat."
+                "Durum kontrolünün bir sunucu için en çok kaç saniye bekleyeceği (1-5). Enter: değiştir."
+                "Menü stili: auto (fzf varsa fzf, yoksa ok tuşları) · fzf · arrows (ok tuşları) · numbers (numaralı). Enter: sıradakine geç."
+            )
+            # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+            local UI_PICK_BACK_DESC="Ana menüye döner."
             choice=$(ui_pick_arrows 1 "Geri" \
                 "$(printf '%-28s %s%s' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)")" \
                 "$(printf '%-28s %s%s' "$(_settings_label STATUS_TIMEOUT)" "$(settings_get STATUS_TIMEOUT)" "$(_settings_note STATUS_TIMEOUT)")" \
@@ -158,6 +166,7 @@ SettingsAction() {
                 case "$(settings_get UI)" in
                     auto) new=numbers ;;
                     numbers) new=arrows ;;
+                    arrows) new=fzf ;;
                     *) new=auto ;;
                 esac
                 settings_set UI "$new" || read -r -p "Enter..." _ || true

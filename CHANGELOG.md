@@ -4,7 +4,16 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **fzf desteği (isteğe bağlı):** sistemde `fzf` kuruluysa (`brew install fzf`) tüm seçim menüleri fzf ile açılır: yazarak arama, **önizleme penceresinde
+  seçili seçeneğin açıklaması**, `←`/Esc geri. fzf yoksa ya da terminal değilse (boru/test) kendi ok tuşlu seçicimiz, o da yoksa numaralı menü kullanılır.
+  Açıklama metni fzf komut satırına girmez (dosyadan okunur). ⚙️ Ayarlar → menü stili: `auto` | `fzf` | `arrows` | `numbers`.
+- **Menü açıklamaları:** ana menü, sunucu menüsü, Ayarlar, Sunucuları yönet ve Keychain menülerinde her seçeneğin kısa açıklaması; fzf yoksa ok tuşlu
+  seçicinin alt satırında gösterilir. `./start.sh --doctor` fzf'i isteğe bağlı olarak denetler (kurmaz).
+
 ### Düzeltildi
+- **Sunucu silinince Keychain'deki knock dizisi yetim kalıyordu:** artık sunucuyla birlikte silinir; yeniden adlandırmada eski adla duran knock
+  dizisi için "Knock ayarları ile yeniden girin" uyarısı gösterilir.
 - **Knock ayarları açıklamasız ve bağışlamazdı:** tek yanlış girişte "Geçersiz protokol" deyip menüden çıkıyordu. Artık knocking'in ne olduğu, her
   alanın (protokol, bekleme, dizi) ne anlama geldiği ve örnek değerler gösterilir; yanlış girişte **neden** geçersiz olduğu söylenip yeniden sorulur
   (3 deneme), büyük/küçük harf fark etmez, Enter = varsayılan. macOS'un diziyi iki kez isteyebileceği belirtilir.

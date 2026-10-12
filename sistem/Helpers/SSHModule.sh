@@ -142,6 +142,16 @@ ssh_module_run() {
         echo ""
 
         if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+            # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+            local -a UI_PICK_DESCS=(
+                "Yeni bir Terminal penceresinde ssh ile bağlanır (varsa önce knock gönderilir; passphrase Keychain'den)."
+                "Public key'i sunucunun authorized_keys dosyasına ekler (ssh-copy-id); parola yalnızca ssh'ın kendi isteminde girilir."
+                "IP, kullanıcı, port ve key yolunu değiştirir."
+                "Key passphrase'ini Keychain'e kaydeder/günceller veya siler; kayıttan sonra key'i açarak doğrular."
+                "Port knocking: protokol, bekleme ve diziyi ayarlar (dizi Keychain'de saklanır)."
+            )
+            # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+            local UI_PICK_BACK_DESC="Ana menüye döner."
             choice=$(ui_pick_arrows 1 "Geri" \
                 "Bağlan" \
                 "Public key'i sunucuya gönder" \

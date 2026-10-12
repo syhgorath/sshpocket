@@ -76,6 +76,11 @@ cmd_remove() {
     if [ "$confirm" != "$name" ]; then echo "İptal edildi."; return 1; fi
     rm -r -- "${dir:?}"
     echo "✅ Silindi: $name"
+    # Knock dizisi sunucuya bağlı bir sırdır; geride yetim kalmasın
+    if command -v security >/dev/null 2>&1 \
+        && security delete-generic-password -a "USBMonitor_${upper}_Knock" -s USBMonitor >/dev/null 2>&1; then
+        echo "✅ Knock dizisi Keychain'den silindi"
+    fi
     if command -v security >/dev/null 2>&1 \
         && security find-generic-password -a "USBMonitor_${upper}_Passphrase" -s USBMonitor >/dev/null 2>&1; then
         local del
@@ -121,6 +126,10 @@ cmd_rename() {
     echo "✅ $old → $new"
     echo "ℹ️  Keychain kaydı otomatik taşınmaz. Passphrase kullanıyorsanız yeniden ekleyin:"
     echo "   security add-generic-password -U -a USBMonitor_${unew}_Passphrase -s USBMonitor -w"
+    if command -v security >/dev/null 2>&1 \
+        && security find-generic-password -a "USBMonitor_$(module_prefix "$old")_Knock" -s USBMonitor >/dev/null 2>&1; then
+        echo "ℹ️  Knock dizisi de eski adla Keychain'de duruyor; yeni adda sunucu menüsü → Knock ayarları ile yeniden girin."
+    fi
 }
 
 case "${1:-}" in
