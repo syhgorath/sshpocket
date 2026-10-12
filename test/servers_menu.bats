@@ -85,3 +85,19 @@ run_main() { bash -c "printf '$1' | bash '$SANDBOX/sistem/Main.sh' 2>&1 | sed 's
     run bash -c "printf '\n' | bash '$SANDBOX/sistem/Main.sh' --auto 2>&1"
     [[ "$output" == *"Auto-executing: server:alpha"* ]]
 }
+
+# Not: 'read -p' istemi girdi terminal değilse yazdırılmaz; bu yüzden duraklama, bir sonraki satırı
+# tüketmesiyle gözlenir: "3x" ana menüde geçersiz seçim olur (Invalid selection), duraklamada ise yutulur.
+@test "geri dönünce duraklama yok: sunucu menüsü, Ayarlar ve Sunucuları yönet doğrudan ana menüye döner" {
+    run run_main '1\n0\n3x\n0\n'            # sunucu menüsü: geri → ana menü (3x geçersiz seçim) → çıkış
+    [[ "$output" == *"Invalid selection"* ]]
+    run run_main '7\n0\n3x\n0\n'            # ⚙️ Ayarlar
+    [[ "$output" == *"Invalid selection"* ]]
+    run run_main '5\n0\n3x\n0\n'            # Sunucuları yönet
+    [[ "$output" == *"Invalid selection"* ]]
+}
+
+@test "bir iş yapıldıysa (Sunucuları yönet → Sil) duraklama korunur: sonraki satır yutulur" {
+    run run_main '5\n1\n\n3x\n0\n'         # Yönet → Sil → boş ad → duraklama "3x"'i yutar → çıkış
+    [[ "$output" != *"Invalid selection"* ]]
+}

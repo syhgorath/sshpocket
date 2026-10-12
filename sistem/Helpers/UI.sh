@@ -209,3 +209,7 @@ ui_describe_entry() {
         *)                     printf '' ;;
     esac
 }
+
+# Ana menü döngüsüne "bu eylemden sonra duraklatma" der (menüden geri dönüldü; okunacak çıktı yok).
+# shellcheck disable=SC2034  # Main.sh döngüsü okur
+ui_no_pause() { SSHPOCKET_NO_PAUSE=1; }

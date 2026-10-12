@@ -153,10 +153,10 @@ SettingsAction() {
             printf '  3) %-28s %s%s\n' "$(_settings_label UI)" "$(settings_get UI)" "$(_settings_note UI)"
             echo "  0) Geri (q)"
             echo ""
-            if ! read -r -p "Değiştirilecek ayar [0]: " choice; then return 0; fi
+            if ! read -r -p "Değiştirilecek ayar [0]: " choice; then ui_no_pause; return 0; fi
         fi
         case "${choice:-0}" in
-            0|q|Q) return 0 ;;
+            0|q|Q) ui_no_pause; return 0 ;;
             1)
                 cur=$(settings_get STATUS)
                 if [ "$cur" = "on" ]; then new=off; else new=on; fi

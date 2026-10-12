@@ -64,9 +64,10 @@ ManageServersAction() {
         echo "  1) Sil"
         echo "  2) Yeniden adlandır"
         echo "  0) Geri (q)"
-        if ! read -r -p "Seçim [0]: " choice; then return 0; fi
+        if ! read -r -p "Seçim [0]: " choice; then ui_no_pause; return 0; fi
     fi
     case "${choice:-0}" in
+        0|q|Q) ui_no_pause ;;   # geri: okunacak çıktı yok
         1)
             read -r -p "Silinecek modül adı: " name
             if [ -n "$name" ]; then bash "$SISTEM_PATH/ModuleManager.sh" remove "$name"; fi
