@@ -257,7 +257,7 @@ STUB
     export SSHPOCKET_UI=fzf
     run ui_fzf_enabled; [ "$status" -eq 0 ]
     rm "$BATS_TEST_TMPDIR/fbin/fzf"
-    PATH="/usr/bin:/bin" run ui_fzf_enabled; [ "$status" -ne 0 ]
+    SSHPOCKET_FZF_DIRS="$BATS_TEST_TMPDIR/yok" PATH="/usr/bin:/bin" run ui_fzf_enabled; [ "$status" -ne 0 ]
 }
 
 @test "fzf: auto modda terminal yoksa (boru/test) fzf KULLANILMAZ" {
@@ -343,4 +343,89 @@ PY
     [[ "$output" == *"auto:FZF=yes"* ]]
     [[ "$output" == *"numbers:FZF=no"* ]]
     [[ "$output" == *"arrows:FZF=no"* ]]
+}
+
+@test "fzf: PATH'te yoksa Homebrew konumlarında aranır (Finder/start.command PATH'i dardır)" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    mkdir -p "$BATS_TEST_TMPDIR/hb"
+    mv "$BATS_TEST_TMPDIR/fbin/fzf" "$BATS_TEST_TMPDIR/hb/fzf"
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=2
+    PATH="/usr/bin:/bin" SSHPOCKET_FZF_DIRS="$BATS_TEST_TMPDIR/hb" run ui_fzf_bin
+    [ "$output" = "$BATS_TEST_TMPDIR/hb/fzf" ]
+    PATH="/usr/bin:/bin" SSHPOCKET_FZF_DIRS="$BATS_TEST_TMPDIR/hb" run ui_pick_arrows 1 "Geri" "A" "B"
+    [ "$output" = "2" ]
+    PATH="/usr/bin:/bin" SSHPOCKET_FZF_DIRS="$BATS_TEST_TMPDIR/yok" run ui_fzf_bin
+    [ "$status" -ne 0 ]
+}
+
+# Dar terminalde uzun açıklama satırı sarılıp imleç hesabını kaydırırdı: her ok tuşunda listenin üst satırı çoğalıyordu.
+@test "ok tuşlu seçici (gerçek pty, 60/80/100 sütun): ok tuşlarında satırlar ÇOĞALMAZ" {
+    unset -f _ui_read_key
+    run python3 -I - "$H" <<'PY'
+import os, pty, sys, select, time, re, fcntl, termios, struct, unicodedata
+H = sys.argv[1]
+def play(cols):
+    pid, fd = pty.fork()
+    if pid == 0:
+        env = {"PATH": "/usr/bin:/bin", "TERM": "xterm-256color", "SSHPOCKET_UI": "arrows", "SISTEM_PATH": H + "/..",
+               "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8"}
+        script = r'''
+source "%s/Settings.sh"; source "%s/UI.sh"
+UI_PICK_DESCS=("Sunucu menüsünü açar: bağlan, key gönder, bilgileri güncelle, Keychain passphrase, knock ayarları ve daha fazlası." "İkinci açıklama da oldukça uzun bir metin, dar terminalde sarılırdı ve imleç hesabını bozardı bu satır." "Üçüncü")
+UI_PICK_BACK_DESC="Uygulamadan çıkar."
+r=$(ui_pick_arrows 1 "Çıkış" "BIRINCI-SATIR   kullanici@10.0.0.5" "IKINCI-SATIR" "UCUNCU-SATIR")
+echo "RESULT=[$r]"
+''' % (H, H)
+        os.execve("/bin/bash", ["bash", "-c", script], env)
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 30, cols, 0, 0))
+    def rd(t):
+        out = b""; end = time.time() + t
+        while time.time() < end:
+            r, _, _ = select.select([fd], [], [], 0.2)
+            if r:
+                try: out += os.read(fd, 65536)
+                except OSError: break
+        return out
+    log = rd(1.0)
+    for k in [b"\x1b[B", b"\x1b[B", b"\x1b[A", b"\x1b[B", b"\x1b[B"]:
+        os.write(fd, k); log += rd(0.4)
+    os.write(fd, b"\r"); log += rd(0.8)
+    txt = log.decode(errors="replace")
+    def width(ch):
+        if unicodedata.combining(ch) or ch in "\ufe0f\u200d": return 0
+        return 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+    screen = [[]]; row = col = 0; wrap = True
+    def ensure(r):
+        while len(screen) <= r: screen.append([])
+    i = 0
+    while i < len(txt):
+        c = txt[i]
+        if c == "\x1b":
+            m = re.match(r"\x1b\[([0-9;?]*)([A-Za-z])", txt[i:])
+            if m:
+                arg, cmd = m.group(1), m.group(2)
+                if arg == "?7" and cmd in "lh": wrap = (cmd == "h")
+                elif cmd == "A": row = max(0, row - int(arg or 1))
+                elif cmd == "K": ensure(row); screen[row] = []; col = 0
+                i += m.end(); continue
+        if c == "\n": row += 1; col = 0; ensure(row)
+        elif c == "\r": col = 0
+        else:
+            w = width(c)
+            if col + w > cols:
+                if wrap: row += 1; col = 0; ensure(row)
+                else: i += 1; continue
+            ensure(row); screen[row].append(c); col += w
+        i += 1
+    text = "\n".join("".join(l) for l in screen)
+    return {k: text.count(k) for k in ("BIRINCI-SATIR", "IKINCI-SATIR", "UCUNCU-SATIR")}, re.search(r"RESULT=\[([^\]]*)\]", re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", txt))
+bad = False
+for cols in (100, 80, 60):
+    counts, res = play(cols)
+    print(cols, counts, res.group(1) if res else "?")
+    if any(v != 1 for v in counts.values()): bad = True
+print("COGALMA=" + ("EVET" if bad else "HAYIR"))
+PY
+    [[ "$output" == *"COGALMA=HAYIR"* ]]
 }
