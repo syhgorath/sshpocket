@@ -92,7 +92,10 @@ comp_known() { comp_ids | grep -qx "$1"; }
 
 # comp_get <id> <anahtar>
 comp_get() {
-    comp_lock_parse 2>/dev/null | awk -F'|' -v id="$1" -v k="$2" '$1==id && $2==k { sub(/^[^|]*\|[^|]*\|/, ""); print; exit }'
+    # Girdinin tamamını okur (erken exit yok): pipefail altında üretici SIGPIPE ile ölüp 141 döndürmesin
+    comp_lock_parse 2>/dev/null | awk -F'|' -v id="$1" -v k="$2" '
+        $1==id && $2==k && !done { sub(/^[^|]*\|[^|]*\|/, ""); val=$0; done=1 }
+        END { if (done) print val }'
 }
 
 comp_sha256_of() {

@@ -150,3 +150,17 @@ LOCK
     run comp_verify demo "$T/demo-1.0.0.tar.gz" "$T/yok.sig"
     [ "$status" -ne 0 ]
 }
+
+@test "comp_get: pipefail altında da çalışır (erken çıkış SIGPIPE/141 üretmez)" {
+    write_lock demo "$SHA"
+    # birden çok girdi: eşleşme ilk girdide, üretici geri kalanı yazmaya çalışır
+    for i in 1 2 3 4 5 6 7 8; do
+        printf '\n[pkg%s]\nrepo = a/b\nversion = 1.0.0\nsha256 = %s\nsigners = sshpocket-component namespaces="sshpocket-component" %s\n' "$i" "$SHA" "$PUB" >> "$SSHPOCKET_COMPONENTS_LOCK"
+    done
+    set -o pipefail
+    run comp_get demo version
+    [ "$status" -eq 0 ]
+    [ "$output" = "1.0.0" ]
+    run comp_get yok version
+    [ -z "$output" ]
+}

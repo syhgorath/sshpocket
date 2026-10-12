@@ -69,3 +69,17 @@ dosyaları paketin dışında kalır.
 - **Özel anahtar sızdıysa:** eski anahtarla imzalı güncellemeler artık güvenilir değildir. Kullanıcılara GitHub
   Release notunda ve README'de duyuru yapın; yeni kurulumu elle (`git clone` / release indirme) yapmaları ve
   `release_signers`'ı yeni anahtarla değiştirmeleri gerekir. Bu yüzden anahtarı iyi koruyun.
+
+## Paket sürümünü kilide yazma (linux-hardening gibi)
+Bir paket yeni sürüm yayınlayınca, kullanıcılara gitmesi için `components.lock` güncellenir ve yeni bir sshpocket sürümü çıkarılır:
+
+```bash
+# önce yalnızca göster (dosyaya dokunmaz)
+bash scripts/lock-component.sh linux-hardening 0.2.0 --repo syhgorath/linux-hardening
+# doğruysa yaz
+bash scripts/lock-component.sh linux-hardening 0.2.0 --repo syhgorath/linux-hardening --write
+git diff components.lock          # gözle kontrol; sonra PR → release
+```
+Araç; paket + `.sig` indirir, arşivi ve imzayı (`sshpocket-component`) doğrular, `component.json`'u denetler ve sha256'yı yazar.
+Doğrulama başarısızsa ya da paket kurulamazsa kilide **yazmaz**.
+
