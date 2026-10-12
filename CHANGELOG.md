@@ -5,10 +5,14 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Düzeltildi
+- **`--doctor` yeni Mac'te "geliştirici araçlarını kurun" penceresini açabiliyordu:** macOS'ta Command Line Tools yoksa `/usr/bin/python3` gerçek
+  Python değil bir saplamadır ve çalıştırılınca kurulum penceresi açar. Saplama artık çalıştırılmadan atlanır ve doktor nedenini söyler.
 - **Menüden "Geri" ile dönünce gereksiz "Devam etmek için Enter" soruluyordu:** sunucu menüsü, ⚙️ Ayarlar ve Sunucuları yönet'ten geri dönünce
   artık doğrudan ana menüye dönülür. Okunacak çıktısı olan işlemlerden (bağlanma sonucu, ekleme, silme, güncelleme) sonra duraklama korunur.
 
 ### Eklendi
+- **CI'da sabit sürüm ShellCheck:** `scripts/ci-install-shellcheck.sh` (v0.11.0, indirilen arşivin sha256'sı doğrulanmazsa kurulmaz); yerel ve CI
+  aynı sürümü kullanır, "yerelde yeşil, CI'da kırmızı" farkı kapanır.
 - **fzf desteği (isteğe bağlı):** sistemde `fzf` kuruluysa (`brew install fzf`) tüm seçim menüleri fzf ile açılır: yazarak arama, **önizleme penceresinde
   seçili seçeneğin açıklaması**, `←`/Esc geri. fzf yoksa ya da terminal değilse (boru/test) kendi ok tuşlu seçicimiz, o da yoksa numaralı menü kullanılır.
   Açıklama metni fzf komut satırına girmez (dosyadan okunur). ⚙️ Ayarlar → menü stili: `auto` | `fzf` | `arrows` | `numbers`.
