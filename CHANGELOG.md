@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-10-12
+
+### Değişti
+- **Belgeler güncellendi:** README'ye **Gereksinimler** bölümü (hangi araçlar macOS ile gelir; fzf ve Python isteğe bağlı); eskimiş `.env` anlatımı
+  (`servers/<ad>/server.env`, `sshpocket.conf`); tekrarlanan menü/fzf maddeleri birleştirildi; knock istemci tarafı ve `UI` değerleri anlatıldı;
+  `docs/ui-design.md` uygulama durumuyla güncellendi.
+
 ### Düzeltildi
 - **Ok tuşlu menüde listenin satırları her tuşta çoğalıyordu (3.5.0):** menü açıklamaları eklenince, terminal genişliğinden uzun açıklama bir alt satıra
   sarılıyor, imleci geri taşıma sayısı kayıyor ve her ↑/↓'de üst satır kopyalanıyordu. Çizim sırasında otomatik sarma kapatılır (uzun satırlar
@@ -208,7 +215,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.5.0...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.5.1...HEAD
+[3.5.1]: https://github.com/syhgorath/sshpocket/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/syhgorath/sshpocket/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/syhgorath/sshpocket/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/syhgorath/sshpocket/compare/v3.2.0...v3.3.0

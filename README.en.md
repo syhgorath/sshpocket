@@ -31,6 +31,24 @@ Every server is a *module*: drop a module folder in and it shows up in the menu 
 
 If you hit a problem on Apple Silicon or a newer macOS, please open an issue (with the macOS version, `uname -m` and `bash --version`).
 
+## Requirements
+
+On a stock macOS **nothing extra needs to be installed**; the tool only uses commands that ship with the system:
+
+| What | Note |
+|---|---|
+| macOS 10.15 (Catalina) or newer | Signed updates need `ssh-keygen -Y verify` (OpenSSH ≥ 8.0) |
+| `bash` 3.2 (`/bin/bash`), `ssh`, `ssh-keygen`, `ssh-add`, `ssh-copy-id`, `security`, `osascript`, `diskutil`, `curl`, `tar`, `shasum`, `nc` | All ship with macOS; `./start.sh --doctor` reports what is missing (it installs nothing) |
+
+Optional:
+
+| What | Used for | Install |
+|---|---|---|
+| **fzf** | Search and a description preview pane in menus. Without it the built-in arrow-key menu is used. (tried with 0.74.5) | `brew install fzf` |
+| **Python ≥ 3.12** | Only for future **packages** (e.g. linux-hardening); not needed day to day | `brew install python@3.13` |
+
+If `fzf` lives in `/opt/homebrew/bin` or `/usr/local/bin` it is also found when started from Finder (`start.command`).
+
 ## Quick start
 
 ```bash
@@ -58,19 +76,20 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
 - **Keychain:** passphrases are never written to disk.
 - **Send your key to the server:** `ssh-copy-id` from the menu or the generator.
 - **`~/.ssh/config` import:** turns existing hosts into modules. Private keys are **not copied**;
-  the `IdentityFile` path is stored as `<PREFIX>_KEY` in the module's `.env`.
-- **Use an existing key:** set `<PREFIX>_KEY=/path/to/key` in `.env`.
+  the `IdentityFile` path is stored as `KEY` in the server's `server.env`.
+- **Use an existing key:** set `KEY=/path/to/key` in `servers/<name>/server.env`.
 - **Status marks:** the menu shows 🟢 (port open) / 🔴 (unreachable) / ⚪ (not configured), checked in parallel.
   Turn off or tune it under **⚙️ Settings** (`sshpocket.conf`; the env var `SSHPOCKET_STATUS=0|1` takes precedence).
-- **Port knocking (client side):** **Knock settings** in the server menu; the sequence lives in Keychain and is sent automatically before connecting; status shows 🔒. Server-side setup is a separate package.
-- **fzf (optional):** after `brew install fzf` menus open in fzf (search + description preview); otherwise the built-in arrow-key menu is used.
-- **Arrow-key menu:** ↑↓ move · Enter open · `←`/`q` back; typing a number works too. If it misbehaves, set `UI=numbers` under ⚙️ Settings.
+- **Port knocking (client side):** **Knock settings** in the server menu; the sequence (e.g. `7000,8000,9000`) lives in Keychain and is sent automatically
+  before connecting; the status mark shows 🔒. The server side (knockd) is not part of this tool; the server admin must set it up. Classic knocking is not encrypted.
 - **Module menu:** Connect · Send key to server · **Update details** (IP/user/port/key path) ·
   **Update/delete the Keychain passphrase** (verifies it by unlocking the key after saving). The update options
   stay available even when the settings are broken or the key is missing.
 - **Module management:** `ModuleManager.sh list | remove <name> | rename <old> <new>`.
 - **Several users/keys for one server:** make one module per identity (e.g. `web_root`, `web_deploy`).
-- **Settings and arrow-key menu:** ⚙️ Settings (`sshpocket.conf`); ↑↓ move, Enter open, `q`/`←` back; set `UI=numbers` if needed.
+- **Menu:** ↑↓ move · Enter open · `←`/`q` back; typing a number works too; each option shows a short **description**. With **fzf** installed menus open in fzf
+  (search + description preview pane). The style is set under ⚙️ Settings (`UI`: `auto` · `fzf` · `arrows` · `numbers`) or with `SSHPOCKET_UI=numbers ./start.sh`;
+  use `numbers` if a terminal misbehaves.
 - **`./start.sh --doctor`:** prerequisite check (ssh tools, Python range, venv, disk, network); read-only, installs nothing.
 - **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new`.
   The lock file is empty for now; the first package (linux-hardening) will be added when ready. Standard: [docs/package-standard.md](docs/package-standard.md).
@@ -113,7 +132,7 @@ or use **⬆️ Check for updates / update** in the main menu.
 - The package is only the file from this repository's GitHub Releases, fetched over HTTPS and **signed with the
   maintainer's release key** (`ssh-keygen -Y verify`). If it cannot be verified nothing is unpacked or installed.
   If no signing key is configured, updating is **disabled**.
-- Your modules, `.env` files and keys are kept. A backup of the code (`.update-backup/`, no secrets) is taken first
+- Your servers (`servers/`), settings (`sshpocket.conf`) and keys are kept. A backup of the code (`.update-backup/`, no secrets) is taken first
   and restored on failure.
 - It never downgrades, and rejects archives containing `..`, absolute paths or symlinks.
 - A write-protected USB cannot be updated (by design).
@@ -123,9 +142,9 @@ or use **⬆️ Check for updates / update** in the main menu.
 
 - **Passphrases are never written to disk.** They live in the Keychain (`USBMonitor_<PREFIX>_Passphrase`)
   and are handed to `ssh-add` via `SSH_ASKPASS`.
-- `.env` holds only IP, user, port (and optionally a key path) — **never secrets**.
+- `server.env` holds only IP, user, port (and optionally a key path, the knock setting) — **never secrets**; the knock sequence also lives in Keychain.
 - Do **not** keep TOTP/2FA secrets in this folder; keep them in your phone's authenticator.
-- `.env`, `id_ed25519*` and `usb_logs/` are git-ignored.
+- `servers/`, `sshpocket.conf`, `id_ed25519*` and `usb_logs/` are git-ignored.
 - IP/user/port are validated before any command runs (the user cannot start with `-`).
 - The server's host key is confirmed by you on first connect (no auto-accept).
 - If you carry private keys on a USB drive, encrypt the drive (encrypted APFS volume).

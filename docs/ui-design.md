@@ -1,7 +1,9 @@
 # Tasarım: arayüz (UI), fzf ve teknoloji alternatifleri
 
-> **Durum: TASARIM / TARTIŞMA, henüz uygulanmadı ve kararlar KESİNLEŞMEDİ.** (2026-10-11)
-> Amaç: iyi bir TUI, ama küçük maliyetle. Kod yazılmadan önce bu belge güncellenir.
+> **Durum (2026-10-12): UYGULANDI** (3.1-3.5): başlık/ekmek kırıntısı/ipucu, ok tuşlu seçici, ⚙️ Ayarlar, durum göstergesi varsayılan açık, `q` = geri,
+> menü açıklamaları ve **sistemdeki fzf** arka ucu. **Kalan:** fzf'i USB'ye gömme (aşağıdaki §5 'USB ikilisi' maddeleri hâlâ geçerli, indirme + sha256 sabitleme +
+> sizin onayınızla). **Uygulamada farklar:** menü stili tek ayardır: `UI` = `auto` | `fzf` | `arrows` | `numbers` (ayrı `FZF`/`COLOR` ayarı yok);
+> açıklamalar fzf `--preview` penceresinde, fzf yoksa seçicinin alt satırında; dar terminalde sarmayı kapatıp kırpar.
 
 ## 1. Sorun
 - "Bazen neredeyim bilmiyorum": ekranlar arasında **yönelim** (hangi menü, hangi sunucu, durum) yok.
