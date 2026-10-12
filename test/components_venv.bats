@@ -112,14 +112,13 @@ PY
     [[ "$dir" == "$T/cache/venv/demo-"* ]]
     run "$dir/bin/python" -c 'import demo_pkg; print(demo_pkg.VALUE)'
     [ "$output" = "42" ]
-    # ikinci çağrı: pip'i çağırırsa başarısız olacak şekilde python'u bozmadan, işaret dosyası zamanını izle
-    stamp_before=$(stat -f %m "$dir/.sshpocket-env" 2>/dev/null || stat -c %Y "$dir/.sshpocket-env")
-    sleep 1
+    # ikinci çağrı yeniden KURMAMALI: venv içine bırakılan işaret dosyası korunur (yeniden kurulsaydı dizin silinirdi).
+    # (Zaman damgası/stat kullanılmaz: macOS ve Linux'ta biçimi farklı, güvenilmez.)
+    touch "$dir/.test-sentinel"
     run comp_venv_ensure demo "$T/req" ">=3.9" "$T/wh"
     [ "$status" -eq 0 ]
     [ "$output" = "$dir" ]
-    stamp_after=$(stat -f %m "$dir/.sshpocket-env" 2>/dev/null || stat -c %Y "$dir/.sshpocket-env")
-    [ "$stamp_before" = "$stamp_after" ]
+    [ -f "$dir/.test-sentinel" ]
 }
 
 @test "venv: sağlık işareti uyuşmuyorsa (python çalışsa bile) venv yeniden kurulur" {
