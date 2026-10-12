@@ -60,6 +60,7 @@ passphrase'i **macOS Keychain**'e kaydeder.
 - **Mevcut key kullanımı:** `.env`'e `<ÖNEK>_KEY=/yol/key` yazın (örn. `~/.ssh/id_ed25519`).
 - **Durum göstergesi:** menüde 🟢 (port açık) / 🔴 (erişilemiyor) / ⚪ (ayar yok) gösterilir; sunucular paralel kontrol edilir.
   **⚙️ Ayarlar**'dan kapatılabilir/süresi değiştirilebilir (`sshpocket.conf`; ortam değişkeni `SSHPOCKET_STATUS=0|1` önceliklidir).
+- **Port knocking (istemci):** sunucu menüsünden **Knock ayarları**; dizi Keychain'de, bağlanmadan önce otomatik gönderilir, durumda 🔒. Sunucu tarafı kurulumu ayrı pakettir.
 - **Ok tuşlu menü:** ↑↓ gez · Enter aç · `←`/`q` geri; numara yazmak da çalışır. Sorun olursa ⚙️ Ayarlar'dan `UI=numbers`.
 - **Modül menüsü:** Bağlan · Key'i sunucuya gönder · **Bilgileri güncelle** (IP/kullanıcı/port/key yolu) ·
   **Keychain passphrase'ini güncelle/sil** (kayıttan sonra key'i açarak doğrular). Ayar bozuk veya key eksikken de

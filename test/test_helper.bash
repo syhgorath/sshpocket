@@ -23,6 +23,8 @@ load_helpers() {
     source "$H/Settings.sh"
     # shellcheck source=/dev/null
     source "$H/UI.sh"
+    # shellcheck source=/dev/null
+    source "$H/Knock.sh"
 }
 
 # İçinde sistem/ kopyası olan izole bir çalışma alanı (eject kapalı, sahte komutlar PATH başında)

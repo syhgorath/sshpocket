@@ -241,7 +241,7 @@ Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
 - Profil `planned` ise menüde pasif ("yakında").
 - Her uygulamanın kaydı (tarih, sunucu, bileşen+sürüm, sonuç) `servers/<ad>/` altında, **gizli bilgi içermeden** tutulur.
 
-### 6.7 Bağlantı katmanı: pre-connect kancası ve port knocking (TASARIM, 2026-10-11)
+### 6.7 Bağlantı katmanı: pre-connect kancası ve port knocking (İSTEMCİ TARAFI UYGULANDI: 2026-10-12; sunucu tarafı paketi sırada)
 **Kararlar:** (a) önce **klasik port knocking** (basit "kapıyı çalma"); SPA/VPN sonraya, (b) knock'u tek bir **pre-connect kancası** yapar,
 (c) knock dizisi **gizlidir** (Keychain), (d) knock'lanan sunucuda durum göstergesi **knock göndermez**.
 
