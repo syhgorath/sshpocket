@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Klasik port knocking (istemci tarafı):** sunucu menüsüne **5) Knock ayarları**. `server.env`'e `KNOCK=keychain`, `KNOCK_PROTO` (tcp|udp),
+  `KNOCK_DELAY_MS`; **knock dizisi düz metin dosyada tutulmaz**, Keychain'de (`USBMonitor_<ÖNEK>_Knock`). Bağlan ve key gönderme, bağlantıdan
+  önce diziyi otomatik gönderir (bash `/dev/tcp|udp`: portlar hiçbir sürecin komut satırında görünmez; takılmaz, en çok ~1 sn/vuruş).
+  Durum göstergesi knock **göndermez**; knock'lı sunucuda port kapalıysa **🔒** gösterir. Keychain/ayar bozuksa bağlantı denenmez.
+  Sunucu tarafı (knockd) ayrı bir pakettir; bu sürümde yoktur. Klasik knocking şifreli değildir (taramalardan saklanma katmanıdır).
+
 ## [3.3.0] - 2026-10-12
 
 > **Paket altyapısı geldi.** `components.lock` şimdilik **boştur**; ilk paket (linux-hardening) hazır olunca eklenecek. Altyapı, paket kurulumunu

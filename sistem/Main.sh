@@ -62,6 +62,8 @@ source "$SISTEM_PATH/Helpers/SSHModule.sh"
 source "$SISTEM_PATH/Helpers/SSHModuleEdit.sh"
 # shellcheck source=Helpers/Servers.sh
 source "$SISTEM_PATH/Helpers/Servers.sh"
+# shellcheck source=Helpers/Knock.sh
+source "$SISTEM_PATH/Helpers/Knock.sh"
 # shellcheck source=Helpers/Migrate.sh
 source "$SISTEM_PATH/Helpers/Migrate.sh"
 # shellcheck source=Helpers/Settings.sh
