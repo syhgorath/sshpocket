@@ -161,11 +161,15 @@ PY
     [ "$status" -ne 0 ]
 }
 
-@test "ayar menüsü: geçersiz protokol/süre reddedilir; kapatma Keychain kaydını siler" {
-    run knock_manage WEB1 "$D" <<< $'1\nicmp'
+@test "ayar menüsü: geçersiz protokol/süre NEDENİYLE açıklanır ve yeniden sorulur; 3 hatada vazgeçilir" {
+    run knock_manage WEB1 "$D" <<< $'1\nicmp\nicmp\nicmp'
     [ "$status" -ne 0 ]
-    run knock_manage WEB1 "$D" <<< $'1\ntcp\n99999'
+    [[ "$output" == *"'icmp' geçerli değil: yalnızca tcp veya udp"* ]]
+    [[ "$output" == *"3 geçersiz deneme"* ]]
+    run knock_manage WEB1 "$D" <<< $'1\ntcp\n99999\nabc\nx'
     [ "$status" -ne 0 ]
+    [[ "$output" == *"0 ile 5000 arasında"* ]]
+    [ ! -f "$SEQ_FILE" ]
     knock_on; printf '7000\n' > "$SEQ_FILE"
     run knock_manage WEB1 "$D" <<< "2"
     [ "$status" -eq 0 ]
@@ -186,4 +190,22 @@ PY
     : > "$ORDER"; rm -f "$SEQ_FILE"
     run ssh_module_run WEB1 "$D" <<< $'1\n\n0'
     [ -z "$(grep connect "$ORDER")" ]
+}
+
+@test "ayar menüsü: yanlış girişten sonra doğru değer kabul edilir; büyük harf ve Enter varsayılanı çalışır" {
+    printf '7000,8000\n' > "$T/typed"
+    run knock_manage WEB1 "$D" <<< $'1\nhttp\nUDP\n\n'
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"'http' geçerli değil"* ]]
+    grep -qx 'KNOCK_PROTO=udp' "$D/server.env"
+    grep -qx 'KNOCK_DELAY_MS=300' "$D/server.env"
+    [[ "$output" == *"örnek: 7000,8000,9000"* ]]       # dizi için açıklama gösterildi
+}
+
+@test "ayar menüsü: knocking'in ne olduğu ve iki kez sorulabileceği açıklanır" {
+    run knock_manage WEB1 "$D" <<< "0"
+    [[ "$output" == *"önceden kararlaştırılmış"* ]]
+    printf '7000\n' > "$T/typed"
+    run knock_manage WEB1 "$D" <<< $'1\n\n\n'
+    [[ "$output" == *"İKİ KEZ"* ]]
 }
