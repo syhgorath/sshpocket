@@ -12,7 +12,7 @@ _doc_fail() { printf '  ❌ %s\n' "$1"; DOCTOR_FAILS=$((DOCTOR_FAILS + 1)); }
 _doc_hint() { printf '     ↳ %s\n' "$1"; }
 
 doctor_run() {
-    local range=">=3.12" py ver free_kb cache dir_for_df cand path v found_old=""
+    local range=">=3.12" py ver free_kb cache dir_for_df cand path v found_old="" stub_seen=0
     while [ $# -gt 0 ]; do
         case "$1" in
             --python-range) range="${2:-$range}"; shift 2 ;;
@@ -55,11 +55,18 @@ doctor_run() {
     else
         while IFS= read -r cand; do
             path=$(command -v "$cand" 2>/dev/null) || continue
+            if comp_python_is_stub "$path"; then
+                stub_seen=1       # çalıştırılmaz: macOS "araçları kurun" penceresini açar
+                continue
+            fi
             v=$(comp_python_version "$path")
             if [ -n "$v" ]; then found_old="$found_old $v"; fi
         done < <(comp_python_candidates)
         if [ -n "$found_old" ]; then _doc_fail "uygun Python yok (bulunanlar:$found_old)"
         else _doc_fail "Python bulunamadı"; fi
+        if [ "$stub_seen" -eq 1 ]; then
+            _doc_hint "$path yalnızca Command Line Tools kurulunca gerçek Python olur; atlandı (açılır pencereyi tetiklemesin diye çalıştırılmadı)"
+        fi
         _doc_hint "Homebrew varsa:  brew install python@3.13   (sshpocket bunu kendisi ÇALIŞTIRMAZ)"
         _doc_hint "Homebrew yoksa: https://www.python.org/downloads/ (macOS yükleyicisi)"
     fi

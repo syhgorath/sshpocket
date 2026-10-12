@@ -50,11 +50,21 @@ comp_python_candidates() {
     for c in ${SSHPOCKET_PYTHON_CANDIDATES:-$COMP_PY_CANDIDATES}; do printf '%s\n' "$c"; done
 }
 
+# macOS'ta /usr/bin/python3, Command Line Tools kurulu DEĞİLSE gerçek Python değil, "geliştirici araçlarını kurun"
+# penceresini açan bir saplamadır. Çalıştırmak o pencereyi tetikler; bu yüzden saplama atlanır.
+# (xcode-select yoksa macOS değildir: saplama sayılmaz. Test için yol SSHPOCKET_PY_STUB_PATH ile değiştirilir.)
+comp_python_is_stub() {
+    [ "$1" = "${SSHPOCKET_PY_STUB_PATH:-/usr/bin/python3}" ] || return 1
+    command -v xcode-select >/dev/null 2>&1 || return 1
+    ! xcode-select -p >/dev/null 2>&1
+}
+
 # Aralığa uyan ilk yorumlayıcının tam yolunu yazar; yoksa dönüş 1
 comp_pick_python() {
     local range="$1" cand path ver
     while IFS= read -r cand; do
         path=$(command -v "$cand" 2>/dev/null) || continue
+        if comp_python_is_stub "$path"; then continue; fi
         ver=$(comp_python_version "$path")
         [ -n "$ver" ] || continue
         if comp_python_in_range "$ver" "$range"; then printf '%s' "$path"; return 0; fi

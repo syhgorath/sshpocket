@@ -214,3 +214,51 @@ PY
     [ "$status" -eq 0 ]
     [[ "$output" == *"sshpocket --doctor"* ]]
 }
+
+# ---------- macOS /usr/bin/python3 saplaması (Command Line Tools yoksa pencere açar) ----------
+make_stub_env() {   # $1: xcode-select çıkış kodu ("" = xcode-select yok)
+    mkdir -p "$T/bin"
+    printf '#!/bin/sh\necho CALISTI >> "%s/stub.ran"\ncase "$*" in *version_info*) echo 3.13.1 ;; esac\n' "$T" > "$T/bin/py3stub"
+    chmod +x "$T/bin/py3stub"
+    export SSHPOCKET_PY_STUB_PATH="$T/bin/py3stub" SSHPOCKET_PYTHON_CANDIDATES="py3stub"
+    if [ -n "$1" ]; then printf '#!/bin/sh\nexit %s\n' "$1" > "$T/bin/xcode-select"; chmod +x "$T/bin/xcode-select"; fi
+    export PATH="$T/bin:$PATH"
+}
+
+@test "python saplaması: Command Line Tools yoksa saplama ÇALIŞTIRILMAZ ve atlanır" {
+    make_stub_env 2                              # xcode-select -p başarısız
+    run comp_pick_python ">=3.12"
+    [ "$status" -ne 0 ]
+    [ ! -e "$T/stub.ran" ]
+}
+
+@test "python saplaması: Command Line Tools kuruluysa aynı yol normal aday sayılır" {
+    make_stub_env 0
+    run comp_pick_python ">=3.12"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$T/bin/py3stub" ]
+}
+
+@test "python saplaması: xcode-select yoksa (Linux) saplama sayılmaz" {
+    make_stub_env ""
+    PATH="$T/bin:/usr/bin:/bin"; rm -f "$T/bin/xcode-select"
+    command -v xcode-select >/dev/null 2>&1 && skip "bu makinede xcode-select /usr/bin altında"
+    run comp_python_is_stub "$T/bin/py3stub"
+    [ "$status" -ne 0 ]
+}
+
+@test "doctor: saplama atlanır, çalıştırılmaz ve nedeni açıklanır" {
+    make_stub_env 2
+    SSHPOCKET_DOCTOR_OFFLINE=1 run doctor_run --python-range ">=3.12"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Command Line Tools kurulunca gerçek Python"* ]]
+    [ ! -e "$T/stub.ran" ]
+}
+
+@test "python saplaması: yalnızca saplama yolu atlanır, başka yollar etkilenmez" {
+    make_stub_env 2
+    run comp_python_is_stub "/usr/local/bin/python3.14"
+    [ "$status" -ne 0 ]
+    run comp_python_is_stub "$T/bin/py3stub"
+    [ "$status" -eq 0 ]
+}
