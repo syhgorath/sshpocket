@@ -209,3 +209,23 @@ CURL
     run bash -c "printf '0\n' | PATH='$SANDBOX/bin:$PATH' TERM=xterm bash '$SANDBOX/sistem/Main.sh' 2>&1"
     [[ "$output" == *"Paketler (durum"* ]]
 }
+
+@test "check-new: kararlı 'latest' yoksa (ön sürüm) API'deki en yeni yayına bakar" {
+    sha=$(make_pkg demo 0.1.0); lock_entry demo 0.1.0 "$sha"
+    comp_http_head() { return 0; }                         # latest yönlendirmesi yok (yalnızca pre-release)
+    comp_http_json() { printf '[\n  {\n    "tag_name": "v0.2.0",\n    "prerelease": true\n  }\n]\n'; }
+    run components_cli check-new
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"0.2.0 yayınlanmış"* ]]
+}
+
+@test "check-new: API yanıtı bozuk/beklenmedik etiketse yok sayılır" {
+    sha=$(make_pkg demo 0.1.0); lock_entry demo 0.1.0 "$sha"
+    comp_http_head() { return 0; }
+    comp_http_json() { printf '[{"tag_name": "latest; rm -rf /"}]'; }
+    run components_cli check-new
+    [[ "$output" == *"alınamadı"* ]]
+    comp_http_json() { printf '<html>rate limit</html>'; }
+    run components_cli check-new
+    [[ "$output" == *"alınamadı"* ]]
+}

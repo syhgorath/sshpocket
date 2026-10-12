@@ -14,15 +14,27 @@ comp_http_head() {
         | tr -d '\r' | awk 'tolower($1)=="location:" {print $2; exit}'
 }
 
+# GitHub API: depodaki yayınlar (ön sürümler dahil, en yeni başta). Testte işlev değiştirilebilir.
+comp_http_json() {
+    curl -sS --proto '=https' --tlsv1.2 --max-time 15 -H 'Accept: application/vnd.github+json' "$1" 2>/dev/null
+}
+
 # comp_latest_version <depo> → en son yayın sürümü (v'siz); geçersizse hata
+# Önce kararlı "latest" yönlendirmesi; ön sürüm (pre-release) olduğu için "latest" yoksa API'deki en yeni yayına düşer.
 comp_latest_version() {
-    local repo="$1" loc tag
+    local repo="$1" loc tag json
     comp_repo_valid "$repo" || return 1
     loc=$(comp_http_head "https://github.com/${repo}/releases/latest")
-    [ -n "$loc" ] || return 1
-    tag="${loc##*/}"
+    if [ -n "$loc" ]; then
+        tag="${loc##*/}"
+        [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+        [ "$loc" = "https://github.com/${repo}/releases/tag/${tag}" ] || return 1
+        printf '%s' "${tag#v}"
+        return 0
+    fi
+    json=$(comp_http_json "https://api.github.com/repos/${repo}/releases?per_page=1") || return 1
+    tag=$(printf '%s\n' "$json" | sed -n 's/^[[:space:]]*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
     [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
-    [ "$loc" = "https://github.com/${repo}/releases/tag/${tag}" ] || return 1
     printf '%s' "${tag#v}"
 }
 
