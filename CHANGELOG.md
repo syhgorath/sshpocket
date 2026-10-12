@@ -4,13 +4,20 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-12
+
 ### Düzeltildi
+- **`check-new` ön sürümleri (pre-release) göremiyordu:** depoda kararlı "latest" yoksa (linux-hardening şu an yalnızca ön sürümlü) GitHub API'deki en yeni
+  yayına bakılır (yine yalnızca bilgi; kurulmaz).
 - **`--doctor` yeni Mac'te "geliştirici araçlarını kurun" penceresini açabiliyordu:** macOS'ta Command Line Tools yoksa `/usr/bin/python3` gerçek
   Python değil bir saplamadır ve çalıştırılınca kurulum penceresi açar. Saplama artık çalıştırılmadan atlanır ve doktor nedenini söyler.
 - **Menüden "Geri" ile dönünce gereksiz "Devam etmek için Enter" soruluyordu:** sunucu menüsü, ⚙️ Ayarlar ve Sunucuları yönet'ten geri dönünce
   artık doğrudan ana menüye dönülür. Okunacak çıktısı olan işlemlerden (bağlanma sonucu, ekleme, silme, güncelleme) sonra duraklama korunur.
 
 ### Eklendi
+- **Bakımcı aracı `scripts/lock-component.sh`:** bir paket sürümünü `components.lock`'a güvenle yazar: paketi ve imzayı HTTPS ile indirir, arşivi denetler,
+  imzayı (`sshpocket-component`) doğrular, `component.json`'u şemaya göre doğrular (kurulamayacak paket kilide **yazılmaz**), sha256'yı hesaplar.
+  `--write` yoksa yalnızca gösterir. `comp_get` pipefail altında 141 ile düşmesin diye tüm girdiyi okur.
 - **CI'da sabit sürüm ShellCheck:** `scripts/ci-install-shellcheck.sh` (v0.11.0, indirilen arşivin sha256'sı doğrulanmazsa kurulmaz); yerel ve CI
   aynı sürümü kullanır, "yerelde yeşil, CI'da kırmızı" farkı kapanır.
 - **fzf desteği (isteğe bağlı):** sistemde `fzf` kuruluysa (`brew install fzf`) tüm seçim menüleri fzf ile açılır: yazarak arama, **önizleme penceresinde
@@ -195,7 +202,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.4.0...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.5.0...HEAD
+[3.5.0]: https://github.com/syhgorath/sshpocket/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/syhgorath/sshpocket/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/syhgorath/sshpocket/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/syhgorath/sshpocket/compare/v3.1.1...v3.2.0
