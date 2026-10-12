@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
+        run: bash scripts/ci-install-shellcheck.sh
       - name: ShellCheck
         run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
       - name: Syntax check (bash -n)
@@ -33,7 +35,9 @@ jobs:
           PATH="/bin:$PATH" bash --version | head -1
           ssh -V
       - name: Araçları kur
-        run: brew install bats-core shellcheck
+        run: brew install bats-core
+      - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
+        run: bash scripts/ci-install-shellcheck.sh
       - name: ShellCheck
         run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
       - name: Testler (macOS bash 3.2 ile)
