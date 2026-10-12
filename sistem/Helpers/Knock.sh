@@ -84,15 +84,36 @@ knock_pre_connect() {
     return 0
 }
 
+# Bir değeri sorar, geçersizse NEDENİNİ söyleyip yeniden sorar (en çok 3 deneme). Sonucu KNOCK_ANSWER'a yazar.
+# Parametreler: istem, varsayılan, doğrulayıcı işlev, hata açıklaması
+_knock_ask() {
+    local prompt="$1" default="$2" validator="$3" why="$4" tries=0 ans
+    while [ "$tries" -lt 3 ]; do
+        read -r -p "$prompt" ans || return 1
+        ans="${ans:-$default}"
+        ans=$(printf '%s' "$ans" | tr '[:upper:]' '[:lower:]')
+        if "$validator" "$ans"; then KNOCK_ANSWER="$ans"; return 0; fi
+        echo "   ⚠️  '$ans' geçerli değil: $why"
+        tries=$((tries + 1))
+    done
+    echo "⚠️  3 geçersiz deneme; ayar yapılmadı."
+    return 1
+}
+_knock_proto_ok() { [ "$1" = "tcp" ] || [ "$1" = "udp" ]; }
+_knock_delay_ok() { [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -le 5000 ]; }
+
 # Menü: knock ayarları. Parametreler: önek, modül klasörü
 knock_manage() {
     local prefix="$1" dir="$2" choice seq proto delay account
     account=$(knock_account "$prefix")
     echo ""
+    echo "Port knocking: sunucunun SSH portu kapalıyken, önceden kararlaştırılmış bir port"
+    echo "sırasına 'vurarak' açtırma yöntemidir. Sunucu yöneticisi bu sırayı sunucuda tanımlamış olmalı."
+    echo ""
     if knock_enabled "$prefix" "$dir" && knock_has_sequence "$prefix"; then
-        echo "Knock: ✅ etkin ($(srv_get "$dir" "$prefix" KNOCK_PROTO 2>/dev/null || true), gecikme $(srv_get "$dir" "$prefix" KNOCK_DELAY_MS 2>/dev/null || true) ms; dizi Keychain'de)"
+        echo "Durum: ✅ etkin ($(srv_get "$dir" "$prefix" KNOCK_PROTO 2>/dev/null || true), gecikme $(srv_get "$dir" "$prefix" KNOCK_DELAY_MS 2>/dev/null || true) ms; dizi Keychain'de)"
     else
-        echo "Knock: ❌ kapalı"
+        echo "Durum: ❌ kapalı"
     fi
     echo "  1) Diziyi kaydet / güncelle"
     echo "  2) Kapat (Keychain kaydını sil)"
@@ -100,25 +121,27 @@ knock_manage() {
     read -r -p "Seçim [0]: " choice || return 0
     case "${choice:-0}" in
         1)
-            read -r -p "Protokol [tcp/udp, Enter = tcp]: " proto || return 0
-            proto="${proto:-tcp}"
-            case "$proto" in tcp|udp) ;; *) echo "⚠️  Geçersiz protokol"; return 1 ;; esac
-            read -r -p "Vuruşlar arası bekleme ms [0-5000, Enter = 300]: " delay || return 0
-            delay="${delay:-300}"
-            if ! [[ "$delay" =~ ^[0-9]+$ ]] || [ "$delay" -gt 5000 ]; then echo "⚠️  Geçersiz süre"; return 1; fi
-            echo "Knock dizisini (örn. 7000,8000,9000) sıradaki istemde girin; ekranda görünmez:"
+            echo ""
+            echo "1/3 Protokol: knock paketlerinin türü. Çoğu kurulumda tcp; sunucu yöneticiniz udp dediyse udp."
+            _knock_ask "    Protokol (tcp/udp) [Enter = tcp]: " tcp _knock_proto_ok "yalnızca tcp veya udp yazın (bilmiyorsanız Enter = tcp)" || return 1
+            proto="$KNOCK_ANSWER"
+            echo "2/3 Bekleme: her vuruş arasında beklenecek süre (milisaniye). Bilmiyorsanız 300 uygundur."
+            _knock_ask "    Bekleme ms (0-5000) [Enter = 300]: " 300 _knock_delay_ok "0 ile 5000 arasında bir sayı yazın" || return 1
+            delay="$KNOCK_ANSWER"
+            echo "3/3 Dizi: sunucu yöneticisinin verdiği port sırası, virgülle ayrılmış (örnek: 7000,8000,9000)."
+            echo "    Sıradaki istem ekranda görünmez ve macOS aynı değeri İKİ KEZ isteyebilir (ikincisinde aynısını yazın)."
             if ! security add-generic-password -U -a "$account" -s "$SSH_KEYCHAIN_SERVICE" -w; then
                 echo "⚠️  Kaydedilemedi"; return 1
             fi
             seq=$(knock_get_sequence "$prefix")
             if ! knock_ports_valid "$seq"; then
                 security delete-generic-password -a "$account" -s "$SSH_KEYCHAIN_SERVICE" >/dev/null 2>&1
-                echo "⚠️  Dizi geçersiz (1-10 port, 1-65535, virgülle) ve silindi"; return 1
+                echo "⚠️  Dizi geçersiz ve silindi. Biçim: 1-10 port, her biri 1-65535, virgülle (örnek: 7000,8000,9000)"; return 1
             fi
             srv_set "$dir" "$prefix" KNOCK keychain
             srv_set "$dir" "$prefix" KNOCK_PROTO "$proto"
             srv_set "$dir" "$prefix" KNOCK_DELAY_MS "$delay"
-            echo "✅ Knock etkin: bağlanmadan önce otomatik gönderilir"
+            echo "✅ Knock etkin ($proto, ${delay} ms): bağlanmadan önce otomatik gönderilir"
             ;;
         2)
             security delete-generic-password -a "$account" -s "$SSH_KEYCHAIN_SERVICE" >/dev/null 2>&1
