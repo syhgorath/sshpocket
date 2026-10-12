@@ -31,6 +31,24 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 
 Apple Silicon'da veya yeni macOS'ta bir sorun görürseniz lütfen issue açın (macOS sürümü, `uname -m` ve `bash --version` çıktısıyla).
 
+## Gereksinimler
+
+Standart bir macOS'ta **ek bir şey kurmanız gerekmez**; araç yalnızca sistemle gelen komutları kullanır:
+
+| Ne | Not |
+|---|---|
+| macOS 10.15 (Catalina) veya yenisi | İmzalı güncelleme `ssh-keygen -Y verify` ister (OpenSSH ≥ 8.0) |
+| `bash` 3.2 (`/bin/bash`), `ssh`, `ssh-keygen`, `ssh-add`, `ssh-copy-id`, `security`, `osascript`, `diskutil`, `curl`, `tar`, `shasum`, `nc` | Hepsi macOS ile gelir; `./start.sh --doctor` eksik olanı söyler (hiçbir şey kurmaz) |
+
+İsteğe bağlı:
+
+| Ne | Ne işe yarar | Kurulum |
+|---|---|---|
+| **fzf** | Menülerde arama ve açıklama önizleme penceresi. Yoksa yerleşik ok tuşlu menü kullanılır. (0.74.5 ile denendi) | `brew install fzf` |
+| **Python ≥ 3.12** | Yalnızca ileride **paketler** (örn. linux-hardening) için; günlük kullanımda gerekmez | `brew install python@3.13` |
+
+`fzf` Homebrew'da `/opt/homebrew/bin` ya da `/usr/local/bin` altındaysa Finder'dan (`start.command`) açıldığında da bulunur.
+
 ## Hızlı başlangıç
 
 ```bash
@@ -56,19 +74,20 @@ passphrase'i **macOS Keychain**'e kaydeder.
 - **Keychain:** passphrase diske yazılmaz.
 - **Key'i sunucuya gönderme:** menüden veya generator'dan `ssh-copy-id` (aşağıya bakın).
 - **`~/.ssh/config` içe aktarma:** mevcut sunucularınızı tek komutla modüle çevirir. Private key'ler
-  **kopyalanmaz**; `IdentityFile` yolu modülün `.env`'ine `<ÖNEK>_KEY` olarak yazılır.
-- **Mevcut key kullanımı:** `.env`'e `<ÖNEK>_KEY=/yol/key` yazın (örn. `~/.ssh/id_ed25519`).
+  **kopyalanmaz**; `IdentityFile` yolu sunucunun `server.env` dosyasına `KEY` olarak yazılır.
+- **Mevcut key kullanımı:** `servers/<ad>/server.env` içine `KEY=/yol/key` yazın (örn. `~/.ssh/id_ed25519`).
 - **Durum göstergesi:** menüde 🟢 (port açık) / 🔴 (erişilemiyor) / ⚪ (ayar yok) gösterilir; sunucular paralel kontrol edilir.
   **⚙️ Ayarlar**'dan kapatılabilir/süresi değiştirilebilir (`sshpocket.conf`; ortam değişkeni `SSHPOCKET_STATUS=0|1` önceliklidir).
-- **Port knocking (istemci):** sunucu menüsünden **Knock ayarları**; dizi Keychain'de, bağlanmadan önce otomatik gönderilir, durumda 🔒. Sunucu tarafı kurulumu ayrı pakettir.
-- **fzf (isteğe bağlı):** `brew install fzf` sonrası menüler fzf ile açılır (arama + açıklama önizlemesi); yoksa yerleşik ok tuşlu menü kullanılır.
-- **Ok tuşlu menü:** ↑↓ gez · Enter aç · `←`/`q` geri; numara yazmak da çalışır. Sorun olursa ⚙️ Ayarlar'dan `UI=numbers`.
+- **Port knocking (istemci tarafı):** sunucu menüsünden **Knock ayarları**; dizi (örn. `7000,8000,9000`) Keychain'de durur, bağlanmadan önce otomatik gönderilir,
+  durum göstergesinde 🔒. Sunucu tarafı (knockd) kurulumu bu araçta yoktur; sunucuda yöneticinin tanımlamış olması gerekir. Klasik knocking şifreli değildir.
 - **Modül menüsü:** Bağlan · Key'i sunucuya gönder · **Bilgileri güncelle** (IP/kullanıcı/port/key yolu) ·
   **Keychain passphrase'ini güncelle/sil** (kayıttan sonra key'i açarak doğrular). Ayar bozuk veya key eksikken de
   güncelleme seçenekleri kullanılabilir.
 - **Modül yönetimi:** `ModuleManager.sh list | remove <ad> | rename <eski> <yeni>`.
 - **Aynı sunucuya birden çok kullanıcı/key:** her biri ayrı bir modül olur (örn. `web_root`, `web_deploy`).
-- **Ayarlar ve ok tuşlu menü:** ⚙️ Ayarlar (`sshpocket.conf`); ↑↓ gez, Enter aç, `q`/`←` geri; sorun olursa `UI=numbers`.
+- **Menü:** ↑↓ gez · Enter aç · `←`/`q` geri; numara yazmak da çalışır; her seçeneğin kısa **açıklaması** görünür. **fzf** kuruluysa menüler fzf ile
+  açılır (arama + açıklama önizleme penceresi). Stil ⚙️ Ayarlar'dan (`UI`: `auto` · `fzf` · `arrows` · `numbers`) ya da `SSHPOCKET_UI=numbers ./start.sh` ile değişir;
+  bir terminalde sorun çıkarırsa `numbers` yapın.
 - **`./start.sh --doctor`:** ön koşul denetimi (ssh araçları, Python aralığı, venv, disk, ağ); yalnızca okur, hiçbir şey kurmaz.
 - **Paketler (altyapı):** imzalı, kilitli (`components.lock`) paketlerin güvenli kurulumu: `./start.sh --components list|sync|check-new`.
   Kilit dosyası şu an boştur; ilk paket (linux-hardening) hazır olunca eklenecek. Standart: [docs/package-standard.md](docs/package-standard.md).
@@ -112,7 +131,7 @@ ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle**.
 - Paket yalnızca bu reponun GitHub Release'lerinden, HTTPS ile inen ve **bakımcının imza anahtarıyla imzalı** olan
   dosyadır (`ssh-keygen -Y verify`). Doğrulanamazsa hiçbir şey açılmaz/kurulmaz. İmza anahtarı tanımlı değilse
   güncelleme **kapalıdır**.
-- Modülleriniz, `.env` ve key'leriniz korunur. Kurmadan önce kodun yedeği (`.update-backup/`, gizli dosya
+- Sunucularınız (`servers/`), ayarlarınız (`sshpocket.conf`) ve key'leriniz korunur. Kurmadan önce kodun yedeği (`.update-backup/`, gizli dosya
   içermez) alınır; hata olursa geri yüklenir.
 - Geri sürüme düşmez; `..`, mutlak yol veya symlink içeren paketleri reddeder.
 - USB yazma korumalıysa güncelleme yapılamaz (bilerek).
@@ -122,9 +141,9 @@ ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle**.
 
 - **Passphrase diske yazılmaz.** Keychain'de durur (`USBMonitor_<ÖNEK>_Passphrase`),
   `ssh-add`'e `SSH_ASKPASS` ile doğrudan aktarılır.
-- `.env` yalnızca IP, kullanıcı, port (ve ops. key yolu) içerir. Gizli bilgi **içermemelidir**.
+- `server.env` yalnızca IP, kullanıcı, port (ve ops. key yolu, knock ayarı) içerir. Gizli bilgi **içermemelidir**; knock dizisi de Keychain'dedir.
 - TOTP/2FA gizli anahtarlarını bu klasörde **saklamayın**; telefondaki uygulamada tutun.
-- `.env`, `id_ed25519*` ve `usb_logs/` `.gitignore` ile dışarıda tutulur.
+- `servers/`, `sshpocket.conf`, `id_ed25519*` ve `usb_logs/` `.gitignore` ile dışarıda tutulur.
 - Güncellemeler imzalıdır ve elle başlatılır (yukarıya bakın).
 - IP/kullanıcı/port değerleri komut çalıştırılmadan önce doğrulanır (kullanıcı `-` ile başlayamaz).
 - Sunucu host key'i ilk bağlantıda size sorulur (otomatik kabul yoktur).
