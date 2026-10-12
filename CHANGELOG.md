@@ -4,6 +4,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-12
+
 ### Eklendi
 - **Klasik port knocking (istemci tarafı):** sunucu menüsüne **5) Knock ayarları**. `server.env`'e `KNOCK=keychain`, `KNOCK_PROTO` (tcp|udp),
   `KNOCK_DELAY_MS`; **knock dizisi düz metin dosyada tutulmaz**, Keychain'de (`USBMonitor_<ÖNEK>_Knock`). Bağlan ve key gönderme, bağlantıdan
@@ -171,7 +173,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ### Kaldırıldı
 - TOTP gizli anahtarları ve parolaların `.env` içinde tutulması.
 
-[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.3.0...HEAD
+[Unreleased]: https://github.com/syhgorath/sshpocket/compare/v3.4.0...HEAD
+[3.4.0]: https://github.com/syhgorath/sshpocket/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/syhgorath/sshpocket/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/syhgorath/sshpocket/compare/v3.1.1...v3.2.0
 [3.1.1]: https://github.com/syhgorath/sshpocket/compare/v3.1.0...v3.1.1
