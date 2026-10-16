@@ -84,6 +84,8 @@ source "$SISTEM_PATH/Helpers/ComponentsGates.sh"
 source "$SISTEM_PATH/Helpers/ComponentsExec.sh"
 # shellcheck source=Helpers/ComponentsRunCLI.sh
 source "$SISTEM_PATH/Helpers/ComponentsRunCLI.sh"
+# shellcheck source=Helpers/ComponentsMenu.sh
+source "$SISTEM_PATH/Helpers/ComponentsMenu.sh"
 # shellcheck source=Helpers/ComponentsCLI.sh
 source "$SISTEM_PATH/Helpers/ComponentsCLI.sh"
 # shellcheck source=Helpers/Doctor.sh
