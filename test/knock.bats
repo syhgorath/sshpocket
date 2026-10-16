@@ -183,6 +183,7 @@ PY
     ORDER="$T/order"; : > "$ORDER"
     _knock_send_one() { echo "knock $2" >> "$ORDER"; }
     _ssh_module_connect() { echo "connect" >> "$ORDER"; }
+    ssh_agent_add_retry() { return 0; }
     clear() { :; }
     run ssh_module_run WEB1 "$D" <<< "1"
     [ "$(cat "$ORDER")" = $'knock 7000\nknock 8000\nconnect' ]
