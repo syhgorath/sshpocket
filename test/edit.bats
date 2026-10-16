@@ -134,3 +134,47 @@ STUB
     STUB_ADD_FAIL=1 run ssh_keychain_manage WEB1 "$MD/k" <<< "1"
     [[ "$output" == *"yanlış olabilir"* ]]
 }
+
+# ---------- ssh_agent_add_retry ----------
+_retry_stubs() {
+    # ssh-add: passphrase düzeltilene (security add-generic-password) kadar başarısız
+    cat > "$BATS_TEST_TMPDIR/bin/ssh-add" <<STUB
+#!/bin/bash
+S="$BATS_TEST_TMPDIR/agent"
+case "\$1" in
+  -l) cat "\$S" 2>/dev/null; [ -s "\$S" ]; exit \$? ;;
+  *)  [ -f "$BATS_TEST_TMPDIR/fixed" ] || exit 1; ssh-keygen -lf "\$1" > "\$S"; exit 0 ;;
+esac
+STUB
+    cat > "$BATS_TEST_TMPDIR/bin/security" <<STUB
+#!/bin/bash
+echo "\$*" >> "$LOG"
+[ "\$1" = "add-generic-password" ] && touch "$BATS_TEST_TMPDIR/fixed"
+exit 0
+STUB
+    chmod +x "$BATS_TEST_TMPDIR/bin/ssh-add" "$BATS_TEST_TMPDIR/bin/security"
+    ssh-keygen -q -t ed25519 -N "" -f "$BATS_TEST_TMPDIR/k" >/dev/null
+}
+
+@test "agent_add_retry: başarısızlıkta 'e' denirse passphrase yeniden kaydedilir ve key açılır" {
+    _retry_stubs
+    SISTEM_PATH="$BATS_TEST_TMPDIR"
+    run ssh_agent_add_retry WEB1 "$BATS_TEST_TMPDIR/k" <<<"e"
+    [ "$status" -eq 0 ]
+    grep -qxF 'add-generic-password -U -a USBMonitor_WEB1_Passphrase -s USBMonitor -w' "$LOG"
+}
+
+@test "agent_add_retry: boş/h yanıtında Keychain'e dokunmaz ve başarısız döner" {
+    _retry_stubs
+    SISTEM_PATH="$BATS_TEST_TMPDIR"
+    run ssh_agent_add_retry WEB1 "$BATS_TEST_TMPDIR/k" <<<"h"
+    [ "$status" -ne 0 ]
+    run ! grep -q add-generic-password "$LOG"
+}
+
+@test "agent_add_retry: girdi yoksa (EOF) takılmaz, başarısız döner" {
+    _retry_stubs
+    SISTEM_PATH="$BATS_TEST_TMPDIR"
+    run ssh_agent_add_retry WEB1 "$BATS_TEST_TMPDIR/k" </dev/null
+    [ "$status" -ne 0 ]
+}
