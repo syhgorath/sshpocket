@@ -88,8 +88,8 @@ teardown() {
     [[ "$output" == *"önce 'preview'"* ]]
     comp_gate_record demo web1 1.0.0 preview ok
     run comp_gate_requires "$INFO" demo web1 1.0.0 apply; [ "$status" -eq 0 ]
-    [ "$(stat -f %Lp "$T/state/demo/web1" 2>/dev/null || stat -c %a "$T/state/demo/web1")" = "700" ]
-    [ "$(stat -f %Lp "$T/state/demo/web1/results" 2>/dev/null || stat -c %a "$T/state/demo/web1/results")" = "600" ]
+    [ "$(file_mode "$T/state/demo/web1")" = "700" ]
+    [ "$(file_mode "$T/state/demo/web1/results")" = "600" ]
 }
 
 @test "requires: başarısız preview, başka sürüm, başka sunucu, eski (TTL dışı) ve gelecekteki kayıt sayılmaz" {
