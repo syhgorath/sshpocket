@@ -24,6 +24,7 @@ Every server is a *module*: drop a module folder in and it shows up in the menu 
 | Environment | Status |
 |---|---|
 | **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Developed and manually tried |
+| **Apple Silicon (arm64, Apple M5 Pro), macOS 27.0.1, bash 3.2.57, OpenSSH 10.3p1** | ✅ Manually tried: `--doctor`, `ssh-add` with the passphrase from the Keychain, `--components sync` and `run` (`rollback_status` → `preview` → `apply` on an Ubuntu 26.04.1 VM). ⚠️ Not tried by hand: opening a Terminal window, double-clicking `start.command`, the arrow-key/fzf look of the new `🛡️ Packages` menu, knocking against a real server |
 | **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Automated tests** (Bats + ShellCheck, on every PR). ⚠️ Not tried by hand: the Keychain permission dialog, opening Terminal, double-clicking `start.command` |
 | Ubuntu 24.04 (CI only: ShellCheck + Bats tests) | ✅ automated |
 | Running on Linux (no Keychain/`osascript`/`diskutil`) | ❌ Not supported |
@@ -45,7 +46,7 @@ Optional:
 | What | Used for | Install |
 |---|---|---|
 | **fzf** | Search and a description preview pane in menus. Without it the built-in arrow-key menu is used. (tried with 0.74.5) | `brew install fzf` |
-| **Python ≥ 3.12** | Only for future **packages** (e.g. linux-hardening); not needed day to day | `brew install python@3.13` |
+| **Python ≥ 3.12** | Only for **packages** (e.g. linux-hardening); not needed day to day. macOS's system Python (3.9) is too old | `brew install python@3.13` |
 
 If `fzf` lives in `/opt/homebrew/bin` or `/usr/local/bin` it is also found when started from Finder (`start.command`).
 
@@ -91,8 +92,8 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
   (search + description preview pane). The style is set under ⚙️ Settings (`UI`: `auto` · `fzf` · `arrows` · `numbers`) or with `SSHPOCKET_UI=numbers ./start.sh`;
   use `numbers` if a terminal misbehaves.
 - **`./start.sh --doctor`:** prerequisite check (ssh tools, Python range, venv, disk, network); read-only, installs nothing.
-- **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new`.
-  The lock file is empty for now; the first package (linux-hardening) will be added when ready. Standard: [docs/package-standard.md](docs/package-standard.md).
+- **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new`; run an installed package's action: `./start.sh --components run <package> <action> <server>` (connects to the server; preview/confirmation gates apply).
+  `linux-hardening` is in the lock (tried with `preview` + `apply` on an Ubuntu 26.04 VM). Usage and the **access-network trap**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish); standard: [docs/package-standard.md](docs/package-standard.md).
 - Automated tests (Bats, bash 5 and macOS bash 3.2) + ShellCheck run in CI on every PR.
 
 ## Sending the key to the server
