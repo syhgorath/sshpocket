@@ -62,7 +62,7 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
     [ "$status" -eq 0 ]
     read -r a < "$T/args"
-    [[ "$a" == "playbooks/harden.yml --check -i "*" --limit web1 -e @"*" --ask-become-pass" ]]
+    [[ "$a" == "playbooks/harden.yml --check -i "*" --limit web1 -e @"*" --ask-become-pass" ]] || false
     [ "$(cat "$T/pwd")" = "$(cd "$T/pkg" && pwd -P)" ] || [ "$(cat "$T/pwd")" = "$T/pkg" ]
     [ "$(cat "$T/envseen")" = "$T/pkg/ansible.cfg|True" ]
     grep -q "^\[hardening\]" "$T/seen_inv"
@@ -103,7 +103,7 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     COMP_CTX_USER=root;                         run comp_exec_action "$INFO" demo 1.0.0 apply </dev/null;   [ "$status" -eq 190 ]
     COMP_CTX_USER=ziya; COMP_CTX_PROFILE=rpi;   run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null; [ "$status" -eq 190 ]
     COMP_CTX_PROFILE=ubuntu-26.04;              run comp_exec_action "$INFO" demo 1.0.0 apply <<<"e";       [ "$status" -eq 190 ]
-    [[ "$output" == *"önce 'preview'"* ]]
+    [[ "$output" == *"önce 'preview'"* ]] || false
     [ ! -e "$T/args" ]
 }
 

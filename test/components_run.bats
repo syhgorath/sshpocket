@@ -49,7 +49,7 @@ vars() { rm -f "$T/out.json"; comp_run_vars "$T/m.json" "$T/v" "$T/out.json" "$@
     : > "$T/v"
     run vars
     [ "$status" -ne 0 ]
-    [[ "$output" == *"allow_from: zorunlu"* ]]
+    [[ "$output" == *"allow_from: zorunlu"* ]] || false
     [ ! -e "$T/out.json" ]
 }
 
@@ -93,7 +93,7 @@ vars() { rm -f "$T/out.json"; comp_run_vars "$T/m.json" "$T/v" "$T/out.json" "$@
     printf 'allow_from=10.0.0.0/8\nrb_enabled=false\n' > "$T/v"
     run vars
     [ "$status" -eq 0 ]
-    [[ "$output" == *"warn=rb_enabled"* ]]
+    [[ "$output" == *"warn=rb_enabled"* ]] || false
 }
 
 @test "vars: eski biçim (yalnızca ad) string sayılır; denetim karakteri reddedilir" {
@@ -133,7 +133,7 @@ vars() { rm -f "$T/out.json"; comp_run_vars "$T/m.json" "$T/v" "$T/out.json" "$@
         rm -f "$T/inv"
         run comp_run_write_inventory "$T/inv" "$g" "$n" "$h" "$u" "$p" "$k"
         [ "$status" -ne 0 ] || { echo "KABUL EDİLDİ: $g|$n|$h|$u|$p|$k"; return 1; }
-        [[ "$output" != *"command not found"* ]]
+        [[ "$output" != *"command not found"* ]] || false
         [ ! -e "$T/inv" ]
     done <<'CASES'
 bad-grp!|web1|h|u|22|/k
@@ -194,7 +194,7 @@ CASES
     run comp_run_build_argv "${INFO/runner=ansible/runner=script}" preview /i web1 /v; [ "$status" -ne 0 ]
     run comp_run_build_argv "${INFO/--ask-become-pass||yes|yes/--foo|<tanimsiz>|yes|no}" preview /i web1 /v
     [ "$status" -ne 0 ]
-    [[ "$output" == *"yer tutucu"* ]]
+    [[ "$output" == *"yer tutucu"* ]] || false
 }
 
 @test "argv: eylem interactive=yes ise terminal devri işaretlenir (invoke olmasa da)" {

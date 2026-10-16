@@ -3,6 +3,7 @@
 #   ./start.sh --components list        kilit ↔ kurulu durumu (ağ yok)
 #   ./start.sh --components sync [--yes] kilitteki sürümü kur/onar (onay ister)
 #   ./start.sh --components check-new   kilitten daha yeni yayın var mı? (yalnızca bilgi; ağ)
+#   ./start.sh --components run <paket> <eylem> <sunucu>   kurulu paketin eylemini sunucuda çalıştırır (ComponentsRunCLI.sh)
 #
 # Sürüm DAİMA kilit dosyasındakidir (imzalı sshpocket sürümüyle gelir). Daha yeni bir yayın bilgilendirir,
 # kurulmaz: yeni sürüm, yeni sshpocket sürümüyle (kilit güncellenince) gelir.
@@ -147,6 +148,7 @@ components_cli() {
         list) comp_cli_list ;;
         sync) comp_cli_sync "$@" ;;
         check-new) comp_cli_check_new ;;
-        *) echo "kullanım: --components list | sync [--yes] | check-new" >&2; return 2 ;;
+        run) comp_cli_run "$@" ;;
+        *) echo "kullanım: --components list | sync [--yes] | check-new | run <paket> <eylem> <sunucu>" >&2; return 2 ;;
     esac
 }
