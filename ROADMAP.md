@@ -8,7 +8,9 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 
 > **Bileşen/paket modeli:** tasarım [docs/components-design.md](docs/components-design.md), paket standardı [docs/package-standard.md](docs/package-standard.md).
 > Durum: `servers/` veri düzeni, ayarlar, ok tuşlu menü ve paket **altyapısı** (kilit, imza, kurulum, bildirim, venv, `--doctor`, `--components`) hazır.
-> Sırada: gerçek paketle uçtan uca deneme, 🛡️ Hardening menüsü, 🧰 Araçlar, klasik port knocking.
+> Gerçek paketle (linux-hardening 0.2.0) uçtan uca deneme yapıldı; komut satırı (`--components run`) ve sunucu menüsünde 🛡️ Paketler hazır.
+> Sırada: menüden değişken düzenleme (`hardening_ssh_allow_from` için erişim ağı önerisi), son sonuçlar/geçmiş, `rollback_status` rozeti, 🧰 Araçlar, klasik port knocking.
+> Bkz. [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
 
 ### Taşınabilirlik (Linux)
 Şu an yalnızca macOS: `security` (Keychain), `osascript` (Terminal), `diskutil` (eject) kullanılıyor.
