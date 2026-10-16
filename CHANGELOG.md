@@ -8,6 +8,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 - **`components/` (kurulu paketler) `.gitignore`'a eklendi:** `--components sync` ile açılan paket klasörü yanlışlıkla commit'lenebiliyordu.
 
 ### Eklendi
+- **Paket çalıştırma, 1. parça (girdi üreteçleri; henüz hiçbir şey çalıştırmaz, sunucuya dokunmaz):** `ComponentsRun.sh` ve `component_run.py`:
+  paket değişkenlerinin doğrulanması (tür, aralık, zorunlu, `warn_if`; `servers/<ad>/<paket>.vars` + çalıştırıcının zorladığı `--set` değerleri),
+  izin 600'lü geçici inventory ve değişken dosyası, kabuk dizgesi/eval olmadan argüman dizisi (`-i`/`--limit`/`-e` çalıştırıcıya aittir, pakette
+  geçerse reddedilir; `invoke.append`'deki yinelenenler atlanır).
+
+### Eklendi
 - **İlk gerçek paket kilitlendi:** `components.lock` artık `linux-hardening 0.2.0` (imzalı, paket standardı v1 uyumlu; sha256 `2886b610…f38a`) girdisini taşır.
   Kurulum/çalıştırma menüsü henüz yok; `--components list|sync|check-new` ile görülür.
 
