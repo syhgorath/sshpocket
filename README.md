@@ -24,6 +24,7 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 | Ortam | Durum |
 |---|---|
 | **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Geliştirildi ve elle denendi |
+| **Apple Silicon (arm64, Apple M5 Pro), macOS 27.0.1, bash 3.2.57, OpenSSH 10.3p1** | ✅ Elle denendi: `--doctor`, Keychain'deki passphrase ile `ssh-add`, `--components sync` ve `run` (Ubuntu 26.04.1 VM'inde `rollback_status` → `preview` → `apply`). ⚠️ Elle denenmedi: Terminal penceresi açma, `start.command` çift tıklama, yeni `🛡️ Paketler` menüsünün ok tuşlu/fzf görünümü, gerçek sunucuda knock |
 | **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Otomatik testler** (Bats + ShellCheck, her PR'da). ⚠️ Elle/gerçek denenmedi: Keychain izin penceresi, Terminal açma, `start.command` çift tıklama |
 | Ubuntu 24.04 (yalnızca CI: ShellCheck + Bats testleri) | ✅ otomatik |
 | Linux üzerinde kullanım (Keychain/`osascript`/`diskutil` yok) | ❌ Desteklenmiyor |
@@ -45,7 +46,7 @@ Standart bir macOS'ta **ek bir şey kurmanız gerekmez**; araç yalnızca sistem
 | Ne | Ne işe yarar | Kurulum |
 |---|---|---|
 | **fzf** | Menülerde arama ve açıklama önizleme penceresi. Yoksa yerleşik ok tuşlu menü kullanılır. (0.74.5 ile denendi) | `brew install fzf` |
-| **Python ≥ 3.12** | Yalnızca ileride **paketler** (örn. linux-hardening) için; günlük kullanımda gerekmez | `brew install python@3.13` |
+| **Python ≥ 3.12** | Yalnızca **paketler** (örn. linux-hardening) için; günlük kullanımda gerekmez. macOS'un sistem Python'u (3.9) yetmez | `brew install python@3.13` |
 
 `fzf` Homebrew'da `/opt/homebrew/bin` ya da `/usr/local/bin` altındaysa Finder'dan (`start.command`) açıldığında da bulunur.
 
