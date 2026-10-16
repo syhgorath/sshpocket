@@ -32,5 +32,8 @@ servers/*
 !servers/.gitkeep
 !servers/README.md
 
+# Kurulu paketler (sshpocket --components sync; imzalı arşivden açılır, repoya girmez)
+components/
+
 # Kişisel ayarlar (USB'yle taşınır, repoya girmez)
 sshpocket.conf

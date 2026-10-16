@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **`components/` (kurulu paketler) `.gitignore`'a eklendi:** `--components sync` ile açılan paket klasörü yanlışlıkla commit'lenebiliyordu.
+
 ### Eklendi
 - **İlk gerçek paket kilitlendi:** `components.lock` artık `linux-hardening 0.2.0` (imzalı, paket standardı v1 uyumlu; sha256 `2886b610…f38a`) girdisini taşır.
   Kurulum/çalıştırma menüsü henüz yok; `--components list|sync|check-new` ile görülür.
