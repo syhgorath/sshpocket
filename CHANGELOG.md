@@ -5,6 +5,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **Paket değişkenleri için kütüphane (menü 2a/n; henüz menüde görünmez):** `ComponentsVars.sh` ve `component_run.py describe|check|net-*`: değişken açıklama/doğrulama
+  (çalıştırmadakiyle aynı doğrulayıcı), `servers/<ad>/<paket>.vars` okuma/yazma (yorumlar korunur, izin 600, atomik), eksik zorunlu değişken listesi ve
+  **erişim ağı önerisi** (yerel arayüzden adres/önek; nokta-nokta tünelde /24 'tahmini' etiketlenir; isteğe bağlı sabit, salt okunur `SSH_CONNECTION` sorgusu).
+
+### Eklendi
 - **Sunucu menüsünde `🛡️ Paketler` (Aşama 3, menü 1/n):** yeni biçimli bir sunucuda kurulu paket varsa sunucu menüsüne girdi eklenir: paket seç → eylem seç
   (etiket: 🔍 salt okunur / ✏️ değişiklik yapar / ☠️ yıkıcı, ön koşul `(önce: preview)`, ilk uyarı açıklamada) → eylem `--components run` zincirinde, tüm
   kapılar ve onaylarla çalışır. Paket yoksa ya da sunucu eski biçimliyse girdi görünmez.

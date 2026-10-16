@@ -4,6 +4,9 @@
 # Kullanım: python3 -I component_run.py vars <component.json> <değerler-dosyası> <çıktı.json> [--set ad=değer ...]
 # Değerler dosyası düz "ad=değer" satırlarıdır (# yorum, boş satır serbest; liste = virgülle ayrılmış). Hiçbir şey
 # eval edilmez. --set, dosyadaki değeri ezer (çalıştırıcının zorladığı değerler: örn. outputs.dir_var).
+#        python3 -I component_run.py describe <component.json>            → değişken başına bir TSV satırı
+#        python3 -I component_run.py net-prefix <adres> <maske> | net-suggest <adres> <önek> | net-valid <adres>   (erişim ağı önerisi)
+#        python3 -I component_run.py check <component.json> <ad> <değer>   → tek değeri doğrular (warn_if eşleşirse stdout'a "warn=<ad>")
 # Çıkış 0: geçerli; çıktı.json izin 600 ile YENİ dosya olarak yazılır. stdout'a yalnızca "warn=<ad>" (warn_if
 # eşleşmesi) ve "ok" yazılır; DEĞERLER stdout'a basılmaz. Çıkış 1: geçersiz; nedenler stderr'e. Yalnızca stdlib.
 import ipaddress
@@ -134,9 +137,118 @@ def typed(t, raw, spec, name):
     return scalar(t, raw, spec, name)
 
 
+def declared_vars(manifest):
+    d = read_json(manifest)
+    out = {}
+    order = []
+    if isinstance(d, dict):
+        vs = d.get("vars", [])
+        for v in vs if isinstance(vs, list) else []:
+            if isinstance(v, str):
+                v = {"name": v, "type": "string"}
+            if isinstance(v, dict) and isinstance(v.get("name"), str):
+                out[v["name"]] = v
+                order.append(v["name"])
+    elif d is not None:
+        err("component.json nesne olmalı")
+    return out, order
+
+
+def clean(text):
+    return re.sub(r"[\t\r\n\x00-\x1f\x7f]+", " ", str(text)).strip()
+
+
+def cmd_describe(argv):
+    if len(argv) != 3:
+        print("kullanım: component_run.py describe <component.json>", file=sys.stderr)
+        return 2
+    decl, order = declared_vars(argv[2])
+    if errors:
+        for m in errors:
+            print("HATA: %s" % m, file=sys.stderr)
+        return 1
+    for name in order:
+        v = decl[name]
+        dflt = json.dumps(v["default"], ensure_ascii=False) if "default" in v else ""
+        warn = json.dumps(v["warn_if"]) if "warn_if" in v else ""
+        mn = str(v["min"]) if isinstance(v.get("min"), int) and not isinstance(v.get("min"), bool) else ""
+        mx = str(v["max"]) if isinstance(v.get("max"), int) and not isinstance(v.get("max"), bool) else ""
+        print("\t".join([name, clean(v.get("type", "string")), "yes" if v.get("required") is True else "no",
+                         clean(dflt), mn, mx, clean(warn), clean(v.get("description", ""))]))
+    return 0
+
+
+def cmd_check(argv):
+    if len(argv) != 5:
+        print("kullanım: component_run.py check <component.json> <ad> <değer>", file=sys.stderr)
+        return 2
+    decl, _ = declared_vars(argv[2])
+    name, raw = argv[3], argv[4]
+    if name not in decl:
+        err("%s: pakette tanımlı bir değişken değil" % name)
+    elif raw == "":
+        err("%s: değer boş" % name)
+    else:
+        spec = decl[name]
+        v = typed(spec.get("type", "string"), raw, spec, name)
+        if v is not None and "warn_if" in spec and isinstance(v, bool) and v == spec["warn_if"]:
+            print("warn=%s" % name)
+    if errors:
+        for m in errors:
+            print("HATA: %s" % m, file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_net(argv):
+    """net-prefix <adres> <maske>  → "adres/önek" · net-suggest <adres> <önek> → "CIDR\taçıklama" satırları · net-valid <adres> → 0/1"""
+    sub = argv[1]
+    try:
+        if sub == "net-valid" and len(argv) == 3:
+            ipaddress.ip_address(argv[2])
+            print(argv[2])
+            return 0
+        if sub == "net-prefix" and len(argv) == 4:
+            addr = ipaddress.ip_address(argv[2])
+            m = argv[3]
+            mask = ipaddress.ip_address(int(m, 16) if m.lower().startswith("0x") else m)
+            plen = bin(int(mask)).count("1")
+            if int(mask) != ((1 << plen) - 1) << (addr.max_prefixlen - plen):
+                return 1                                   # bitişik olmayan maske
+            print("%s/%d" % (addr, plen))
+            return 0
+        if sub == "net-suggest" and len(argv) == 4:
+            addr = ipaddress.ip_address(argv[2])
+            plen = int(argv[3])
+            if not 0 <= plen <= addr.max_prefixlen:
+                return 1
+            out = []
+            if plen < addr.max_prefixlen:
+                out.append((str(ipaddress.ip_network("%s/%d" % (addr, plen), strict=False)), "bu ağdaki herkes"))
+            elif addr.version == 4:
+                out.append((str(ipaddress.ip_network("%s/24" % addr, strict=False)),
+                            "tahmini /24 (ağ maskesi bilinmiyor; doğrulayın)"))
+            out.append(("%s/%d" % (addr, addr.max_prefixlen), "yalnızca bu adres"))
+            seen = set()
+            for cidr, label in out:
+                if cidr not in seen:
+                    seen.add(cidr)
+                    print("%s\t%s" % (cidr, label))
+            return 0
+    except (ValueError, TypeError):
+        return 1
+    return 2
+
+
 def main(argv):
+    if len(argv) >= 2 and argv[1] in ("net-prefix", "net-suggest", "net-valid"):
+        return cmd_net(argv)
+    if len(argv) >= 2 and argv[1] == "describe":
+        return cmd_describe(argv)
+    if len(argv) >= 2 and argv[1] == "check":
+        return cmd_check(argv)
     if len(argv) < 5 or argv[1] != "vars":
-        print("kullanım: component_run.py vars <component.json> <değerler> <çıktı.json> [--set ad=değer ...]", file=sys.stderr)
+        print("kullanım: component_run.py vars|describe|check ...", file=sys.stderr)
         return 2
     manifest, values_path, out_path = argv[2], argv[3], argv[4]
     forced = {}
