@@ -99,6 +99,18 @@ _comp_exec_body() {
     if [[ "$prog" == */* ]] || [ ! -x "$bindir/$prog" ]; then echo "Çalıştırılacak program bulunamadı: $prog" >&2; return "$refused"; fi
     COMP_RUN_ARGV[0]="$bindir/$prog"
 
+    # sudo parolası istemi: Ansible yalnızca "BECOME password:" yazar; ne olduğunu önceden açıkla
+    for w in "${COMP_RUN_ARGV[@]}"; do
+        if [ "$w" = "--ask-become-pass" ] || [ "$w" = "-K" ]; then
+            {
+                echo "🔑 Sudo parolası istenecek: aşağıdaki 'BECOME password:' sunucudaki sudo parolasıdır."
+                echo "   Sudo parola istemiyorsa (NOPASSWD) yalnızca Enter'a basın."
+                echo "   Parola yalnızca Ansible'ın kendi istemine girilir; sshpocket'e, günlüğe ya da komut satırına yazılmaz."
+            } >&2
+            break
+        fi
+    done
+
     # ---- çalıştır (günlük kullanıcı klasöründe, izin 600; kullanıcı terminali çıktıyı olduğu gibi görür) ----
     log="$sdir/last-run.log"
     ( umask 077; : > "$log" ) || return "$refused"

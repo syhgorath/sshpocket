@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **Sudo parolası istemi artık açıklanıyor:** eylem `--ask-become-pass` ile çalışacaksa, Ansible'ın `BECOME password:` istemi öncesinde bunun sunucudaki sudo
+  parolası olduğu, sudo parola istemiyorsa (NOPASSWD) yalnızca Enter'a basılacağı ve parolanın sshpocket'e/günlüğe yazılmadığı belirtilir.
+
 ### Düzeltildi
 - **`--components run` gerçek çalıştırmada `comp_prepare: command not found` veriyordu:** `Main.sh` `ComponentsManifest.sh`'ı yüklemiyordu (testler işlevi
   sahtelediği için fark edilmemişti). Dosya yüklendi; gerçek `Main.sh` yolunu doğrulayan iki test eklendi.
