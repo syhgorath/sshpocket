@@ -37,3 +37,6 @@ make_sandbox() {
     cp -R "$ROOT/sistem" "$ROOT/start.sh" "$SANDBOX/"
     printf 'EjectUSB(){ :; }\n' > "$SANDBOX/sistem/Helpers/Eject.sh"
 }
+
+# file_mode <yol> → sekizlik izin (örn. 600). GNU stat önce: Linux'ta "stat -f" dosya sistemi bilgisi verir (hata kodu dönmez).
+file_mode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }

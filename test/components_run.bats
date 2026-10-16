@@ -40,7 +40,7 @@ vars() { rm -f "$T/out.json"; comp_run_vars "$T/m.json" "$T/v" "$T/out.json" "$@
     run vars
     [ "$status" -eq 0 ]
     [ "$output" = "ok" ]
-    [ "$(stat -f %Lp "$T/out.json" 2>/dev/null || stat -c %a "$T/out.json")" = "600" ]
+    [ "$(file_mode "$T/out.json")" = "600" ]
     run python3 -I -c "import json;d=json.load(open('$T/out.json'));assert d['allow_from']==['10.0.0.0/24','192.168.1.5'];assert d['rb_enabled'] is True;assert d['rb_timeout']==300;assert d['mode']=='b';assert 'scan_dir' not in d"
     [ "$status" -eq 0 ]
 }
@@ -116,7 +116,7 @@ vars() { rm -f "$T/out.json"; comp_run_vars "$T/m.json" "$T/v" "$T/out.json" "$@
 # ---------- inventory ----------
 @test "inventory: beklenen satırlar, izin 600" {
     comp_run_write_inventory "$T/inv" hardening ubuntutest 10.1.10.193 syhgorath 22 /Volumes/test/servers/ubuntutest/id_ed25519_x
-    [ "$(stat -f %Lp "$T/inv" 2>/dev/null || stat -c %a "$T/inv")" = "600" ]
+    [ "$(file_mode "$T/inv")" = "600" ]
     [ "$(sed -n 1p "$T/inv")" = "[hardening]" ]
     [ "$(sed -n 2p "$T/inv")" = "ubuntutest ansible_host=10.1.10.193 ansible_user=syhgorath ansible_port=22 ansible_private_key_file='/Volumes/test/servers/ubuntutest/id_ed25519_x'" ]
 }
