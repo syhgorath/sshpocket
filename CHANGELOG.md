@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Paket çalıştırma, 3. parça (yürütücü; henüz CLI/menüye bağlı değil, gerçek sunucuya dokunulmaz):** `ComponentsExec.sh` tek giriş noktası
+  `comp_exec_action`: kapılar → değişkenler (`outputs.dir_var` her zaman kullanıcı klasörüne yönlendirilir) → onay → çalıştırma → sonuç → kayıt.
+  `ansible-playbook` venv'den, paket kökünde, `ANSIBLE_HOST_KEY_CHECKING=True` zorlanarak çalışır; geçici inventory/değişken dosyaları Ctrl-C/TERM dahil
+  her çıkışta silinir; çıktı kullanıcı klasörüne (izin 600) günlüklenir. `SSHPOCKET_RESULT` satırı (düz/yaml/json çıktıda) önek, anahtar ve değer
+  denetimiyle ayrıştırılır. Bildirim doğrulayıcısı `outputs` alanını okur; paketteki `prefix` sshpocket'in türettiğiyle uyuşmazsa paket reddedilir.
+
 ### Düzeltildi
 - **`components/` (kurulu paketler) `.gitignore`'a eklendi:** `--components sync` ile açılan paket klasörü yanlışlıkla commit'lenebiliyordu.
 
