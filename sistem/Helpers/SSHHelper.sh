@@ -47,6 +47,27 @@ ssh_agent_add() {
     return 1
 }
 
+# ssh_agent_add başarısız olursa (Keychain'deki passphrase yanlış olabilir)
+# yeni passphrase'i sorar, Keychain'e yazar ve yeniden dener (en çok 3 kez).
+# Agent'a hiç ulaşılamıyorsa (ssh-add -l çıkış 2) passphrase suçlanmaz.
+# Parametreler: $1 - modül öneki, $2 - key dosyası
+ssh_agent_add_retry() {
+    local prefix="$1" ssh_key="$2" attempt=0 answer rc
+    ssh_agent_add "$prefix" "$ssh_key" && return 0
+    while [ "$attempt" -lt 3 ]; do
+        ssh-add -l >/dev/null 2>&1; rc=$?
+        [ "$rc" -eq 2 ] && return 1
+        read -r -p "Kayıtlı passphrase yanlış olabilir. Yeniden girip Keychain'e kaydedeyim mi? [e/H]: " answer || return 1
+        case "$answer" in e|E|evet|Evet) ;; *) return 1 ;; esac
+        # -w son argüman: passphrase komut satırında görünmez, güvenli sorulur
+        security add-generic-password -U -a "$(ssh_keychain_account "$prefix")" \
+            -s "$SSH_KEYCHAIN_SERVICE" -w || return 1
+        attempt=$((attempt + 1))
+        ssh_agent_add "$prefix" "$ssh_key" && return 0
+    done
+    return 1
+}
+
 # Yeni bir Terminal penceresinde ssh çalıştırır
 # Parametreler: $1 - kullanıcı, $2 - ip, $3 - port, $4 - key dosyası
 # Ortam: SSH_VERBOSE=1 ise -v ekler

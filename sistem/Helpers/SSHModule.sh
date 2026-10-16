@@ -137,7 +137,7 @@ ssh_module_run() {
             echo "⚠️  $problem"
         else
             chmod 600 "$ssh_key" 2>/dev/null
-            if ssh_has_passphrase "$prefix"; then ssh_agent_add "$prefix" "$ssh_key"; fi
+            if ssh_has_passphrase "$prefix"; then ssh_agent_add_retry "$prefix" "$ssh_key"; fi
         fi
         echo ""
 
