@@ -178,3 +178,22 @@ STUB
     run ssh_agent_add_retry WEB1 "$BATS_TEST_TMPDIR/k" </dev/null
     [ "$status" -ne 0 ]
 }
+
+# ---------- askpass.sh: ssh-add yanlış passphrase'te sonsuz yeniden dener ----------
+@test "askpass: ASKPASS_STATE ile yalnızca ilk çağrıda passphrase döner, sonra boş satır" {
+    printf '#!/bin/bash\necho "$*" >> "%s"\necho gizli\n' "$LOG" > "$BATS_TEST_TMPDIR/bin/security"
+    export ASKPASS_ACCOUNT=USBMonitor_WEB1_Passphrase ASKPASS_STATE="$BATS_TEST_TMPDIR/state"
+    run bash "$H/askpass.sh"
+    [ "$status" -eq 0 ]; [ "$output" = "gizli" ]
+    run bash "$H/askpass.sh"
+    [ "$status" -eq 0 ]; [ "$output" = "" ]
+    [ "$(grep -c find-generic-password "$LOG")" -eq 1 ]
+}
+
+@test "askpass: ASKPASS_STATE yoksa eski davranış (her çağrıda Keychain)" {
+    printf '#!/bin/bash\necho gizli\n' > "$BATS_TEST_TMPDIR/bin/security"
+    export ASKPASS_ACCOUNT=USBMonitor_WEB1_Passphrase
+    unset ASKPASS_STATE
+    run bash "$H/askpass.sh"; [ "$output" = "gizli" ]
+    run bash "$H/askpass.sh"; [ "$output" = "gizli" ]
+}
