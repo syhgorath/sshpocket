@@ -189,3 +189,12 @@ Her iki runner için ortak kurallar:
 
 Bu kararlarla standart **v1 kabul edilmiştir**; uygulama sırası: 2.0 (kilit dosyası + imza doğrulama) → 2.1 (kurulum)
 → 2.2 (bildirim okuma) → 2.3 (`--doctor` + venv) → 2.4 (`--update` entegrasyonu). linux-hardening tarafı farkları (§11) **issue** olarak izlenir.
+
+## 14. Kararlar (2026-10-16, linux-hardening#33 / sshpocket#40)
+
+| # | Soru | Karar |
+|---|---|---|
+| 6 | `invoke.append` yer tutucuları | `<inventory>` ve `<server>` kabul (`^<[a-z0-9_ -]{1,40}>$`). `-e @<dosya>` pakette **yok**: değişken dosyasını sshpocket verir (§7). |
+| 7 | `-i` / `--limit` | **Çalıştırıcı ekler** (geçici inventory'yi sshpocket üretir); paket bunları `invoke.append`'e yazmaz. `invoke.append` yalnızca ek bayraklar içindir (örn. `--ask-become-pass`, `interactive`). Yazılırsa çalıştırıcı yinelenen `-i`/`--limit` girdilerini atlar. |
+| 8 | `outputs.prefix` | `<id>.<eylem>` kısmını sshpocket bildirimdeki `id` ve eylem adından **türetir**. Pakette `prefix` varsa bununla birebir uyuşmalı; uyuşmazsa paket reddedilir. `keys` bildirimde kalır. |
+| 9 | Sonuç satırı ayrıştırma | Satır başı varsayılmaz: `^\s*SSHPOCKET_RESULT\s+` ile aranır (Ansible'ın `msg:` bloğu altında girintili gelir). |
