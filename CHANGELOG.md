@@ -5,6 +5,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **Sunucu menüsünde paket değişkenleri (menü 2b/n):** paket eylem listesinin başında **Hazırlık** bloğu (zorunlu değişken eksikse ❌ ve eylemler ⛔ kapalı) ve
+  `📝 Değişkenler` ekranı: değer/varsayılan/otomatik gösterimi, kaydetmeden önce doğrulama, `warn_if` için onay, `-` ile silme. `list[cidr]` değişkenler için **ağ
+  editörü**: bu bilgisayarın adresinden öneri (ağ / tahmini /24 / yalnızca bu adres), isteğe bağlı sunucudan sorgu (salt okunur ssh), elle ekleme/silme/temizleme; listede
+  tek ağ varsa *'başka bir ağdan bağlanırsanız SSH kapalı olur'* uyarısı. Hiçbir şey otomatik yazılmaz.
+
+### Eklendi
 - **Paket değişkenleri için kütüphane (menü 2a/n; henüz menüde görünmez):** `ComponentsVars.sh` ve `component_run.py describe|check|net-*`: değişken açıklama/doğrulama
   (çalıştırmadakiyle aynı doğrulayıcı), `servers/<ad>/<paket>.vars` okuma/yazma (yorumlar korunur, izin 600, atomik), eksik zorunlu değişken listesi ve
   **erişim ağı önerisi** (yerel arayüzden adres/önek; nokta-nokta tünelde /24 'tahmini' etiketlenir; isteğe bağlı sabit, salt okunur `SSH_CONNECTION` sorgusu).
