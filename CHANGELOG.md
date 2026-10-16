@@ -4,6 +4,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Sunucu menüsünde `🛡️ Paketler` (Aşama 3, menü 1/n):** yeni biçimli bir sunucuda kurulu paket varsa sunucu menüsüne girdi eklenir: paket seç → eylem seç
+  (etiket: 🔍 salt okunur / ✏️ değişiklik yapar / ☠️ yıkıcı, ön koşul `(önce: preview)`, ilk uyarı açıklamada) → eylem `--components run` zincirinde, tüm
+  kapılar ve onaylarla çalışır. Paket yoksa ya da sunucu eski biçimliyse girdi görünmez.
+
 ### Değişti
 - **Sudo parolası istemi artık açıklanıyor:** eylem `--ask-become-pass` ile çalışacaksa, Ansible'ın `BECOME password:` istemi öncesinde bunun sunucudaki sudo
   parolası olduğu, sudo parola istemiyorsa (NOPASSWD) yalnızca Enter'a basılacağı ve parolanın sshpocket'e/günlüğe yazılmadığı belirtilir.

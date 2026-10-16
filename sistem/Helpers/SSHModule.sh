@@ -89,7 +89,8 @@ ssh_module_run() {
     default_key="$module_dir/id_ed25519_${lower}"
 
     while true; do
-        local ip="" user="" port="22" ssh_key="$default_key" custom_key problem="" verr choice
+        local ip="" user="" port="22" ssh_key="$default_key" custom_key problem="" verr choice has_pkgs=0
+        if declare -F comp_menu_available >/dev/null && comp_menu_available "$module_dir"; then has_pkgs=1; fi
 
         clear
         if declare -F ui_header >/dev/null; then
@@ -152,12 +153,13 @@ ssh_module_run() {
             )
             # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
             local UI_PICK_BACK_DESC="Ana menüye döner."
-            choice=$(ui_pick_arrows 1 "Geri" \
-                "Bağlan" \
-                "Public key'i sunucuya gönder" \
-                "Bilgileri güncelle (IP / kullanıcı / port / key yolu)" \
-                "Keychain passphrase'ini güncelle / sil" \
-                "Knock ayarları (port knocking)")
+            local -a pick_items=("Bağlan" "Public key'i sunucuya gönder" "Bilgileri güncelle (IP / kullanıcı / port / key yolu)" \
+                "Keychain passphrase'ini güncelle / sil" "Knock ayarları (port knocking)")
+            if [ "$has_pkgs" = "1" ]; then
+                pick_items+=("🛡️  Paketler (sertleştirme vb.)")
+                UI_PICK_DESCS+=("Kurulu paketlerin eylemlerini bu sunucuda çalıştırır (önizleme, uygulama, durum...); her eylem onay ve ön kontrollerden geçer.")
+            fi
+            choice=$(ui_pick_arrows 1 "Geri" "${pick_items[@]}")
             if [ "$choice" = "0" ]; then ui_no_pause; return 0; fi
         else
             echo "  1) Bağlan"
@@ -165,6 +167,7 @@ ssh_module_run() {
             echo "  3) Bilgileri güncelle (IP / kullanıcı / port / key yolu)"
             echo "  4) Keychain passphrase'ini güncelle / sil"
             echo "  5) Knock ayarları (port knocking)"
+            if [ "$has_pkgs" = "1" ]; then echo "  6) 🛡️  Paketler (sertleştirme vb.)"; fi
             echo "  0) Geri (q)"
             if declare -F ui_footer >/dev/null; then ui_footer "numara yaz + Enter (boş = 1 Bağlan) · 0 veya q = geri"; fi
             if ! read -r -p "Seçim [1]: " choice; then return 0; fi
@@ -185,6 +188,9 @@ ssh_module_run() {
             3) ssh_module_edit "$prefix" "$module_dir"; read -r -p "Devam için Enter..." _ || return 0 ;;
             4) ssh_keychain_manage "$prefix" "$ssh_key"; read -r -p "Devam için Enter..." _ || return 0 ;;
             5) knock_manage "$prefix" "$module_dir"; read -r -p "Devam için Enter..." _ || return 0 ;;
+            6)
+                if [ "$has_pkgs" = "1" ]; then comp_menu_server "$prefix" "$module_dir"; else ui_no_pause; return 0; fi
+                ;;
             *) ui_no_pause; return 0 ;;
         esac
     done
