@@ -65,9 +65,18 @@ comp_gate_record() {
         || ! [[ "$action" =~ ^[a-z][a-z0-9_]{0,63}$ ]] || { [ "$res" != ok ] && [ "$res" != fail ]; }; then
         echo "kayıt girdisi geçersiz" >&2; return 1
     fi
-    dir="$(_comp_gate_state_dir)/$id/$server"
-    ( umask 077; mkdir -p "$dir" && chmod 700 "$(_comp_gate_state_dir)" "$(_comp_gate_state_dir)/$id" "$dir" ) || return 1
+    dir=$(comp_gate_state_ensure "$id" "$server") || return 1
     ( umask 077; printf '%s|%s|%s|%s\n' "$(date +%s)" "$ver" "$action" "$res" >> "$dir/results" ) || return 1
+}
+
+# comp_gate_state_ensure <paket> <sunucu> → kullanıcı durum klasörünü (0700) oluşturur ve yolunu yazar
+comp_gate_state_ensure() {
+    local id="$1" server="$2" root dir
+    if ! comp_id_valid "$id" || ! _comp_gate_name_ok "$server"; then echo "durum klasörü girdisi geçersiz" >&2; return 1; fi
+    root="$(_comp_gate_state_dir)"
+    dir="$root/$id/$server"
+    ( umask 077; mkdir -p "$dir" && chmod 700 "$root" "$root/$id" "$dir" ) || return 1
+    printf '%s' "$dir"
 }
 
 # comp_gate_requires <bilgi> <paket> <sunucu> <sürüm> <eylem> → requires eylemleri taze (<= TTL) ve başarılı mı

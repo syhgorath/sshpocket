@@ -25,6 +25,7 @@ RE_GROUP = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
 RE_CMD_BAD = re.compile(r"[;&|`$<>(){}\\\"'\n\r\t\x00]")
 RE_TEXT_BAD = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 RE_PYRANGE = re.compile(r"^>=[0-9]+\.[0-9]+(,<[0-9]+\.[0-9]+)?$")
+RE_OUTKEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 RE_VALUE = re.compile(r"^(<[a-z0-9_ -]{1,40}>|[A-Za-z0-9_./:@=,+-]{1,200})$")
 
 errors = []
@@ -196,6 +197,42 @@ def main():
         for w in warns:
             if is_str(w):
                 act_lines.append("action.%s.warning=%s" % (name, w))
+        # outputs (§8): dir_var = bildirilmiş 'path' türünde değişken; prefix verilmişse sshpocket'in türettiğiyle BİREBİR aynı olmalı
+        outs = a.get("outputs")
+        if outs is not None:
+            if not isinstance(outs, dict):
+                err("%s: outputs nesne olmalı" % name)
+            else:
+                dv = outs.get("dir_var")
+                if dv is not None:
+                    decl = {}
+                    for vv in d.get("vars", []) if isinstance(d.get("vars", []), list) else []:
+                        if isinstance(vv, dict) and is_str(vv.get("name")):
+                            decl[vv["name"]] = vv.get("type", "string")
+                    if not is_str(dv) or decl.get(dv) != "path":
+                        err("%s: outputs.dir_var 'path' türünde bildirilmiş bir değişken olmalı" % name)
+                    else:
+                        act_lines.append("action.%s.outputs.dir_var=%s" % (name, dv))
+                fmt = outs.get("format")
+                if fmt is not None:
+                    if fmt != "keyvalue-line":
+                        err("%s: outputs.format yalnızca 'keyvalue-line' olabilir" % name)
+                    else:
+                        okeys = outs.get("keys")
+                        if (not isinstance(okeys, list) or not okeys or len(okeys) > 20
+                                or any(not (is_str(k) and RE_OUTKEY.match(k)) for k in okeys)
+                                or len(set(okeys)) != len(okeys)):
+                            err("%s: outputs.keys geçersiz (küçük harf/rakam/_ ; en çok 20, yinelenmez)" % name)
+                        else:
+                            act_lines.append("action.%s.outputs.keys=%s" % (name, ",".join(okeys)))
+                        want = "SSHPOCKET_RESULT %s.%s" % (d.get("id"), name)
+                        if "prefix" in outs and outs["prefix"] != want:
+                            err("%s: outputs.prefix '%s' olmalı (sshpocket türetir; paketteki farklıysa reddedilir)" % (name, want))
+                        act_lines.append("action.%s.outputs.format=keyvalue-line" % name)
+                elif "keys" in outs or "prefix" in outs:
+                    err("%s: outputs.keys/prefix için outputs.format gerekir" % name)
+                if "summary" in outs and not text_ok(outs["summary"], "%s: outputs.summary" % name):
+                    pass
     # requires: var olan eylemlere, kendine ve döngüsüz
     graph = {}
     for name, a in actions.items():
