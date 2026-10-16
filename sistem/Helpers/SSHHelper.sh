@@ -32,12 +32,17 @@ ssh_agent_add() {
     fi
 
     echo "🔐 SSH key agent'a ekleniyor (Keychain passphrase'i ile)..." >&2
+    # ssh-add yanlış passphrase'te sonsuz döner: askpass yalnızca bir kez cevap verir
+    local state
+    state="$(mktemp -u "${TMPDIR:-/tmp}/sshpocket-askpass.XXXXXX")"
     SSH_ASKPASS="$SISTEM_PATH/Helpers/askpass.sh" \
+    ASKPASS_STATE="$state" \
     SSH_ASKPASS_REQUIRE=force \
     DISPLAY="${DISPLAY:-:0}" \
     ASKPASS_ACCOUNT="$(ssh_keychain_account "$prefix")" \
     ASKPASS_SERVICE="$SSH_KEYCHAIN_SERVICE" \
         ssh-add "$ssh_key" </dev/null >/dev/null 2>&1
+    rm -f "$state"
 
     if [ -n "$fingerprint" ] && ssh-add -l 2>/dev/null | grep -q "$fingerprint"; then
         echo "✅ SSH key agent'a eklendi" >&2
