@@ -1,8 +1,14 @@
 # sshpocket paket kilit dosyası (docs/package-standard.md). İmzalı sshpocket sürümüyle gelir.
-# Burada olmayan paket ÇALIŞTIRILMAZ. Henüz kurulu paket yok.
+# Burada olmayan paket ÇALIŞTIRILMAZ.
 #
 # [paket-kimliği]
 # repo    = sahip/depo
 # version = 1.2.3
 # sha256  = <arşivin 64 haneli sha256 özeti>
 # signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 <açık anahtar>
+
+[linux-hardening]
+repo = syhgorath/linux-hardening
+version = 0.2.0
+sha256 = 2886b610a831d531a7708c16fecf1f479b168b8861602070e96486e517f6f38a
+signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
