@@ -78,6 +78,8 @@ source "$SISTEM_PATH/Helpers/ComponentsManifest.sh"
 source "$SISTEM_PATH/Helpers/ComponentsVenv.sh"
 # shellcheck source=Helpers/ComponentsRun.sh
 source "$SISTEM_PATH/Helpers/ComponentsRun.sh"
+# shellcheck source=Helpers/ComponentsVars.sh
+source "$SISTEM_PATH/Helpers/ComponentsVars.sh"
 # shellcheck source=Helpers/ComponentsGates.sh
 source "$SISTEM_PATH/Helpers/ComponentsGates.sh"
 # shellcheck source=Helpers/ComponentsExec.sh
