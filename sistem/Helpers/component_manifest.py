@@ -193,6 +193,9 @@ def main():
         act_lines.append("action.%s.confirm=%s" % (name, effective))
         act_lines.append("action.%s.confirm_raised=%s" % (name, "yes" if effective != confirm else "no"))
         act_lines.append("action.%s.warnings=%d" % (name, len(warns)))
+        for w in warns:
+            if is_str(w):
+                act_lines.append("action.%s.warning=%s" % (name, w))
     # requires: var olan eylemlere, kendine ve döngüsüz
     graph = {}
     for name, a in actions.items():
