@@ -4,6 +4,18 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.5.2] - 2026-10-16
+
+### Düzeltildi
+- **Keychain'deki passphrase yanlışken bağlantı ekranı sonsuza kadar takılıyordu:** `ssh-add`, askpass boş cevap verene kadar yeniden dener; askpass her seferinde
+  aynı yanlış passphrase'i döndürdüğü için "SSH key agent'a ekleniyor" satırında %100 CPU ile sonsuz döngü oluşuyordu. `askpass.sh` artık yalnızca ilk
+  çağrıda passphrase döndürür (`ASKPASS_STATE`), sonrakilerde boş satır verir; `ssh-add` birkaç saniyede vazgeçer.
+
+### Eklendi
+- **Yanlış kayıtlı passphrase'te yeniden sorma:** key agent'a eklenemezse (agent'a ulaşılabiliyorsa) "Kayıtlı passphrase yanlış olabilir. Yeniden girip
+  Keychain'e kaydedeyim mi? [e/H]" diye sorulur; `e` ise passphrase güvenli istemle (komut satırında görünmez) Keychain'e yazılır ve en çok 3 kez denenir.
+  Girdi yoksa takılmaz.
+
 ## [3.5.1] - 2026-10-12
 
 ### Değişti
