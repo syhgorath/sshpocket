@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **`--components run` gerçek çalıştırmada `comp_prepare: command not found` veriyordu:** `Main.sh` `ComponentsManifest.sh`'ı yüklemiyordu (testler işlevi
+  sahtelediği için fark edilmemişti). Dosya yüklendi; gerçek `Main.sh` yolunu doğrulayan iki test eklendi.
+
 ### Eklendi
 - **`./start.sh --components run <paket> <eylem> <sunucu>`:** kurulu paketin bir eylemini sunucuda çalıştırır. Sunucu bilgisi `servers/<ad>/server.env`'den,
   paket değişkenleri `servers/<ad>/<paket>.vars`'tan okunur. İşletim sistemi profili sabit, salt okunur bir `ssh ... cat /etc/os-release` ile algılanır
