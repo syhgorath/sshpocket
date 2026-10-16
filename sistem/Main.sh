@@ -72,6 +72,8 @@ source "$SISTEM_PATH/Helpers/Settings.sh"
 source "$SISTEM_PATH/Helpers/Components.sh"
 # shellcheck source=Helpers/ComponentsInstall.sh
 source "$SISTEM_PATH/Helpers/ComponentsInstall.sh"
+# shellcheck source=Helpers/ComponentsManifest.sh
+source "$SISTEM_PATH/Helpers/ComponentsManifest.sh"
 # shellcheck source=Helpers/ComponentsVenv.sh
 source "$SISTEM_PATH/Helpers/ComponentsVenv.sh"
 # shellcheck source=Helpers/ComponentsRun.sh

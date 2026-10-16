@@ -153,3 +153,28 @@ modeof() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
     [ "$status" -ne 0 ]
     [ ! -e "$T/cache" ] && [ ! -e "$T/home/.cache/sshpocket/venv" ]
 }
+
+# ---------- gerçek Main.sh yolu (sahtelenmemiş): yükleme eksikleri burada yakalanır ----------
+@test "Main.sh: --components run için gereken tüm işlevler Main.sh'ın yüklediği dosyalarda tanımlı" {
+    run bash -c '
+        export SISTEM_PATH="$1"
+        while IFS= read -r f; do source "$SISTEM_PATH/Helpers/$f"; done < <(sed -n "s|^source \"\$SISTEM_PATH/Helpers/\(.*\.sh\)\"\$|\1|p" "$SISTEM_PATH/Main.sh")
+        missing=""
+        for fn in comp_cli_run comp_prepare comp_info_get comp_info_all comp_action_get comp_dir comp_id_valid comp_venv_lookup comp_venv_ensure \
+                  comp_gate_not_root comp_gate_known_host comp_gate_agent comp_gate_profile comp_gate_requires comp_gate_confirm comp_gate_warn_vars \
+                  comp_gate_record comp_gate_state_ensure comp_exec_action comp_exec_parse_result comp_run_vars comp_run_write_inventory \
+                  comp_run_build_argv comp_detect_profile module_name_valid module_prefix srv_get ssh_validate_target servers_dir ssh_agent_add_retry; do
+            declare -F "$fn" >/dev/null || missing="$missing $fn"
+        done
+        [ -z "$missing" ] || { echo "EKSİK:$missing"; exit 1; }
+    ' _ "$SISTEM_PATH"
+    [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "Main.sh: gerçek 'components run' duman testi — 'command not found' yok, sunucuya ulaşmadan temiz hata" {
+    printf '# boş kilit\n' > "$T/lock"
+    SSHPOCKET_COMPONENTS_LOCK="$T/lock" run bash "$ROOT/sistem/Main.sh" --components run demo preview web1 </dev/null
+    [ "$status" -ne 0 ]
+    [[ "$output" != *"command not found"* ]] || false
+    [ ! -e "$T/ssh_calls" ]
+}
