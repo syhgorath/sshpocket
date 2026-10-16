@@ -5,6 +5,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **`./start.sh --components run <paket> <eylem> <sunucu>`:** kurulu paketin bir eylemini sunucuda çalıştırır. Sunucu bilgisi `servers/<ad>/server.env`'den,
+  paket değişkenleri `servers/<ad>/<paket>.vars`'tan okunur. İşletim sistemi profili sabit, salt okunur bir `ssh ... cat /etc/os-release` ile algılanır
+  (host key doğrulaması kapatılmaz, parola sorulmaz; çıktı hiçbir zaman çalıştırılmaz). Python ortamı yoksa **onayla** kurulur (PyPI'dan ~10 MB, hash'li
+  wheel; `~/.cache/sshpocket`). Ardından yürütücünün kapıları, onayları ve kaydı uygulanır; sudo parolasını Ansible kendi isteminden alır. Sonuç
+  `servers/<ad>/components.log` dosyasına (tarih|paket|sürüm|eylem|ok/fail, gizli bilgi yok) işlenir.
+
+### Eklendi
 - **Paket çalıştırma, 3. parça (yürütücü; henüz CLI/menüye bağlı değil, gerçek sunucuya dokunulmaz):** `ComponentsExec.sh` tek giriş noktası
   `comp_exec_action`: kapılar → değişkenler (`outputs.dir_var` her zaman kullanıcı klasörüne yönlendirilir) → onay → çalıştırma → sonuç → kayıt.
   `ansible-playbook` venv'den, paket kökünde, `ANSIBLE_HOST_KEY_CHECKING=True` zorlanarak çalışır; geçici inventory/değişken dosyaları Ctrl-C/TERM dahil

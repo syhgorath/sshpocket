@@ -77,7 +77,7 @@ teardown() {
 # ---------- profil ----------
 @test "profil: supported geçer; planned, bilinmeyen ve boş reddedilir" {
     run comp_gate_profile "$INFO" ubuntu-26.04; [ "$status" -eq 0 ]
-    run comp_gate_profile "$INFO" rpi;          [ "$status" -ne 0 ]; [[ "$output" == *"planned"* ]]
+    run comp_gate_profile "$INFO" rpi;          [ "$status" -ne 0 ]; [[ "$output" == *"planned"* ]] || false
     run comp_gate_profile "$INFO" debian-13;    [ "$status" -ne 0 ]
     run comp_gate_profile "$INFO" "";           [ "$status" -ne 0 ]
 }
@@ -85,7 +85,7 @@ teardown() {
 # ---------- requires ----------
 @test "requires: kayıt yokken reddedilir; preview ok sonrası geçer; dizin 0700, dosya 0600" {
     run comp_gate_requires "$INFO" demo web1 1.0.0 apply; [ "$status" -ne 0 ]
-    [[ "$output" == *"önce 'preview'"* ]]
+    [[ "$output" == *"önce 'preview'"* ]] || false
     comp_gate_record demo web1 1.0.0 preview ok
     run comp_gate_requires "$INFO" demo web1 1.0.0 apply; [ "$status" -eq 0 ]
     [ "$(file_mode "$T/state/demo/web1")" = "700" ]
@@ -121,12 +121,12 @@ teardown() {
 @test "onay none: sormadan geçer; etkiler 'yok (salt okunur)' yazılır" {
     run comp_gate_confirm "$INFO" preview web1 </dev/null
     [ "$status" -eq 0 ]
-    [[ "$output" == *"yok (salt okunur)"* ]]
+    [[ "$output" == *"yok (salt okunur)"* ]] || false
 }
 
 @test "onay yes-no: e/evet geçer; H, boş ve EOF reddedilir; uyarılar gösterilir" {
     run comp_gate_confirm "$INFO" audit web1 <<<"e";    [ "$status" -eq 0 ]
-    [[ "$output" == *"lynis kurar"* ]]; [[ "$output" == *"rapor hassas"* ]]
+    [[ "$output" == *"lynis kurar"* ]]; [[ "$output" == *"rapor hassas"* ]] || false
     run comp_gate_confirm "$INFO" audit web1 <<<"Evet"; [ "$status" -eq 0 ]
     run comp_gate_confirm "$INFO" audit web1 <<<"h";    [ "$status" -ne 0 ]
     run comp_gate_confirm "$INFO" audit web1 <<<"";     [ "$status" -ne 0 ]

@@ -127,6 +127,17 @@ _comp_pip_install() {
     "${base[@]}" >/dev/null 2>&1
 }
 
+# comp_venv_lookup <paket> <paket-dizini> <aralık> → sağlıklı venv varsa dizinini yazar; yoksa 1. HİÇBİR ŞEY kurmaz/indirmez.
+comp_venv_lookup() {
+    local id="$1" pkg="$2" range="$3" py pyver envid dir
+    py=$(comp_pick_python "$range") || return 1
+    pyver=$(comp_python_version "$py")
+    envid=$(comp_env_id "$pkg/requirements.txt" "$pyver")
+    dir=$(comp_venv_dir "$id" "$envid")
+    comp_venv_healthy "$dir" "$envid" || return 1
+    printf '%s' "$dir"
+}
+
 # comp_venv_ensure <paket> <paket-dizini> <aralık> [wheelhouse]
 # Başarıda venv dizinini yazar. Aynı ortam kimliğinde sağlıklı venv varsa HİÇBİR ŞEY kurulmaz.
 # Venv nihai konumunda kurulur (betik başlıkları mutlak yoldur, taşınamaz); işaret dosyası EN SON yazılır,

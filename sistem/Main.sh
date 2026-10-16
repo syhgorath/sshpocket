@@ -74,6 +74,14 @@ source "$SISTEM_PATH/Helpers/Components.sh"
 source "$SISTEM_PATH/Helpers/ComponentsInstall.sh"
 # shellcheck source=Helpers/ComponentsVenv.sh
 source "$SISTEM_PATH/Helpers/ComponentsVenv.sh"
+# shellcheck source=Helpers/ComponentsRun.sh
+source "$SISTEM_PATH/Helpers/ComponentsRun.sh"
+# shellcheck source=Helpers/ComponentsGates.sh
+source "$SISTEM_PATH/Helpers/ComponentsGates.sh"
+# shellcheck source=Helpers/ComponentsExec.sh
+source "$SISTEM_PATH/Helpers/ComponentsExec.sh"
+# shellcheck source=Helpers/ComponentsRunCLI.sh
+source "$SISTEM_PATH/Helpers/ComponentsRunCLI.sh"
 # shellcheck source=Helpers/ComponentsCLI.sh
 source "$SISTEM_PATH/Helpers/ComponentsCLI.sh"
 # shellcheck source=Helpers/Doctor.sh

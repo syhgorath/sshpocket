@@ -89,7 +89,7 @@ passphrase'i **macOS Keychain**'e kaydeder.
   açılır (arama + açıklama önizleme penceresi). Stil ⚙️ Ayarlar'dan (`UI`: `auto` · `fzf` · `arrows` · `numbers`) ya da `SSHPOCKET_UI=numbers ./start.sh` ile değişir;
   bir terminalde sorun çıkarırsa `numbers` yapın.
 - **`./start.sh --doctor`:** ön koşul denetimi (ssh araçları, Python aralığı, venv, disk, ağ); yalnızca okur, hiçbir şey kurmaz.
-- **Paketler (altyapı):** imzalı, kilitli (`components.lock`) paketlerin güvenli kurulumu: `./start.sh --components list|sync|check-new`.
+- **Paketler (altyapı):** imzalı, kilitli (`components.lock`) paketlerin güvenli kurulumu: `./start.sh --components list|sync|check-new`; kurulu paketin eylemi: `./start.sh --components run <paket> <eylem> <sunucu>` (sunucuya bağlanır; önizleme/onay kapıları vardır).
   Kilit dosyası şu an boştur; ilk paket (linux-hardening) hazır olunca eklenecek. Standart: [docs/package-standard.md](docs/package-standard.md).
 - Otomatik testler (Bats, bash 5 ve macOS bash 3.2) + ShellCheck her PR'da CI'da çalışır.
 
