@@ -8,6 +8,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 - **`components/` (kurulu paketler) `.gitignore`'a eklendi:** `--components sync` ile açılan paket klasörü yanlışlıkla commit'lenebiliyordu.
 
 ### Eklendi
+- **Paket çalıştırma, 2. parça (çalıştırma öncesi kapılar; yerel, sunucuya dokunmaz):** `ComponentsGates.sh`: root ile değiştirici eylem reddi,
+  host key tanınıyor mu, anahtar ssh-agent'ta mı (gerekirse eklenir), profil `supported` mı, `requires` eylemleri taze (30 dk) ve başarılı mı
+  (`~/.local/share/sshpocket/<paket>/<sunucu>/results`, dizin 0700, dosya 0600), `confirm` onayı (yes-no, sunucu adını yazma; girdi yoksa ret) ve
+  `warn_if` onayı. Bildirim bilgisine paket uyarı metinleri (`action.<ad>.warning`) eklendi.
+
+### Eklendi
 - **Paket çalıştırma, 1. parça (girdi üreteçleri; henüz hiçbir şey çalıştırmaz, sunucuya dokunmaz):** `ComponentsRun.sh` ve `component_run.py`:
   paket değişkenlerinin doğrulanması (tür, aralık, zorunlu, `warn_if`; `servers/<ad>/<paket>.vars` + çalıştırıcının zorladığı `--set` değerleri),
   izin 600'lü geçici inventory ve değişken dosyası, kabuk dizgesi/eval olmadan argüman dizisi (`-i`/`--limit`/`-e` çalıştırıcıya aittir, pakette
