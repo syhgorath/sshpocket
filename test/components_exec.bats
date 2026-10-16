@@ -75,6 +75,19 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     grep -q '|1.0.0|preview|ok$' "$T/state/demo/web1/results"
 }
 
+@test "yürütme: --ask-become-pass varsa 'BECOME password:' öncesi sudo açıklaması yazılır; yoksa yazılmaz" {
+    run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Sudo parolası istenecek"* ]] || false
+    [[ "$output" == *"BECOME password:"* ]] || false
+    [[ "$output" == *"NOPASSWD"* ]] || false
+    local noask="${INFO/invoke=--ask-become-pass||yes|yes/}"
+    [ "$noask" != "$INFO" ]
+    run comp_exec_action "$noask" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Sudo parolası"* ]] || false
+}
+
 @test "yürütme: ortamdan ANSIBLE_HOST_KEY_CHECKING=False gelse bile True zorlanır" {
     ANSIBLE_HOST_KEY_CHECKING=False run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
     [ "$status" -eq 0 ]
