@@ -39,6 +39,23 @@ Listeyi değiştirmek sunucuyu kendiliğinden değiştirmez; yeni değerin işle
 **Erişimi kaybettiyseniz:** sunucunun konsolundan (hypervisor/ekran) `sudo ufw allow from <ağ>/24 to any port 22` ya da VM snapshot'ına dönün.
 Sonra `.vars` dosyasını düzeltip `apply`'ı yeniden çalıştırın ki dosya ile sunucu tutarlı kalsın.
 
+## Bağlanılamıyorsa: hata ipuçları
+
+Sunucunun işletim sistemi algılanamazsa sshpocket, ssh'ın hatasını sınıflandırıp ne yapılacağını söyler (`↳` satırı):
+
+| ssh hatası | ipucu |
+|---|---|
+| `Operation/Connection timed out` | Sunucuya ulaşılamıyor: VPN/ağ açık mı? `ufw` bu ağdan SSH'a izin vermiyor olabilir (`hardening_ssh_allow_from`) |
+| `No route to host` / `Network is unreachable` | Ağ yolu yok: VPN açık mı, doğru ağda mısınız? |
+| `Connection refused` | `sshd` çalışmıyor ya da `server.env` PORT yanlış |
+| `REMOTE HOST IDENTIFICATION HAS CHANGED` | Host key **değişmiş**: sunucu yeniden kurulduysa `ssh-keygen -R`; aksi halde araya girilmiş olabilir, bağlanmayın |
+| `Host key verification failed` / `No … host key is known` | Önce sshpocket ile bir kez bağlanıp host key'i kabul edin |
+| `Permission denied` | Anahtar reddedildi: doğru anahtar mı, `authorized_keys`'te mi, ajanda mı? |
+| `Too many authentication failures` | `MaxAuthTries` düşük (hardening 3 yazar); ajandaki fazla anahtarı temizleyin |
+| `Connection reset` / `kex_exchange_identification` | Çok başarısız denemeden sonra `fail2ban` engellemiş olabilir; biraz bekleyin |
+
+Hata metni sunucudan gelebileceği için denetim karakterleri temizlenir, 160 karaktere kesilir ve kabuğa verilmez.
+
 ## Geri alma güvenlik ağı
 
 `apply` SSH'ı değiştirdikten sonra denetleyiciden **yeni bir SSH bağlantısı** açıp doğrular, başarılıysa güvenlik ağını kapatır. Doğrulama başarısız olursa ya da

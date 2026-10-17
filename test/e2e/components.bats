@@ -116,6 +116,7 @@ applied_or_skip() { applied || skip "LAB'a henüz apply yapılmamış"; }
     docker unpause sshpocket-lab >/dev/null
     [ "$status" -eq 190 ]
     [[ "$output" == *"işletim sistemi algılanamadı"* ]] || false
+    [[ "$output" == *"Zaman aşımı"* ]] || false              # gerçek OpenSSH mesajından sınıflandırılan ipucu
     [[ "$output" != *"PLAY RECAP"* ]] || false
 }
 
@@ -137,5 +138,6 @@ applied_or_skip() { applied || skip "LAB'a henüz apply yapılmamış"; }
     cp "$STATE/kh.bak" "$STATE/kh"; rm -f "$STATE/kh.bak"
     [ "$status" -eq 190 ]
     [[ "$output" == *"algılanamadı"* ]] || false
+    [[ "$output" == *"host key'i DEĞİŞMİŞ"* ]] || false      # gerçek OpenSSH "REMOTE HOST IDENTIFICATION HAS CHANGED" uyarısından
     [[ "$output" != *"PLAY RECAP"* ]] || false
 }

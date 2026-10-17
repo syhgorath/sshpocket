@@ -33,7 +33,7 @@ JSON
     cat > "$T/bin/ssh" <<STUB
 #!/bin/bash
 echo "\$*" >> "$T/ssh_calls"
-[ "\${FAKE_SSH_FAIL:-0}" = 1 ] && exit 255
+[ "\${FAKE_SSH_FAIL:-0}" = 1 ] && { [ -n "\${FAKE_SSH_ERR:-}" ] && printf '%s\\n' "\$FAKE_SSH_ERR" >&2; exit 255; }
 printf '%s\n' "\${FAKE_OSREL:-NAME=\"Ubuntu\"
 ID=ubuntu
 VERSION_ID=\"26.04\"}"
@@ -164,7 +164,7 @@ modeof() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
         for fn in comp_cli_run comp_prepare comp_info_get comp_info_all comp_action_get comp_dir comp_id_valid comp_venv_lookup comp_venv_ensure \
                   comp_gate_not_root comp_gate_known_host comp_gate_agent comp_gate_profile comp_gate_requires comp_gate_confirm comp_gate_warn_vars \
                   comp_gate_record comp_gate_state_ensure comp_exec_action comp_exec_parse_result comp_run_vars comp_run_write_inventory \
-                  comp_run_build_argv comp_detect_profile comp_menu_server comp_menu_actions comp_menu_available comp_menu_installed comp_menu_vars comp_menu_edit_value comp_menu_edit_cidr comp_vars_describe comp_vars_check comp_vars_get comp_vars_set comp_vars_unset comp_vars_save comp_vars_missing comp_net_local comp_net_seen_by_server comp_net_suggest module_name_valid module_prefix srv_get ssh_validate_target servers_dir ssh_agent_add_retry; do
+                  comp_run_build_argv comp_detect_profile comp_ssh_hint comp_menu_server comp_menu_actions comp_menu_available comp_menu_installed comp_menu_vars comp_menu_edit_value comp_menu_edit_cidr comp_vars_describe comp_vars_check comp_vars_get comp_vars_set comp_vars_unset comp_vars_save comp_vars_missing comp_net_local comp_net_seen_by_server comp_net_suggest module_name_valid module_prefix srv_get ssh_validate_target servers_dir ssh_agent_add_retry; do
             declare -F "$fn" >/dev/null || missing="$missing $fn"
         done
         [ -z "$missing" ] || { echo "EKSİK:$missing"; exit 1; }
@@ -178,4 +178,60 @@ modeof() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
     [ "$status" -ne 0 ]
     [[ "$output" != *"command not found"* ]] || false
     [ ! -e "$T/ssh_calls" ]
+}
+
+# ---------- ssh hata ipuçları ----------
+@test "ssh ipucu: bilinen hatalar nedeni ve yapılacağı söyler (zaman aşımı, rota, red, host key, anahtar, ad, kesilme)" {
+    local row err want
+    while IFS='|' read -r err want; do
+        FAKE_SSH_FAIL=1 FAKE_SSH_ERR="$err" run comp_cli_run demo preview web1 </dev/null
+        [ "$status" -eq 190 ] || { echo "KOD $status: $err"; return 1; }
+        [[ "$output" == *"işletim sistemi algılanamadı"* ]] || { echo "TEMEL MESAJ YOK: $err"; return 1; }
+        [[ "$output" == *"$want"* ]] || { echo "İPUCU YOK [$err] → bekleniyor: $want | çıktı: $output"; return 1; }
+        [ ! -e "$T/ansible_args" ]
+    done <<'CASES'
+ssh: connect to host 10.1.10.193 port 22: Operation timed out|hardening_ssh_allow_from
+ssh: connect to host 10.1.10.193 port 22: Connection timed out|Zaman aşımı
+ssh: connect to host 10.1.10.193 port 22: No route to host|VPN açık mı
+ssh: connect to host 10.1.10.193 port 22: Network is unreachable|Ağ yolu yok
+ssh: connect to host 10.1.10.193 port 22: Connection refused|sshd çalışmıyor
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  @ WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! @|host key'i DEĞİŞMİŞ
+Host key verification failed.|Host key doğrulanamadı
+No ED25519 host key is known for 10.1.10.193 and you have requested strict checking.|Host key doğrulanamadı
+tester@10.1.10.193: Permission denied (publickey).|Anahtar reddedildi
+Received disconnect from 10.1.10.193 port 22:2: Too many authentication failures|MaxAuthTries
+ssh: Could not resolve hostname vm.lokal: nodename nor servname provided|Sunucu adı çözülemedi
+kex_exchange_identification: read: Connection reset by peer|fail2ban
+CASES
+}
+
+@test "ssh ipucu: bilinmeyen hatada ilk satır gösterilir; çıktı yoksa ipucu yok; denetim karakterleri temizlenir ve satır kesilir" {
+    FAKE_SSH_FAIL=1 FAKE_SSH_ERR='ssh: tuhaf bir hata oluştu' run comp_cli_run demo preview web1 </dev/null
+    [[ "$output" == *"↳ ssh: ssh: tuhaf bir hata oluştu"* ]] || false
+    FAKE_SSH_FAIL=1 run comp_cli_run demo preview web1 </dev/null
+    [[ "$output" == *"işletim sistemi algılanamadı"* ]] || false
+    [[ "$output" != *"↳"* ]] || false                                      # stderr boşsa ipucu uydurulmaz
+    local esc long
+    esc=$(printf 'kotu\033[31mKIRMIZI\033[0m\001 mesaj')
+    FAKE_SSH_FAIL=1 FAKE_SSH_ERR="$esc" run comp_cli_run demo preview web1 </dev/null
+    [[ "$output" != *$'\033'* ]] || false
+    [[ "$output" == *"kotu[31mKIRMIZI[0m mesaj"* ]] || false
+    long=$(printf 'x%.0s' $(seq 1 400))
+    FAKE_SSH_FAIL=1 FAKE_SSH_ERR="$long" run comp_cli_run demo preview web1 </dev/null
+    [[ "$output" != *"$long"* ]] || false                                  # 160 karakterde kesilir
+}
+
+@test "ssh ipucu: hata dosyası her durumda silinir (başarılı ve başarısız)" {
+    mkdir -p "$T/tmp"
+    TMPDIR="$T/tmp" FAKE_SSH_FAIL=1 FAKE_SSH_ERR='Connection refused' run comp_cli_run demo preview web1 </dev/null
+    [ "$(ls "$T/tmp" | grep -c sshpocket-sshdetect)" = "0" ]
+    TMPDIR="$T/tmp" run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [ "$(ls "$T/tmp" | grep -c sshpocket-sshdetect)" = "0" ]
+}
+
+@test "ssh ipucu: sunucu kaynaklı metin kabuğa verilmez (komut enjeksiyonu denemesi etkisiz)" {
+    FAKE_SSH_FAIL=1 FAKE_SSH_ERR='$(touch '"$T"'/PWNED); `touch '"$T"'/PWNED2`' run comp_cli_run demo preview web1 </dev/null
+    [ ! -e "$T/PWNED" ]
+    [ ! -e "$T/PWNED2" ]
 }
