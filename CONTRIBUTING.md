@@ -33,6 +33,15 @@ bats test/e2e
 Varsayılan `bats test` bu klasörü çalıştırmaz; CI'da da yoktur. ssh, `~/.ssh/known_hosts`'a
 `[127.0.0.1]:2222` kaydı ekler; `down.sh --clean` temizler.
 
+**Paket akışı için Docker LAB'ı.** `linux-hardening` paketinin tam akışını (`preview` → `apply`, erişim ağı tuzağı, hata yolları) gerçek bir
+**systemd'li Ubuntu 26.04** konteynerine karşı dener; kullanıcının `known_hosts` ve sshpocket durumuna dokunmaz:
+
+```bash
+./test/e2e/lab/up.sh && bats test/e2e/components.bats && ./test/e2e/lab/down.sh
+```
+
+Gerekenler, sınırlar (çekirdek paylaşılır, auditd taklit edilir) ve Colima/antivirüs notları: [test/e2e/lab/README.md](test/e2e/lab/README.md).
+
 ## Sürüm çıkarma
 
 Yalnızca bakımcı: bkz. [RELEASING.md](RELEASING.md). Güncelleme/imza koduna dokunan PR'lar özellikle dikkatle incelenir;

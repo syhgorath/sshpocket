@@ -4,6 +4,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Docker LAB'ı ile uçtan uca paket testi (geliştirici):** `test/e2e/lab/` — systemd'li Ubuntu 26.04 konteyneri; `./test/e2e/lab/up.sh && bats test/e2e/components.bats`
+  `linux-hardening` akışını (`rollback_status` → taze `preview` olmadan `apply` reddi → `preview` (sunucu değişmez) → `apply` → **erişim ağı tuzağı** → erişilemeyen sunucu,
+  tanınmayan ve değişmiş host key) gerçek ssh + ansible + ufw ile dener. Kullanıcının `known_hosts` ve sshpocket durumuna dokunmaz. `colima-trust-ca.sh`: antivirüs
+  HTTPS'i yeniden imzalıyorsa CA'yı yalnızca Colima VM'ine ekler. Varsayılan `bats test` ve CI bunları çalıştırmaz.
+
 ## [3.6.0] - 2026-10-17
 
 Paketler artık gerçekten kullanılabilir: ilk paket (`linux-hardening`) kilitli, imzalı ve gerçek bir Ubuntu 26.04 sunucusunda

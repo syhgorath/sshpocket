@@ -22,6 +22,7 @@ __MACOSX/
 # E2E test sırlarını asla commit etme
 test/e2e/.secrets
 test/e2e/.hostkeys/
+test/e2e/lab/.state/
 
 # Release çıktıları ve güncelleme yedekleri
 dist/
