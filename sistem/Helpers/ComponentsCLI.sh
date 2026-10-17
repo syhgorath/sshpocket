@@ -4,7 +4,7 @@
 #   ./start.sh --components sync [--yes] kilitteki sürümü kur/onar (onay ister)
 #   ./start.sh --components check-new   kilitten daha yeni yayın var mı? (yalnızca bilgi; ağ)
 #   ./start.sh --components run <paket> <eylem> <sunucu>   kurulu paketin eylemini sunucuda çalıştırır (ComponentsRunCLI.sh)
-#   ./start.sh --components validate <paket-kimliği | dizin | arşiv.tar.gz> [--strict]   paket SÖZLEŞME uyum denetimi (statik; docs/package-standard.md §12)
+#   ./start.sh --components validate <paket-kimliği | dizin | arşiv.tar.gz> [--strict] [--unsigned]   paket SÖZLEŞME uyum denetimi (statik; docs/package-standard.md §12)
 #
 # Sürüm DAİMA kilit dosyasındakidir (imzalı sshpocket sürümüyle gelir). Daha yeni bir yayın bilgilendirir,
 # kurulmaz: yeni sürüm, yeni sshpocket sürümüyle (kilit güncellenince) gelir.

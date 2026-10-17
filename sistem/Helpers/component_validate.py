@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # component_validate.py - paket SÖZLEŞME UYUM denetimi (docs/package-standard.md §12 kontrol listesinin mekanik kısmı)
 #
-# Kullanım: python3 -I component_validate.py <paket-dizini | <id>-<sürüm>.tar.gz> [--strict]
+# Kullanım: python3 -I component_validate.py <paket-dizini | <id>-<sürüm>.tar.gz> [--strict] [--unsigned]
+# --unsigned: arşiv HENÜZ imzalanmadı (imzalamadan önceki denetim); '.sig yok' uyarısını atlar.
 # YALNIZCA STATİK: ansible/ssh/ağ çalıştırmaz, paketten hiçbir şey çalıştırmaz. Yalnızca stdlib.
 # Çıkış 0: ❌ yok (⚠️ olabilir; --strict ile uyarılar da hata sayılır) · 1: en az bir ❌ · 2: kullanım hatası.
 # Bildirim doğrulaması (component_manifest.py) AYNI dizinden çağrılır; paket reposunun CI'ı için ikisi birlikte kopyalanır.
@@ -320,7 +321,7 @@ def check_security(root):
         ok("Güvenlik", "sembolik bağ, özel anahtar ve gizli bilgi dosyası yok")
 
 
-def check_docs(root, mutating, archive):
+def check_docs(root, mutating, archive, unsigned=False):
     md = corpus(root, [n for n in os.listdir(root) if n.lower().endswith(".md")] + (["docs"] if os.path.isdir(os.path.join(root, "docs")) else []))
     if mutating:
         if ROLLBACK_WORDS.search(md):
@@ -329,7 +330,9 @@ def check_docs(root, mutating, archive):
             warn("Belge", "değiştiren eylem var ama README/docs'ta geri alma/kurtarma yolu anlatılmamış (kapsamı dürüstçe yazın)")
     else:
         ok("Belge", "değiştiren eylem yok; geri alma belgesi gerekmiyor")
-    if archive:
+    if archive and unsigned:
+        ok("Belge", "imza henüz beklenmiyor (--unsigned)")
+    elif archive:
         if os.path.isfile(archive + ".sig"):
             ok("Belge", "imza dosyası yanında (.sig); imzayı doğrulamak için scripts/lock-component.sh")
         else:
@@ -363,8 +366,9 @@ def render(strict):
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]
     strict = "--strict" in argv[1:]
-    if len(args) != 1 or any(a.startswith("--") and a != "--strict" for a in argv[1:]):
-        print("kullanım: component_validate.py <paket-dizini | <id>-<sürüm>.tar.gz> [--strict]", file=sys.stderr)
+    unsigned = "--unsigned" in argv[1:]
+    if len(args) != 1 or any(a.startswith("--") and a not in ("--strict", "--unsigned") for a in argv[1:]):
+        print("kullanım: component_validate.py <paket-dizini | <id>-<sürüm>.tar.gz> [--strict] [--unsigned]", file=sys.stderr)
         return 2
     root, id_hint, ver_hint, tmp, archive = resolve_input(args[0])
     try:
@@ -378,7 +382,7 @@ def main(argv):
             else:
                 mutating = False
             check_security(root)
-            check_docs(root, mutating, archive)
+            check_docs(root, mutating, archive, unsigned)
         return render(strict)
     finally:
         if tmp and os.path.isdir(tmp):
