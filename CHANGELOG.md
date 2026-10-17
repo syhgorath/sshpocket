@@ -4,37 +4,34 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-10-17
+
+Sunucuya ulaşılamayınca nedenini söyleyen ipuçları, paket yazarları için sözleşme uyum denetimi (`validate`) ve güvenilirlik düzeltmeleri.
+
 ### Eklendi
-- **`./start.sh --components validate <kurulu-paket | dizin | arşiv.tar.gz> [--strict]`:** paket SÖZLEŞME uyum denetimi (`docs/package-standard.md` §12'nin mekanik kısmı). Statik: ansible/ssh/ağ
-  çalıştırmaz, paketten hiçbir şey çalıştırmaz; arşiv yalnızca güvenliyse açılır (`..`, mutlak yol, bağ, aygıt dosyası, aşırı boyut reddedilir; geçici klasör silinir). ❌: geçersiz
-  `component.json`, `supported` profil yok, `VERSION` uyuşmazlığı, `requirements.txt` yok/hash'siz/sabit sürümsüz/URL, olmayan playbook, sembolik bağ, özel anahtar/gizli dosya.
+- **`./start.sh --components validate <kurulu-paket | dizin | arşiv.tar.gz> [--strict] [--unsigned]`:** paket SÖZLEŞME uyum denetimi (`docs/package-standard.md` §12'nin mekanik kısmı).
+  Statik: ansible/ssh/ağ çalıştırmaz, paketten hiçbir şey çalıştırmaz; arşiv yalnızca güvenliyse açılır (`..`, mutlak yol, bağ, aygıt dosyası, aşırı boyut reddedilir; geçici klasör silinir).
+  ❌: geçersiz `component.json`, `supported` profil yok, `VERSION` uyuşmazlığı, `requirements.txt` yok/hash'siz/sabit sürümsüz/URL, olmayan playbook, sembolik bağ, özel anahtar/gizli dosya.
   ⚠️: değiştiren eylemde `preview` ön koşulu/`warnings`/`requires_sudo` yok, `SSHPOCKET_RESULT` çıktısı bulunamadı, parola gibi değişken adı, kullanılmayan değişken, geri alma belgesi yok.
-  `--strict` uyarıları hata sayar; `--unsigned` imzalamadan önceki denetimde `.sig` uyarısını atlar. Paket reposunun CI'ı `component_validate.py` + `component_manifest.py` ile bağımsız çalıştırabilir. Gerçek `linux-hardening 0.2.0`: 0 hata, 3 uyarı
-  (kurtarma eylemleri ve `audit` bilerek ön koşulsuz).
-
-### Düzeltildi
-- **Terminal kapanınca (SIGHUP) geçici inventory/değişken dosyaları silinmiyordu:** yürütücü yalnızca Ctrl-C (INT) ve TERM'i yakalıyordu. HUP da yakalanır (geri alma e2e testinde
-  `kill -9` sonrası bulundu); TERM ve HUP testi eklendi.
-
-### Eklendi
-- **Geri alma güvenlik ağı için e2e testleri (Docker LAB):** (A) yeni bağlantı doğrulaması başarısız olunca `apply` önceki duruma döner ve `fail` kaydedilir; (B) denetleyici ortada
-  ölünce (ansible SSH reload'unda öldürülür) sunucu `systemd` zamanlayıcısıyla kendini geri alır. LAB'da `hardening_rollback_timeout=30`; ssh sarmalayıcısı `LAB_BREAK_VERIFY=1`,
-  `drive.exp` `E2E_KILL_ON_RELOAD=1` destekler (yalnızca LAB'ın geçici klasörünü kullanan ansible öldürülür).
+  `--strict` uyarıları hata sayar; `--unsigned` imzalamadan önceki denetimde `.sig` uyarısını atlar. Paket reposunun CI'ı `component_validate.py` + `component_manifest.py` ile bağımsız
+  çalıştırabilir. Gerçek `linux-hardening 0.2.0`: 0 hata, 3 uyarı (kurtarma eylemleri ve `audit` bilerek ön koşulsuz). Yeni paket yazarları için şablon:
+  [sshpocket-paket-sablonu](https://github.com/syhgorath/sshpocket-paket-sablonu).
 
 ### Değişti
 - **Sunucuya ulaşılamayınca nedenini ve yapılacağı söyler:** işletim sistemi algılaması başarısız olduğunda ssh'ın hatası sınıflandırılır (`↳` ipucu satırı): zaman aşımı
   (VPN/ufw), rota yok, bağlantı reddi, **host key değişmiş**, host key tanınmıyor, anahtar reddi, çok fazla kimlik doğrulama denemesi, ad çözülemedi, kesilen bağlantı (fail2ban).
-  Hata metni temizlenir ve kesilir, kabuğa verilmez. Tablo: `docs/hardening-kullanim.md`. Docker LAB'ında gerçek OpenSSH mesajlarıyla doğrulandı.
-
-### Eklendi
-- **Docker LAB'ı ile uçtan uca paket testi (geliştirici):** `test/e2e/lab/` — systemd'li Ubuntu 26.04 konteyneri; `./test/e2e/lab/up.sh && bats test/e2e/components.bats`
-  `linux-hardening` akışını (`rollback_status` → taze `preview` olmadan `apply` reddi → `preview` (sunucu değişmez) → `apply` → **erişim ağı tuzağı** → erişilemeyen sunucu,
-  tanınmayan ve değişmiş host key) gerçek ssh + ansible + ufw ile dener. Kullanıcının `known_hosts` ve sshpocket durumuna dokunmaz. `colima-trust-ca.sh`: antivirüs
-  HTTPS'i yeniden imzalıyorsa CA'yı yalnızca Colima VM'ine ekler. Varsayılan `bats test` ve CI bunları çalıştırmaz.
+  Hata metni temizlenir ve kesilir, kabuğa verilmez. Tablo: `docs/hardening-kullanim.md`.
 
 ### Düzeltildi
 - **Erişim ağı editörü üst üste binen ağları ayıklar:** listede `10.0.0.0/16` varken `10.0.1.0/24` eklenirse *"Zaten kapsanıyor"* denir ve eklenmez; daha geniş bir ağ
-  eklenirse kapsadığı dar girdiler yerine geçer ve bu açıkça söylenir. (Docker LAB'ında gerçek menü gezisinde `172.17.0.0/16` + `172.17.0.0/24` birlikte kaydedilebiliyordu.)
+  eklenirse kapsadığı dar girdiler yerine geçer ve bu açıkça söylenir.
+- **Terminal kapanınca (SIGHUP) geçici inventory/değişken dosyaları silinmiyordu:** yürütücü yalnızca Ctrl-C (INT) ve TERM'i yakalıyordu; HUP da yakalanır.
+
+### Geliştirici
+- **Docker LAB'ı (`test/e2e/lab/`) ve uçtan uca paket testleri:** systemd'li Ubuntu 26.04 konteyneri; `./test/e2e/lab/up.sh && bats test/e2e/components.bats`. `linux-hardening` akışını
+  (`rollback_status` → taze `preview` olmadan `apply` reddi → `preview` (sunucu değişmez) → **geri alma güvenlik ağı** (A: doğrulama başarısız → önceki duruma döner; B: denetleyici kaybolur →
+  sunucu zamanlayıcıyla kendini geri alır) → `apply` → **erişim ağı tuzağı** → erişilemeyen sunucu, tanınmayan ve değişmiş host key) gerçek ssh + ansible + ufw ile dener. Kullanıcının
+  `known_hosts` ve sshpocket durumuna dokunmaz. `colima-trust-ca.sh`: antivirüs HTTPS'i yeniden imzalıyorsa CA'yı yalnızca Colima VM'ine ekler. Varsayılan `bats test` ve CI bunları çalıştırmaz.
 
 ## [3.6.0] - 2026-10-17
 
