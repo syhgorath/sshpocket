@@ -9,7 +9,8 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 > **Bileşen/paket modeli:** tasarım [docs/components-design.md](docs/components-design.md), paket standardı [docs/package-standard.md](docs/package-standard.md).
 > Durum: `servers/` veri düzeni, ayarlar, ok tuşlu menü ve paket **altyapısı** (kilit, imza, kurulum, bildirim, venv, `--doctor`, `--components`) hazır.
 > Gerçek paketle (linux-hardening 0.2.0) uçtan uca deneme yapıldı; komut satırı (`--components run`) ve sunucu menüsünde 🛡️ Paketler hazır.
-> Sırada: menüden değişken düzenleme (`hardening_ssh_allow_from` için erişim ağı önerisi), son sonuçlar/geçmiş, `rollback_status` rozeti, 🧰 Araçlar, klasik port knocking.
+> 3.6.0: menüden değişken düzenleme (erişim ağı önerisi ve kapsama), son sonuçlar/geçmiş, `rollback_status` durumu, ssh hata ipuçları ve systemd'li Docker LAB'ı hazır.
+> Sırada: 🧰 Araçlar (`runner: script`, ikinci paketle), klasik port knocking **sunucu** paketi, rpi/Proxmox profilleri (linux-hardening tarafı), gerçek VM'de son doğrulama.
 > Bkz. [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
 
 ### Taşınabilirlik (Linux)
