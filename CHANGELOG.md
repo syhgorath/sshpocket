@@ -4,6 +4,14 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **`./start.sh --components validate <kurulu-paket | dizin | arşiv.tar.gz> [--strict]`:** paket SÖZLEŞME uyum denetimi (`docs/package-standard.md` §12'nin mekanik kısmı). Statik: ansible/ssh/ağ
+  çalıştırmaz, paketten hiçbir şey çalıştırmaz; arşiv yalnızca güvenliyse açılır (`..`, mutlak yol, bağ, aygıt dosyası, aşırı boyut reddedilir; geçici klasör silinir). ❌: geçersiz
+  `component.json`, `supported` profil yok, `VERSION` uyuşmazlığı, `requirements.txt` yok/hash'siz/sabit sürümsüz/URL, olmayan playbook, sembolik bağ, özel anahtar/gizli dosya.
+  ⚠️: değiştiren eylemde `preview` ön koşulu/`warnings`/`requires_sudo` yok, `SSHPOCKET_RESULT` çıktısı bulunamadı, parola gibi değişken adı, kullanılmayan değişken, geri alma belgesi yok.
+  `--strict` uyarıları hata sayar. Paket reposunun CI'ı `component_validate.py` + `component_manifest.py` ile bağımsız çalıştırabilir. Gerçek `linux-hardening 0.2.0`: 0 hata, 3 uyarı
+  (kurtarma eylemleri ve `audit` bilerek ön koşulsuz).
+
 ### Düzeltildi
 - **Terminal kapanınca (SIGHUP) geçici inventory/değişken dosyaları silinmiyordu:** yürütücü yalnızca Ctrl-C (INT) ve TERM'i yakalıyordu. HUP da yakalanır (geri alma e2e testinde
   `kill -9` sonrası bulundu); TERM ve HUP testi eklendi.

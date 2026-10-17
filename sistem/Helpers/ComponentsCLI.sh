@@ -4,6 +4,7 @@
 #   ./start.sh --components sync [--yes] kilitteki sürümü kur/onar (onay ister)
 #   ./start.sh --components check-new   kilitten daha yeni yayın var mı? (yalnızca bilgi; ağ)
 #   ./start.sh --components run <paket> <eylem> <sunucu>   kurulu paketin eylemini sunucuda çalıştırır (ComponentsRunCLI.sh)
+#   ./start.sh --components validate <paket-kimliği | dizin | arşiv.tar.gz> [--strict]   paket SÖZLEŞME uyum denetimi (statik; docs/package-standard.md §12)
 #
 # Sürüm DAİMA kilit dosyasındakidir (imzalı sshpocket sürümüyle gelir). Daha yeni bir yayın bilgilendirir,
 # kurulmaz: yeni sürüm, yeni sshpocket sürümüyle (kilit güncellenince) gelir.
@@ -141,6 +142,27 @@ comp_cli_check_new() {
     return 0
 }
 
+# comp_cli_validate <kurulu-paket-kimliği | dizin | <id>-<sürüm>.tar.gz> [--strict]
+# Statik denetim: ansible/ssh/ağ çalıştırmaz, paketten hiçbir şey çalıştırmaz (component_validate.py).
+comp_cli_validate() {
+    local target="${1:-}" ver py
+    py="${SISTEM_PATH:-.}/Helpers/component_validate.py"
+    if [ -z "$target" ] || [ "${target:0:2}" = "--" ]; then
+        echo "kullanım: ./start.sh --components validate <kurulu-paket-kimliği | dizin | arşiv.tar.gz> [--strict]" >&2; return 2
+    fi
+    command -v python3 >/dev/null 2>&1 || { echo "python3 gerekli (paket denetimi)" >&2; return 2; }
+    [ -f "$py" ] || { echo "denetleyici bulunamadı: $py" >&2; return 2; }
+    # kurulu bir paketin kimliği verildiyse onun etkin sürüm klasörü denetlenir
+    if [ ! -e "$target" ] && comp_id_valid "$target"; then
+        ver=$(comp_installed_version "$target")
+        [ -n "$ver" ] || { echo "kurulu paket yok ve '$target' bir dizin/arşiv değil" >&2; return 2; }
+        shift
+        python3 -I "$py" "$(comp_dir)/$target/$ver" "$@"
+        return $?
+    fi
+    python3 -I "$py" "$@"
+}
+
 components_cli() {
     local sub="${1:-list}"
     [ $# -gt 0 ] && shift
@@ -149,6 +171,7 @@ components_cli() {
         sync) comp_cli_sync "$@" ;;
         check-new) comp_cli_check_new ;;
         run) comp_cli_run "$@" ;;
-        *) echo "kullanım: --components list | sync [--yes] | check-new | run <paket> <eylem> <sunucu>" >&2; return 2 ;;
+        validate) comp_cli_validate "$@" ;;
+        *) echo "kullanım: --components list | sync [--yes] | check-new | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict]" >&2; return 2 ;;
     esac
 }

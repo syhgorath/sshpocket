@@ -177,6 +177,25 @@ Her iki runner için ortak kurallar:
 - [ ] Salt okunur olmayan eylemin geri alma/kurtarma yolu belgelenmiş (kapsamı dürüstçe yazılı)
 - [ ] sshpocket reposuna **tek satır** (kilit dosyası) ekleyen PR açıldı; başka kod değişikliği gerekmedi
 
+**Otomatik denetim:** bu listenin mekanik kısmını `./start.sh --components validate <kurulu-paket | dizin | <id>-<sürüm>.tar.gz> [--strict]` denetler
+(statik: ansible/ssh/ağ çalıştırmaz, paketten hiçbir şey çalıştırmaz; arşiv yalnızca güvenliyse açılır). Çıktı `--doctor` gibi ✅ / ⚠️ / ❌; ❌ varsa çıkış kodu 1,
+`--strict` ile uyarılar da hata sayılır. Paket reposunun CI'ı için `sistem/Helpers/component_validate.py` ve `component_manifest.py` kopyalanıp
+`python3 -I component_validate.py <dizin>` çalıştırılabilir.
+
+| Madde | `validate` |
+|---|---|
+| `component.json` geçerli, `sshpocket_api: 1`, en az bir `supported` profil | ❌ hata |
+| Sürüm üçlüsü: `VERSION` = `component.json`; arşiv adı/kökü `<id>-<sürüm>/` | ❌ hata |
+| `requirements.txt` var, hepsi `==` sabit ve `--hash=sha256:` içerir; URL/VCS/`-e`/`-r` yok | ❌ hata |
+| Her eylemin `cmd`'si `ansible-playbook <var olan, paket içi, göreli playbook>` | ❌ hata |
+| Paket içinde sembolik bağ, özel anahtar bloğu, `.env`/`id_*`/`.pem` yok | ❌ hata |
+| Değiştiren eylemin salt okunur ön koşulu (`preview`), `warnings`'i ve `requires_sudo`'su var | ⚠️ uyarı (geri alma/kurtarma eylemleri bilerek ön koşulsuz olabilir) |
+| `outputs.format` varsa playbook'ta `SSHPOCKET_RESULT <id>.<eylem>` çıktısı var | ⚠️ uyarı (dinamik üretilen metin yanlış alarm verebilir) |
+| Değişken adı parola/token/anahtar izlenimi vermiyor; her değişken kullanılıyor; üst veri (tür) var | ⚠️ uyarı |
+| Değiştiren eylem için belgede geri alma/kurtarma anlatılmış (anahtar sözcük) | ⚠️ uyarı |
+| `.sig` arşivin yanında | ⚠️ uyarı (imzayı `scripts/lock-component.sh` doğrular) |
+| Geri almanın kapsamı dürüstçe yazılı mı; kilit PR'ının tek satır olması | elle (insan kontrolü) |
+
 ## 13. Kararlar (2026-10-11)
 
 | # | Soru | Karar |
