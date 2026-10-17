@@ -4,68 +4,43 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
-### Eklendi
-- **Paket ekranında `📜 Geçmiş ve son sonuçlar` (menü 3/n):** bu sunucudaki son çalıştırmalar (`components.log`, yalnızca o paket), ön koşulların tazeliği (örn. *apply için preview: ✅ taze, 18 dk
-  daha geçerli* / *⏳ süresi doldu* / *❌ kayıt yok*) ve son çalıştırma günlüğünün son satırları (denetim karakterleri temizlenir). Eylem etiketlerinde de ön koşul durumu görünür.
-- **Durum eylemlerinin son sonucu saklanır ve gösterilir:** `outputs.format` taşıyan eylemlerin (örn. `rollback_status`) son `SSHPOCKET_RESULT` sonucu kullanıcı klasörüne (izin 600)
-  yazılır; **Hazırlık** bloğunda *ℹ️ rollback_status (3 dk önce): installed=yes armed=no ...* diye görünür.
+## [3.6.0] - 2026-10-17
 
-### Eklendi
-- **Sunucu menüsünde paket değişkenleri (menü 2b/n):** paket eylem listesinin başında **Hazırlık** bloğu (zorunlu değişken eksikse ❌ ve eylemler ⛔ kapalı) ve
-  `📝 Değişkenler` ekranı: değer/varsayılan/otomatik gösterimi, kaydetmeden önce doğrulama, `warn_if` için onay, `-` ile silme. `list[cidr]` değişkenler için **ağ
-  editörü**: bu bilgisayarın adresinden öneri (ağ / tahmini /24 / yalnızca bu adres), isteğe bağlı sunucudan sorgu (salt okunur ssh), elle ekleme/silme/temizleme; listede
-  tek ağ varsa *'başka bir ağdan bağlanırsanız SSH kapalı olur'* uyarısı. Hiçbir şey otomatik yazılmaz.
-
-### Eklendi
-- **Paket değişkenleri için kütüphane (menü 2a/n; henüz menüde görünmez):** `ComponentsVars.sh` ve `component_run.py describe|check|net-*`: değişken açıklama/doğrulama
-  (çalıştırmadakiyle aynı doğrulayıcı), `servers/<ad>/<paket>.vars` okuma/yazma (yorumlar korunur, izin 600, atomik), eksik zorunlu değişken listesi ve
-  **erişim ağı önerisi** (yerel arayüzden adres/önek; nokta-nokta tünelde /24 'tahmini' etiketlenir; isteğe bağlı sabit, salt okunur `SSH_CONNECTION` sorgusu).
-
-### Eklendi
-- **Sunucu menüsünde `🛡️ Paketler` (Aşama 3, menü 1/n):** yeni biçimli bir sunucuda kurulu paket varsa sunucu menüsüne girdi eklenir: paket seç → eylem seç
-  (etiket: 🔍 salt okunur / ✏️ değişiklik yapar / ☠️ yıkıcı, ön koşul `(önce: preview)`, ilk uyarı açıklamada) → eylem `--components run` zincirinde, tüm
-  kapılar ve onaylarla çalışır. Paket yoksa ya da sunucu eski biçimliyse girdi görünmez.
-
-### Değişti
-- **Sudo parolası istemi artık açıklanıyor:** eylem `--ask-become-pass` ile çalışacaksa, Ansible'ın `BECOME password:` istemi öncesinde bunun sunucudaki sudo
-  parolası olduğu, sudo parola istemiyorsa (NOPASSWD) yalnızca Enter'a basılacağı ve parolanın sshpocket'e/günlüğe yazılmadığı belirtilir.
-
-### Düzeltildi
-- **`--components run` gerçek çalıştırmada `comp_prepare: command not found` veriyordu:** `Main.sh` `ComponentsManifest.sh`'ı yüklemiyordu (testler işlevi
-  sahtelediği için fark edilmemişti). Dosya yüklendi; gerçek `Main.sh` yolunu doğrulayan iki test eklendi.
-
-### Eklendi
-- **`./start.sh --components run <paket> <eylem> <sunucu>`:** kurulu paketin bir eylemini sunucuda çalıştırır. Sunucu bilgisi `servers/<ad>/server.env`'den,
-  paket değişkenleri `servers/<ad>/<paket>.vars`'tan okunur. İşletim sistemi profili sabit, salt okunur bir `ssh ... cat /etc/os-release` ile algılanır
-  (host key doğrulaması kapatılmaz, parola sorulmaz; çıktı hiçbir zaman çalıştırılmaz). Python ortamı yoksa **onayla** kurulur (PyPI'dan ~10 MB, hash'li
-  wheel; `~/.cache/sshpocket`). Ardından yürütücünün kapıları, onayları ve kaydı uygulanır; sudo parolasını Ansible kendi isteminden alır. Sonuç
-  `servers/<ad>/components.log` dosyasına (tarih|paket|sürüm|eylem|ok/fail, gizli bilgi yok) işlenir.
-
-### Eklendi
-- **Paket çalıştırma, 3. parça (yürütücü; henüz CLI/menüye bağlı değil, gerçek sunucuya dokunulmaz):** `ComponentsExec.sh` tek giriş noktası
-  `comp_exec_action`: kapılar → değişkenler (`outputs.dir_var` her zaman kullanıcı klasörüne yönlendirilir) → onay → çalıştırma → sonuç → kayıt.
-  `ansible-playbook` venv'den, paket kökünde, `ANSIBLE_HOST_KEY_CHECKING=True` zorlanarak çalışır; geçici inventory/değişken dosyaları Ctrl-C/TERM dahil
-  her çıkışta silinir; çıktı kullanıcı klasörüne (izin 600) günlüklenir. `SSHPOCKET_RESULT` satırı (düz/yaml/json çıktıda) önek, anahtar ve değer
-  denetimiyle ayrıştırılır. Bildirim doğrulayıcısı `outputs` alanını okur; paketteki `prefix` sshpocket'in türettiğiyle uyuşmazsa paket reddedilir.
-
-### Düzeltildi
-- **`components/` (kurulu paketler) `.gitignore`'a eklendi:** `--components sync` ile açılan paket klasörü yanlışlıkla commit'lenebiliyordu.
-
-### Eklendi
-- **Paket çalıştırma, 2. parça (çalıştırma öncesi kapılar; yerel, sunucuya dokunmaz):** `ComponentsGates.sh`: root ile değiştirici eylem reddi,
-  host key tanınıyor mu, anahtar ssh-agent'ta mı (gerekirse eklenir), profil `supported` mı, `requires` eylemleri taze (30 dk) ve başarılı mı
-  (`~/.local/share/sshpocket/<paket>/<sunucu>/results`, dizin 0700, dosya 0600), `confirm` onayı (yes-no, sunucu adını yazma; girdi yoksa ret) ve
-  `warn_if` onayı. Bildirim bilgisine paket uyarı metinleri (`action.<ad>.warning`) eklendi.
-
-### Eklendi
-- **Paket çalıştırma, 1. parça (girdi üreteçleri; henüz hiçbir şey çalıştırmaz, sunucuya dokunmaz):** `ComponentsRun.sh` ve `component_run.py`:
-  paket değişkenlerinin doğrulanması (tür, aralık, zorunlu, `warn_if`; `servers/<ad>/<paket>.vars` + çalıştırıcının zorladığı `--set` değerleri),
-  izin 600'lü geçici inventory ve değişken dosyası, kabuk dizgesi/eval olmadan argüman dizisi (`-i`/`--limit`/`-e` çalıştırıcıya aittir, pakette
-  geçerse reddedilir; `invoke.append`'deki yinelenenler atlanır).
+Paketler artık gerçekten kullanılabilir: ilk paket (`linux-hardening`) kilitli, imzalı ve gerçek bir Ubuntu 26.04 sunucusunda
+`rollback_status` → `preview` → `apply` ile denendi. Kullanım ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
 
 ### Eklendi
 - **İlk gerçek paket kilitlendi:** `components.lock` artık `linux-hardening 0.2.0` (imzalı, paket standardı v1 uyumlu; sha256 `2886b610…f38a`) girdisini taşır.
-  Kurulum/çalıştırma menüsü henüz yok; `--components list|sync|check-new` ile görülür.
+- **`./start.sh --components run <paket> <eylem> <sunucu>`:** kurulu paketin bir eylemini sunucuda çalıştırır. Sunucu bilgisi `servers/<ad>/server.env`'den,
+  paket değişkenleri `servers/<ad>/<paket>.vars`'tan okunur. İşletim sistemi profili sabit, salt okunur bir `ssh ... cat /etc/os-release` ile algılanır
+  (host key doğrulaması kapatılmaz, parola sorulmaz; çıktı hiçbir zaman çalıştırılmaz). Python ortamı yoksa **onayla** kurulur (PyPI'dan ~10 MB, hash'li
+  wheel; `~/.cache/sshpocket`). Sonuç `servers/<ad>/components.log` dosyasına (tarih|paket|sürüm|eylem|ok/fail, gizli bilgi yok) işlenir.
+- **Çalıştırma öncesi kapılar:** değiştirici eylem root ile reddedilir; host key tanınmalı; anahtar ssh-agent'ta olmalı (gerekirse eklenir); işletim sistemi
+  profili `supported` olmalı; `requires` eylemleri (örn. `apply` için `preview`) aynı sunucuda, aynı sürümde, son 30 dakikada başarıyla çalışmış olmalı;
+  `confirm` (evet/hayır ya da sunucu adını yazma) ve `warn_if` onayları. Girdi yoksa onay reddedilir. Paket bu kuralları gevşetemez.
+- **Güvenli yürütme:** `ansible-playbook` paketin venv'inden, paket kökünde, `ANSIBLE_HOST_KEY_CHECKING=True` zorlanarak çalışır; kabuk dizgesi/`eval` yoktur;
+  geçici inventory/değişken dosyaları (izin 600) Ctrl-C/TERM dahil her çıkışta silinir; `outputs.dir_var` her zaman kullanıcı klasörüne yönlendirilir (hassas çıktı
+  USB'ye yazılmaz); çıktı kullanıcı klasörüne (izin 600) günlüklenir. Eylemin `SSHPOCKET_RESULT` satırı önek, anahtar ve değer denetimiyle ayrıştırılır.
+  `-i`/`--limit`/`-e` çalıştırıcıya aittir (pakette `cmd` içinde geçerse paket reddedilir).
+- **Sunucu menüsünde `🛡️ Paketler`:** kurulu paket varsa paket → eylem seç (🔍 salt okunur / ✏️ değişiklik yapar / ☠️ yıkıcı; ön koşul durumu etikette). Ekranın
+  başında **Hazırlık** bloğu: zorunlu değişken eksikse ❌ ve eylemler ⛔ kapalıdır.
+- **`📝 Değişkenler` ekranı:** değer/varsayılan/otomatik gösterimi, kaydetmeden önce doğrulama (çalıştırmadakiyle aynı doğrulayıcı), `warn_if` onayı, `-` ile silme.
+  `list[cidr]` değişkenler (örn. `hardening_ssh_allow_from`) için **ağ editörü**: bu bilgisayarın adresinden öneri (ağ / tahmini /24 / yalnızca bu adres), isteğe
+  bağlı sunucudan sorgu (sabit, salt okunur ssh), elle ekleme/silme/temizleme; listede tek ağ varsa *"başka bir ağdan bağlanırsanız SSH kapalı olur"* uyarısı.
+  Hiçbir şey otomatik yazılmaz.
+- **`📜 Geçmiş ve son sonuçlar`:** bu sunucudaki son çalıştırmalar, ön koşulların tazeliği (*apply için preview: ✅ taze / ⏳ süresi doldu / ❌ kayıt yok*) ve son
+  çalıştırma günlüğünün son satırları. Durum eylemlerinin (örn. `rollback_status`) son sonucu saklanır ve Hazırlık bloğunda gösterilir.
+- **Bildirim doğrulayıcısı `outputs` alanını okur:** paketteki `prefix`, sshpocket'in türettiğiyle (`SSHPOCKET_RESULT <paket>.<eylem>`) uyuşmazsa paket reddedilir;
+  uyarı metinleri menüde gösterilir. Karar kayıtları: `docs/package-standard.md` §14.
+
+### Değişti
+- **Sudo parolası istemi açıklanıyor:** eylem `--ask-become-pass` ile çalışacaksa, Ansible'ın `BECOME password:` istemi öncesinde bunun sunucudaki sudo parolası
+  olduğu, sudo parola istemiyorsa (NOPASSWD) yalnızca Enter'a basılacağı ve parolanın sshpocket'e/günlüğe yazılmadığı belirtilir.
+- **Belgeler:** `docs/hardening-kullanim.md` (akış, erişim ağı tuzağı, geri alma); README'de Apple Silicon (M5 Pro, macOS 27) test satırı, güncel Python ve paketler
+  maddeleri (TR/EN).
+
+### Düzeltildi
+- **`components/` (kurulu paketler) `.gitignore`'a eklendi:** `--components sync` ile açılan paket klasörü yanlışlıkla commit'lenebiliyordu.
 
 ## [3.5.2] - 2026-10-16
 
