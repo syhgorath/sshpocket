@@ -32,3 +32,11 @@ load test_helper
     run bash -c "grep -nE '^[[:space:]]+! ' '$ROOT'/test/*.bats '$ROOT'/test/*.bash | grep -v 'run !' || true"
     [ -z "$output" ]
 }
+
+@test "betikler (scripts/, test/e2e/, start*) git'te çalıştırılabilir kipte (100755) izleniyor" {
+    git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 || skip "git deposu değil"
+    # core.fileMode=false olan bir makinede yeni betiklerin 100644 kaydedilmesi unutulabilir; taze klonda 'permission denied' olurdu
+    run bash -c "git -C '$ROOT' ls-files -s | awk '\$1 != \"100755\" {print \$4}' | grep -E '^(scripts/[^/]+\\.sh|test/e2e/(lab/)?[^/]+\\.(sh|exp)|start\\.sh|start\\.command)\$'"
+    [ "$status" -ne 0 ] || { echo "ÇALIŞTIRILABİLİR DEĞİL: $output"; return 1; }
+}
+
