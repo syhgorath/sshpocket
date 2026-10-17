@@ -149,6 +149,90 @@ server_unchanged() {   # sunucu hardening öncesi hâlinde: drop-in yok, ufw pas
     [[ "$output" == *"ERISIM-VAR"* ]] || false
 }
 
+# ---------- audit ve elle geri alma eylemleri (apply sonrası, sunucu sertleştirilmiş) ----------
+RB='/usr/local/sbin/hardening-rollback'
+# Güvenlik ağını elle kurar ve zamanlayıcıyı durdurur: "armed" kalır ama süre dolunca kendiliğinden geri almaz,
+# böylece rollback_now/rollback_disarm sshpocket üzerinden, yarışsız denenir.
+arm_frozen() { in_lab "$RB arm >/dev/null && systemctl stop hardening-rollback.timer"; }
+hardened() { in_lab 'test -e /etc/ssh/sshd_config.d/00-hardening.conf && ufw status | head -1 | grep -q "Status: active"'; }
+
+@test "audit: lynis kurulur, rapor kullanıcının klasörüne 0600/0700 ile iner ve summary.json üretilir" {
+    applied_or_skip
+    rm -rf "$STATE/userdata/linux-hardening/lab/out"
+    lab_run audit
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"failed=0"* ]] || false
+    run in_lab 'dpkg -s lynis'
+    [ "$status" -eq 0 ]
+    local sum dir
+    sum="$(find "$STATE/userdata/linux-hardening/lab/out" -name summary.json)"
+    [ -n "$sum" ]
+    [ "$(printf '%s\n' "$sum" | wc -l | tr -d ' ')" = "1" ]
+    dir="$(dirname "$sum")"
+    [ "$(file_mode "$sum")" = "600" ]
+    [ "$(file_mode "$dir/lynis-report.dat")" = "600" ]
+    [ "$(file_mode "$dir/lynis.log")" = "600" ]
+    [ "$(file_mode "$dir")" = "700" ]
+    [ "$(file_mode "$(dirname "$dir")")" = "700" ]
+    run python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert isinstance(d["hardening_index"], int) and d["host"]=="lab" and d["tests_performed"]>0' "$sum"
+    [ "$status" -eq 0 ]
+    grep -q '|audit|ok$' "$STATE/userdata/linux-hardening/lab/results"
+}
+
+@test "rollback_now (armed DEĞİLKEN): hiçbir şey yapmaz, sunucu sertleştirilmiş kalır" {
+    applied_or_skip
+    run in_lab "$RB status"
+    [[ "$output" == *"armed=no"* ]] || false
+    lab_run rollback_now
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"failed=0"* ]] || false
+    hardened
+    run in_lab 'journalctl -t hardening-rollback --no-pager -n 5'
+    [[ "$output" == *"armed degil"* ]] || false
+    grep -q '|rollback_now|ok$' "$STATE/userdata/linux-hardening/lab/results"
+}
+
+@test "rollback_now (armed): armdan SONRAKİ değişiklikler geri alınır (sshd drop-in ve ufw); erişim sürer" {
+    applied_or_skip
+    arm_frozen
+    in_lab 'echo "# test-isareti" >> /etc/ssh/sshd_config.d/00-hardening.conf && ufw allow 8080/tcp >/dev/null'
+    run in_lab 'grep -c test-isareti /etc/ssh/sshd_config.d/00-hardening.conf; ufw status | grep -c 8080'
+    [ "${lines[0]}" = "1" ]
+    [ "${lines[1]}" != "0" ]
+    lab_run rollback_now
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"failed=0"* ]] || false
+    run in_lab 'grep -c test-isareti /etc/ssh/sshd_config.d/00-hardening.conf'
+    [ "$output" = "0" ]
+    run in_lab 'ufw status | grep -c 8080'
+    [ "$output" = "0" ]
+    hardened
+    run in_lab "$RB status"
+    [[ "$output" == *"armed=no"* ]] || false
+    run in_lab 'systemctl is-active hardening-rollback.timer'
+    [ "$output" = "inactive" ]
+    run "${LAB_SSH[@]}" echo ERISIM-VAR
+    [ "$status" -eq 0 ]
+}
+
+@test "rollback_disarm: geri almayı İPTAL eder (armed ve yedek silinir), sunucu sertleştirilmiş kalır" {
+    applied_or_skip
+    arm_frozen
+    run in_lab "$RB status"
+    [[ "$output" == *"armed=yes"* ]] || false
+    lab_run rollback_disarm
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"failed=0"* ]] || false
+    run in_lab "$RB status"
+    [[ "$output" == *"armed=no"* ]] || false
+    run in_lab 'test -e /var/lib/hardening-rollback/armed || test -e /var/lib/hardening-rollback/00-hardening.conf'
+    [ "$status" -ne 0 ]
+    run in_lab 'systemctl is-enabled hardening-rollback.timer'
+    [ "$output" != "enabled" ]
+    hardened
+    grep -q '|rollback_disarm|ok$' "$STATE/userdata/linux-hardening/lab/results"
+}
+
 # ---------- hata yolları: sunucuya dokunulmaz, temiz ret ----------
 @test "sunucu erişilemezse (konteyner duraklatıldı): 'algılanamadı' ile durur, Ansible başlamaz" {
     docker pause sshpocket-lab >/dev/null
