@@ -190,6 +190,18 @@ PY
     [[ "$output" == *"imza dosyası yanında"* ]] || false
 }
 
+@test "arşiv: --unsigned imzalamadan önceki denetimde .sig uyarısını atlar (--strict ile birlikte de 0)" {
+    mkarchive "$T/demo-1.0.0.tar.gz" "demo-1.0.0"
+    val "$T/demo-1.0.0.tar.gz" --strict
+    [ "$status" -eq 1 ]
+    val "$T/demo-1.0.0.tar.gz" --unsigned --strict
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"imza henüz beklenmiyor (--unsigned)"* ]] || false
+    [[ "$output" != *".sig yok"* ]] || false
+    val "$T/demo-1.0.0.tar.gz" --bilinmeyen
+    [ "$status" -eq 2 ]
+}
+
 @test "arşiv: yanlış ad, yanlış kök klasör, sürüm uyuşmazlığı → ❌" {
     mkarchive "$T/rastgele.tar.gz" "demo-1.0.0"
     val "$T/rastgele.tar.gz"; [ "$status" -eq 1 ]; [[ "$output" == *"arşiv adı '<id>-<sürüm>.tar.gz' olmalı"* ]] || false
