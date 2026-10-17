@@ -5,7 +5,7 @@
 # Değerler dosyası düz "ad=değer" satırlarıdır (# yorum, boş satır serbest; liste = virgülle ayrılmış). Hiçbir şey
 # eval edilmez. --set, dosyadaki değeri ezer (çalıştırıcının zorladığı değerler: örn. outputs.dir_var).
 #        python3 -I component_run.py describe <component.json>            → değişken başına bir TSV satırı
-#        python3 -I component_run.py net-prefix <adres> <maske> | net-suggest <adres> <önek> | net-valid <adres>   (erişim ağı önerisi)
+#        python3 -I component_run.py net-prefix <adres> <maske> | net-suggest <adres> <önek> | net-valid <adres> | net-add <liste> <cidr>   (erişim ağı önerisi / kapsama)
 #        python3 -I component_run.py check <component.json> <ad> <değer>   → tek değeri doğrular (warn_if eşleşirse stdout'a "warn=<ad>")
 # Çıkış 0: geçerli; çıktı.json izin 600 ile YENİ dosya olarak yazılır. stdout'a yalnızca "warn=<ad>" (warn_if
 # eşleşmesi) ve "ok" yazılır; DEĞERLER stdout'a basılmaz. Çıkış 1: geçersiz; nedenler stderr'e. Yalnızca stdlib.
@@ -200,6 +200,32 @@ def cmd_check(argv):
     return 0
 
 
+def cmd_net_add(argv):
+    """net-add <virgüllü liste> <yeni CIDR> → 1. satır: durum (added | duplicate | covered:<kapsayan> | replaced:<kaldırılanlar>), 2. satır: sonuç listesi (virgüllü)"""
+    existing = [x for x in argv[2].split(",") if x]
+    new_raw = argv[3]
+    try:
+        new = ipaddress.ip_network(new_raw, strict=False)
+        nets = [(x, ipaddress.ip_network(x, strict=False)) for x in existing]
+    except ValueError:
+        return 1
+    for raw, net in nets:
+        if net == new:
+            print("duplicate")
+            print(",".join(existing))
+            return 0
+    for raw, net in nets:
+        if net.version == new.version and new.subnet_of(net):
+            print("covered:%s" % raw)
+            print(",".join(existing))
+            return 0
+    keep = [raw for raw, net in nets if not (net.version == new.version and net.subnet_of(new))]
+    removed = [raw for raw, net in nets if raw not in keep]
+    print(("replaced:%s" % ",".join(removed)) if removed else "added")
+    print(",".join(keep + [new_raw]))
+    return 0
+
+
 def cmd_net(argv):
     """net-prefix <adres> <maske>  → "adres/önek" · net-suggest <adres> <önek> → "CIDR\taçıklama" satırları · net-valid <adres> → 0/1"""
     sub = argv[1]
@@ -241,6 +267,8 @@ def cmd_net(argv):
 
 
 def main(argv):
+    if len(argv) == 4 and argv[1] == "net-add":
+        return cmd_net_add(argv)
     if len(argv) >= 2 and argv[1] in ("net-prefix", "net-suggest", "net-valid"):
         return cmd_net(argv)
     if len(argv) >= 2 and argv[1] == "describe":

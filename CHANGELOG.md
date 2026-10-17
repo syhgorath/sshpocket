@@ -10,6 +10,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
   tanınmayan ve değişmiş host key) gerçek ssh + ansible + ufw ile dener. Kullanıcının `known_hosts` ve sshpocket durumuna dokunmaz. `colima-trust-ca.sh`: antivirüs
   HTTPS'i yeniden imzalıyorsa CA'yı yalnızca Colima VM'ine ekler. Varsayılan `bats test` ve CI bunları çalıştırmaz.
 
+### Düzeltildi
+- **Erişim ağı editörü üst üste binen ağları ayıklar:** listede `10.0.0.0/16` varken `10.0.1.0/24` eklenirse *"Zaten kapsanıyor"* denir ve eklenmez; daha geniş bir ağ
+  eklenirse kapsadığı dar girdiler yerine geçer ve bu açıkça söylenir. (Docker LAB'ında gerçek menü gezisinde `172.17.0.0/16` + `172.17.0.0/24` birlikte kaydedilebiliyordu.)
+
 ## [3.6.0] - 2026-10-17
 
 Paketler artık gerçekten kullanılabilir: ilk paket (`linux-hardening`) kilitli, imzalı ve gerçek bir Ubuntu 26.04 sunucusunda

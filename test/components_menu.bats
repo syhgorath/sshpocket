@@ -386,3 +386,18 @@ PY
     run comp_menu_actions demo web1 <<<$'0'
     [[ "$output" == *"ℹ️  status ("*"önce): armed=no timer=inactive"* ]] || false
 }
+
+# ---------- kapsama (üst üste binen ağlar) ----------
+@test "cidr: mevcut daha geniş bir ağın içindeki öneri eklenmez ('Zaten kapsanıyor')" {
+    setup_net; comp_vars_set "$D/demo.vars" allow_from "10.99.0.0/16"
+    run comp_menu_actions demo web1 <<<$'1\n1\n1\ne\n192.168.1.0/24\nk\n\n0\n0'
+    [[ "$output" == *"Zaten kapsanıyor: 10.99.0.0/16"* ]] || false
+    [ "$(vget allow_from)" = "10.99.0.0/16,192.168.1.0/24" ]
+}
+
+@test "cidr: daha geniş ağ eklenince kapsadığı dar girdiler yerine geçer ve kullanıcı bilgilendirilir" {
+    setup_net; comp_vars_set "$D/demo.vars" allow_from "10.99.0.4/32,192.168.1.0/24"
+    run comp_menu_actions demo web1 <<<$'1\n1\ne\n10.99.0.0/24\nk\n\n0\n0'
+    [[ "$output" == *"kapsadığı için kaldırıldı: 10.99.0.4/32"* ]] || false
+    [ "$(vget allow_from)" = "192.168.1.0/24,10.99.0.0/24" ]
+}

@@ -115,3 +115,7 @@ comp_net_suggest() {
     [[ "$plen" =~ ^[0-9]{1,3}$ ]] || return 1
     _comp_vars_py net-suggest "$addr" "$plen"
 }
+
+# comp_net_add <virgüllü-liste> <yeni-cidr> → 1. satır durum (added | duplicate | covered:<kapsayan> | replaced:<kaldırılanlar>), 2. satır sonuç listesi
+# Yeni ağ mevcut bir girdinin İÇİNDEYSE eklenmez; mevcut girdileri KAPSIYORSA onların yerine geçer.
+comp_net_add() { _comp_vars_py net-add "$1" "$2"; }
