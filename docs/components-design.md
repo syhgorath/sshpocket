@@ -1,7 +1,9 @@
 # Tasarım: `servers/` veri ayrımı ve bileşen (component) modeli
 
-> **Durum (2026-10-12):** Aşama 1 (veri ayrımı) ve Aşama 2 (paket altyapısı: kilit, imza, kurulum, bildirim, venv, `--doctor`,
-> `--components`) **uygulandı**; Aşama 3 (🛡️ Hardening menüsü) ve 4 (🧰 Araçlar) sırada. Kararlar 2026-10-10'da alındı.
+> **Durum (2026-10-17):** Aşama 1 (veri ayrımı), Aşama 2 (paket altyapısı: kilit, imza, kurulum, bildirim, venv, `--doctor`, `--components`) ve
+> **Aşama 3 (🛡️ Hardening: `--components run`, çalıştırma öncesi kapılar, sunucu menüsünde Paketler/Değişkenler/Geçmiş)** **uygulandı** ve sshpocket **3.6.0**'da.
+> `linux-hardening 0.2.0` gerçek bir Ubuntu 26.04 sunucusunda ve Docker LAB'ında `preview` + `apply` ile denendi. **Sırada:** Aşama 4 (🧰 Araçlar, `runner: script`),
+> klasik knock sunucu paketi, rpi/Proxmox profilleri. Kararlar 2026-10-10'da alındı; uygulama kararları [package-standard.md](package-standard.md) §13-§14'te.
 >
 > **Uygulamada tasarımdan sapmalar:** (1) bildirim `component.json`'dır (YAML değil; bkz. package-standard §13); (2) daha yeni bir paket
 > yayını **yalnızca bilgilendirir**, kurulmaz: sürüm daima imzalı sshpocket sürümüyle gelen `components.lock`'tadır;
@@ -303,9 +305,15 @@ Bu depo aktif geliştirme yeri değil; değişiklikler PR ile gelir. **Sıra:** 
 > ([linux-hardening#29](https://github.com/syhgorath/linux-hardening/issues/29)).
 > sshpocket bunları, ancak bu sözleşmeler netleşince ayrıştırır.
 >
-> **Durum (2026-10-10):** A, 0a, 0b, 0c, 0d, 0e, B, D ve C **birleşti** (linux-hardening `main`; ayrıca CI, `scripts/release.sh`,
-> SECURITY/CONTRIBUTING/README.en). **Canlı Ubuntu 26.04 doğrulaması henüz yok** ve henüz **etiket/release yok** (`v0.1.0` yalnızca
-> `VERSION`/`component.yml`'de). Yukarıdaki "neden" sütunu artık geçmiş bilgidir; geçerli gerçek `component.yml`'dir.
+> **Durum (2026-10-10, tarihî):** A, 0a, 0b, 0c, 0d, 0e, B, D ve C **birleşti** (linux-hardening `main`). Yukarıdaki "neden" sütunu artık geçmiş bilgidir;
+> geçerli gerçek `component.yml`/`component.json`'dur.
+>
+> **Güncelleme (2026-10-17):** `v0.1.0` ve ardından **`v0.2.0`** (paket standardı v1 uyumu: `component.json`, `runner`, `confirm`, `warnings`, `vars` üst verisi,
+> `rollback_status` makine-okunur sonuç satırı; ön sürüm) yayımlandı; yukarıdaki açık sözleşme eksikleri
+> ([#28](https://github.com/syhgorath/linux-hardening/issues/28), [#29](https://github.com/syhgorath/linux-hardening/issues/29)) kapandı. **Canlı doğrulama yapıldı:**
+> Ubuntu 26.04.1 VM'inde `rollback_status` → `preview` → `apply` (ok=65, failed=0; güvenlik ağı armed → yeni bağlantı doğrulandı → disarm). Paket tarafında
+> gözlenen küçük konular: linux-hardening [#35](https://github.com/syhgorath/linux-hardening/issues/35), [#36](https://github.com/syhgorath/linux-hardening/issues/36),
+> [#37](https://github.com/syhgorath/linux-hardening/issues/37).
 
 ## 9. Aşamalar ve kabul ölçütleri
 
@@ -314,7 +322,7 @@ Bu depo aktif geliştirme yeri değil; değişiklikler PR ile gelir. **Sıra:** 
 | 0 | Bu belge | Kararlar kayıtlı |
 | 1 | **Veri ayrımı:** `servers/`, genel `server.env`, tek genel çalıştırıcı, geçiş, `Autoload` veri klasörünü yüklemez, güncelleyici basitleşir | Eski kurulum otomatik taşınır; testler: geçiş (deneme/gerçek/idempotent/hata), gizli dosyalar, güncelleyici |
 | 2 | **Bileşen yükleyici:** `component.yml`, `components.lock`, imzalı kurulum, sürümlü klasör, hash yeniden doğrulama, `--update` entegrasyonu | Sahte bileşenle uçtan uca testler (imza/replay/arşiv saldırıları dahil) |
-| 3 | **Hardening bileşeni:** inventory üretimi, menü, güvenlik kapıları, `SSH_CONNECTION` önerisi | Proxmox VM üzerinde gerçek deneme |
+| 3 | **Hardening bileşeni:** inventory üretimi, menü, güvenlik kapıları, `SSH_CONNECTION` önerisi | ✅ **Uygulandı (3.6.0):** gerçek Ubuntu 26.04 VM'inde ve Docker LAB'ında `preview` + `apply` denendi |
 | 4 | **Araçlar:** ilk bileşen (örn. Docker kur) | Aynı sözleşmeyle ikinci bileşen kodsuz eklenir |
 
 Her aşama ayrı sürüm; geri uyumluluk ve geçiş testleri aşama 1'in bir parçasıdır.
@@ -324,18 +332,25 @@ Her aşama ayrı sürüm; geri uyumluluk ve geçiş testleri aşama 1'in bir par
 **1.2 ✅** taşıma (deneme çıktısı → onay → kopyala → bayt bayt doğrula → eski `servers/.migrated-<tarih>/<ad>/`), **1.3 ✅** ekle/içe aktar/yönet yeni biçime yazar,
 **1.4 ✅** güncelleyici sadeleşti, `example` → `sistem/templates/`, eski `example` kalıntısı güvenle temizlenir. Sürüm: veri düzeni değiştiği için **3.0.0**.
 
+**İlerleme (2026-10-17):** Aşama 3 parçaları **✅**: üreteçler (değişken doğrulama, geçici inventory, argüman dizisi) → kapılar (root reddi, host key, ssh-agent, profil,
+`requires` + 30 dk taze `preview`, `confirm`/`warn_if` onayları) → yürütücü (`comp_exec_action`: geçici dosyalar her çıkışta silinir, `outputs.dir_var` kullanıcı klasörüne zorlanır,
+`SSHPOCKET_RESULT` ayrıştırılır) → `--components run <paket> <eylem> <sunucu>` → sunucu menüsünde `🛡️ Paketler`: Hazırlık bloğu, `📝 Değişkenler` (+ `list[cidr]` erişim ağı
+editörü: öneri, kapsama, tek-ağ uyarısı), `📜 Geçmiş ve son sonuçlar`. Ayrıca sudo parolası istemi açıklaması ve ssh hata ipuçları. Kullanım ve **erişim ağı tuzağı:**
+[hardening-kullanim.md](hardening-kullanim.md). Sürüm: **3.6.0**.
+
 ## 10. Test stratejisi
 - Çekirdek: mevcut Bats stili; `ansible-playbook` yerine **sahte komut** (üretilen inventory/değişken/argümanlar ve kapılar doğrulanır).
 - Geçiş: gerçek `servers/` ve eski `Modules/` düzeniyle, yan etkisiz geçici klasörlerde.
 - Bileşen kurulumu: güncelleyicideki saldırı senaryoları bileşen paketleri için de (sahte imza, `..`, symlink, eski sürüm, sürüm uyuşmazlığı).
-- Docker e2e `sshd` yalnızca bağlantı/anahtar akışları için; hardening (ufw, sysctl, auditd) gerçek VM'de elle.
+- Docker e2e `sshd` (`test/e2e/`) bağlantı/anahtar akışları için. Paket akışı için **systemd'li Docker LAB'ı** (`test/e2e/lab/`, Ubuntu 26.04): `rollback_status` → `preview` → `apply`,
+  erişim ağı tuzağı ve hata yolları gerçek ssh + ansible + ufw ile denenir. Sınırı: çekirdek paylaşılır ve `auditd` taklit edilir (README'de); **son doğrulama yine gerçek VM'de** yapılır.
 
 ## 11. Riskler ve açık noktalar
 - **Python/Ansible kurulumu:** karar → `--doctor` denetler, onayla `brew install python@3.x` yapabilir (Homebrew'u kurmaz); venv kurulumu sshpocket'ındır.
-- **linux-hardening canlıda hiç doğrulanmadı** (testler mutasyonla doğrulanmış ama gerçek Ubuntu 26.04 üzerinde değil); `ssh.service`/`ssh.socket`
-  farkı, `--check` temiz sunucuda, bağlantı doğrulama bloğu özellikle izlenecek. **Etiket/release yok**: sshpocket bileşeni imzalı paketle
-  kurabilmek için önce `v0.1.0` imzalanıp yayınlanmalı.
-- **Canlı test erişimi:** PR serisi gerçek bir test VM'i ister. Başka bir (otomatik) oturumun VM'e erişimi, VM'in kendi key'i/agent'ı ile
+- ~~**linux-hardening canlıda hiç doğrulanmadı**~~ → **Çözüldü (2026-10-16/17):** `v0.2.0` imzalı ön sürüm olarak yayımlandı ve gerçek Ubuntu 26.04.1 VM'inde ve Docker LAB'ında
+  `preview` + `apply` ile doğrulandı. Hâlâ izlenecek: rpi/Proxmox profilleri (`planned`), gerçek ağ kesintisinde güvenlik ağının zamanlayıcıyla kendini geri alması (yalnızca yerel
+  `rollback_status`/`disarm` yolu denendi).
+- **Canlı test erişimi:** (Docker LAB'ı çoğu akışı VM'siz dener; gerçek VM son doğrulama içindir.) PR serisi gerçek bir test VM'i ister. Başka bir (otomatik) oturumun VM'e erişimi, VM'in kendi key'i/agent'ı ile
   yapılmalı; `sudo` parolasını yalnızca kullanıcı yazar. Yalnızca test VM'i, önce snapshot.
 - **Bilgisayar kaybı senaryosu:** key dosyaları ve bileşenler USB'de kalır, ama **passphrase'ler Keychain'de (Mac'te)**. Parola yöneticisinde de saklanmalı;
   USB tek hata noktasıdır (şifreli yedek önerilir).

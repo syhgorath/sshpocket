@@ -1,7 +1,8 @@
 # Tasarım: arayüz (UI), fzf ve teknoloji alternatifleri
 
-> **Durum (2026-10-12): UYGULANDI** (3.1-3.5): başlık/ekmek kırıntısı/ipucu, ok tuşlu seçici, ⚙️ Ayarlar, durum göstergesi varsayılan açık, `q` = geri,
-> menü açıklamaları ve **sistemdeki fzf** arka ucu. **Kalan:** fzf'i USB'ye gömme (aşağıdaki §5 'USB ikilisi' maddeleri hâlâ geçerli, indirme + sha256 sabitleme +
+> **Durum (2026-10-17): UYGULANDI** (3.1-3.6): başlık/ekmek kırıntısı/ipucu, ok tuşlu seçici, ⚙️ Ayarlar, durum göstergesi varsayılan açık, `q` = geri,
+> menü açıklamaları, **sistemdeki fzf** arka ucu ve (3.6) sunucu menüsünde **🛡️ Paketler** (Hazırlık bloğu, Değişkenler, ağ editörü, Geçmiş; aynı seçici ve açıklama satırlarıyla;
+> ok tuşlu ve numaralı mod Docker LAB'ında gerçek `Main.sh` ile gezildi). **Kalan:** fzf'i USB'ye gömme (aşağıdaki §5 'USB ikilisi' maddeleri hâlâ geçerli, indirme + sha256 sabitleme +
 > sizin onayınızla). **Uygulamada farklar:** menü stili tek ayardır: `UI` = `auto` | `fzf` | `arrows` | `numbers` (ayrı `FZF`/`COLOR` ayarı yok);
 > açıklamalar fzf `--preview` penceresinde, fzf yoksa seçicinin alt satırında; dar terminalde sarmayı kapatıp kırpar.
 
