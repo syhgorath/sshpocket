@@ -104,6 +104,24 @@ comp_gate_requires() {
     return 0
 }
 
+# comp_gate_requires_age <paket> <sunucu> <sürüm> <eylem> → o eylemin en son BAŞARILI (ok) kaydının yaşı (sn); kayıt yoksa 1
+# (gelecekteki zaman damgaları sayılmaz). Tazelik kararı çağırana aittir (COMP_REQUIRES_TTL ile karşılaştırın).
+comp_gate_requires_age() {
+    local id="$1" server="$2" ver="$3" action="$4" f now ts v a r best=""
+    _comp_gate_name_ok "$server" || return 1
+    f="$(_comp_gate_state_dir)/$id/$server/results"
+    [ -f "$f" ] || return 1
+    now=$(date +%s)
+    while IFS='|' read -r ts v a r; do
+        [[ "$ts" =~ ^[0-9]+$ ]] || continue
+        [ "$v" = "$ver" ] && [ "$a" = "$action" ] && [ "$r" = "ok" ] || continue
+        [ "$ts" -le $((now + 60)) ] || continue
+        if [ -z "$best" ] || [ "$ts" -gt "$best" ]; then best="$ts"; fi
+    done < "$f"
+    [ -n "$best" ] || return 1
+    printf '%s' $((now - best))
+}
+
 # _comp_gate_ask <istem> → stdin'den bir satır okur; girdi yoksa 1
 _comp_gate_ask() {
     local ans

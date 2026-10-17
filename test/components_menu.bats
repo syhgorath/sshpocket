@@ -277,3 +277,112 @@ setup_net() {
     [ "$(vget allow_from)" = "10.99.0.0/24,192.168.1.0/24" ]
     [ "$(grep -c '^allow_from=' "$D/demo.vars")" = "1" ]
 }
+
+# =====================================================================
+# E3: Geçmiş, ön koşul tazeliği ve son sonuç (F)
+# =====================================================================
+setup_state() {
+    export SSHPOCKET_STATE_DIR="$T/state" COMP_REQUIRES_TTL=1800
+    source "$H/ComponentsGates.sh"; source "$H/ComponentsExec.sh"
+}
+# actions listesi: 1 Değişkenler, 2 preview, 3 apply, 4 wipe, 5 audit, 6 Geçmiş (son)
+
+@test "gates: requires_age en son başarılı kaydın yaşını verir; fail/başka sürüm/gelecek/kayıt yok sayılmaz" {
+    setup_state
+    run comp_gate_requires_age demo web1 1.0.0 preview; [ "$status" -ne 0 ]
+    now=$(date +%s); mkdir -p "$T/state/demo/web1"
+    printf '%s|1.0.0|preview|ok\n%s|1.0.0|preview|ok\n%s|1.0.0|preview|fail\n%s|0.9.0|preview|ok\n%s|1.0.0|preview|ok\n' \
+        $((now - 600)) $((now - 120)) $((now - 10)) $((now - 5)) $((now + 3600)) > "$T/state/demo/web1/results"
+    run comp_gate_requires_age demo web1 1.0.0 preview
+    [ "$status" -eq 0 ]
+    [ "$output" -ge 119 ]          # ayrı satırlar: bash'te "a && b" zincirinde ilk koşulun başarısızlığı testi düşürmez
+    [ "$output" -le 125 ]
+    run comp_gate_requires_age demo web1 1.0.0 apply; [ "$status" -ne 0 ]
+    run comp_gate_requires_age demo "../x" 1.0.0 preview; [ "$status" -ne 0 ]
+}
+
+@test "eylem etiketi: önkoşul kaydı yoksa '(önce: preview)'; taze ise ✅ yaş; süresi dolmuşsa ⏳" {
+    setup_state
+    run comp_menu_actions demo web1 <<<$'0'
+    [[ "$output" == *"apply — ✏️  değişiklik yapar  (önce: preview)"* ]] || false
+    comp_gate_record demo web1 1.0.0 preview ok
+    run comp_menu_actions demo web1 <<<$'0'
+    [[ "$output" == *"(önce: preview ✅ "* ]] || false
+    printf '%s|1.0.0|preview|ok\n' $(( $(date +%s) - 3000 )) > "$T/state/demo/web1/results"
+    run comp_menu_actions demo web1 <<<$'0'
+    [[ "$output" == *"(önce: preview ⏳ süresi doldu)"* ]] || false
+}
+
+@test "geçmiş: son çalıştırmalar (yalnızca bu paket), ön koşul tazeliği ve günlük yolu gösterilir" {
+    setup_state
+    printf '2026-10-16T14:17:49Z|demo|1.0.0|preview|ok\n2026-10-16T14:20:00Z|baska|1.0.0|yabanciaction|ok\n2026-10-16T14:38:32Z|demo|1.0.0|apply|fail\n' > "$D/components.log"
+    comp_gate_record demo web1 1.0.0 preview ok
+    mkdir -p "$T/state/demo/web1"; echo "ansible cikti" > "$T/state/demo/web1/last-run.log"
+    run comp_menu_actions demo web1 <<<$'6\nh\n\n0'
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"2026-10-16T14:17:49Z  preview"* ]] || false
+    [[ "$output" == *"2026-10-16T14:38:32Z  apply"* ]] || false
+    [[ "$output" == *"❌ başarısız"* ]] || false
+    [[ "$output" != *"yabanciaction"* ]] || false          # başka paketin kaydı görünmez
+    [[ "$output" == *"apply için preview: ✅ taze"* ]] || false
+    [[ "$output" == *"last-run.log"* ]] || false
+}
+
+@test "geçmiş: kayıt yoksa nazik mesajlar; günlüğün son satırları istenirse gösterilir ve denetim karakterleri temizlenir" {
+    setup_state
+    run comp_menu_actions demo web1 <<<$'6\n\n0'
+    [[ "$output" == *"(kayıt yok)"* ]] || false
+    [[ "$output" == *"apply için preview: ❌ başarılı kayıt yok"* ]] || false
+    mkdir -p "$T/state/demo/web1"; printf 'satir1\n\033[31mkirmizi\033[0m\n' > "$T/state/demo/web1/last-run.log"
+    run comp_menu_actions demo web1 <<<$'6\ne\n\n0'
+    [[ "$output" == *"satir1"* ]] || false
+    [[ "$output" == *"[31mkirmizi"* ]] || false
+    [[ "$output" != *$'\033'* ]] || false
+}
+
+@test "geçmiş: süresi dolmuş preview açıkça belirtilir" {
+    setup_state
+    mkdir -p "$T/state/demo/web1"
+    printf '%s|1.0.0|preview|ok\n' $(( $(date +%s) - 4000 )) > "$T/state/demo/web1/results"
+    run comp_menu_actions demo web1 <<<$'6\nh\n\n0'
+    [[ "$output" == *"apply için preview: ⏳ süresi doldu"* ]] || false
+}
+
+# ---------- F: son bilinen durum ----------
+@test "exec: durum eyleminin sonucu saklanır (epoch + anahtar=değer, izin 600) ve okunur" {
+    setup_state
+    mkdir -p "$T/state/demo/web1"
+    COMP_EXEC_RESULT=$'armed=yes\ntimer=active\nremaining_seconds=42'
+    comp_exec_save_result "$T/state/demo/web1" status
+    [ "$(stat -c %a "$T/state/demo/web1/result.status" 2>/dev/null || stat -f %Lp "$T/state/demo/web1/result.status")" = "600" ]
+    run comp_exec_last_result demo web1 status
+    [ "$status" -eq 0 ]
+    [[ "${lines[0]}" =~ ^[0-9]+$ ]]
+    [ "${lines[1]}" = "armed=yes" ]
+    [ "${lines[3]}" = "remaining_seconds=42" ]
+    run comp_exec_last_result demo web1 yok;   [ "$status" -ne 0 ]
+    run comp_exec_last_result demo web1 "a/b"; [ "$status" -ne 0 ]
+    COMP_EXEC_RESULT=""; comp_exec_save_result "$T/state/demo/web1" other
+    [ ! -e "$T/state/demo/web1/result.other" ]
+    run comp_exec_save_result "$T/state/demo/web1" "../x"; [ "$status" -ne 0 ]
+    [ "$(ls "$T/state/demo/web1")" = "result.status" ]                                  # geçici dosya kalmadı
+}
+
+@test "hazırlık: durum eyleminin son bilinen sonucu yaşıyla gösterilir; henüz çalışmadıysa belirtilir" {
+    setup_state
+    # status eylemi olan bildirim
+    python3 - "$T/comps/demo/1.0.0/component.json" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+d["actions"]["status"]={"cmd":"ansible-playbook s.yml","effects":[],"outputs":{"format":"keyvalue-line","keys":["armed","timer"]}}
+json.dump(d,open(p,"w"))
+PY
+    cp "$T/comps/demo/1.0.0/component.json" "$T/m.json"
+    INFO=$(comp_manifest_info "$T/m.json" demo 1.0.0)
+    run comp_menu_actions demo web1 <<<$'0'
+    [[ "$output" == *"ℹ️  status: henüz çalıştırılmadı"* ]] || false
+    mkdir -p "$T/state/demo/web1"
+    COMP_EXEC_RESULT=$'armed=no\ntimer=inactive'; comp_exec_save_result "$T/state/demo/web1" status
+    run comp_menu_actions demo web1 <<<$'0'
+    [[ "$output" == *"ℹ️  status ("*"önce): armed=no timer=inactive"* ]] || false
+}

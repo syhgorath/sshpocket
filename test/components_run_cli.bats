@@ -151,7 +151,8 @@ modeof() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
     printf 'x==1 --hash=sha256:%064d\n' 0 > "$T/comps/demo/1.0.0/requirements.txt"
     run comp_venv_lookup demo "$T/comps/demo/1.0.0" ">=3.0"
     [ "$status" -ne 0 ]
-    [ ! -e "$T/cache" ] && [ ! -e "$T/home/.cache/sshpocket/venv" ]
+    [ ! -e "$T/cache" ]
+    [ ! -e "$T/home/.cache/sshpocket/venv" ]
 }
 
 # ---------- gerçek Main.sh yolu (sahtelenmemiş): yükleme eksikleri burada yakalanır ----------

@@ -5,6 +5,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **Paket ekranında `📜 Geçmiş ve son sonuçlar` (menü 3/n):** bu sunucudaki son çalıştırmalar (`components.log`, yalnızca o paket), ön koşulların tazeliği (örn. *apply için preview: ✅ taze, 18 dk
+  daha geçerli* / *⏳ süresi doldu* / *❌ kayıt yok*) ve son çalıştırma günlüğünün son satırları (denetim karakterleri temizlenir). Eylem etiketlerinde de ön koşul durumu görünür.
+- **Durum eylemlerinin son sonucu saklanır ve gösterilir:** `outputs.format` taşıyan eylemlerin (örn. `rollback_status`) son `SSHPOCKET_RESULT` sonucu kullanıcı klasörüne (izin 600)
+  yazılır; **Hazırlık** bloğunda *ℹ️ rollback_status (3 dk önce): installed=yes armed=no ...* diye görünür.
+
+### Eklendi
 - **Sunucu menüsünde paket değişkenleri (menü 2b/n):** paket eylem listesinin başında **Hazırlık** bloğu (zorunlu değişken eksikse ❌ ve eylemler ⛔ kapalı) ve
   `📝 Değişkenler` ekranı: değer/varsayılan/otomatik gösterimi, kaydetmeden önce doğrulama, `warn_if` için onay, `-` ile silme. `list[cidr]` değişkenler için **ağ
   editörü**: bu bilgisayarın adresinden öneri (ağ / tahmini /24 / yalnızca bu adres), isteğe bağlı sunucudan sorgu (salt okunur ssh), elle ekleme/silme/temizleme; listede

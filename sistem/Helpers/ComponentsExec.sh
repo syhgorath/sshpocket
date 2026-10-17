@@ -121,6 +121,26 @@ _comp_exec_body() {
     return "$rc"
 }
 
+# comp_exec_save_result <durum-klasörü> <eylem> → COMP_EXEC_RESULT'ı "result.<eylem>" dosyasına yazar (ilk satır: epoch; izin 600, atomik)
+comp_exec_save_result() {
+    local sdir="$1" action="$2" tmp
+    [[ "$action" =~ ^[a-z][a-z0-9_]{0,63}$ ]] || return 1
+    [ -n "$COMP_EXEC_RESULT" ] || return 0
+    tmp=$(mktemp "$sdir/result.XXXXXX") || return 1
+    chmod 600 "$tmp"
+    if ! { date +%s; printf '%s\n' "$COMP_EXEC_RESULT"; } > "$tmp" || ! mv -f -- "$tmp" "$sdir/result.$action"; then
+        rm -f -- "$tmp"; return 1
+    fi
+}
+
+# comp_exec_last_result <paket> <sunucu> <eylem> → ilk satır epoch, sonra "anahtar=değer" satırları; kayıt yoksa 1
+comp_exec_last_result() {
+    local f
+    f="$(_comp_gate_state_dir)/$1/$2/result.$3"
+    [[ "$3" =~ ^[a-z][a-z0-9_]{0,63}$ ]] && _comp_gate_name_ok "$2" && comp_id_valid "$1" && [ -f "$f" ] || return 1
+    head -n 40 "$f"
+}
+
 # comp_exec_action <bilgi> <paket> <sürüm> <eylem> → kapılar, çalıştırma, sonuç ayrıştırma ve kayıt
 comp_exec_action() {
     local info="$1" id="$2" ver="$3" action="$4" rc sdir
@@ -130,6 +150,7 @@ comp_exec_action() {
     [ "$rc" -eq "$COMP_EXEC_REFUSED" ] && return "$rc"            # hiçbir şey çalışmadı: kayıt yok
     sdir=$(comp_gate_state_ensure "$id" "$COMP_CTX_SERVER") || return "$rc"
     comp_exec_parse_result "$info" "$action" "$sdir/last-run.log" || true
+    comp_exec_save_result "$sdir" "$action" || true
     if [ "$rc" -eq 0 ]; then comp_gate_record "$id" "$COMP_CTX_SERVER" "$ver" "$action" ok || true
     else comp_gate_record "$id" "$COMP_CTX_SERVER" "$ver" "$action" fail || true; fi
     return "$rc"
