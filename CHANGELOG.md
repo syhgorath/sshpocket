@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Test (geliştirici)
+- Docker LAB e2e: `audit` (lynis kurulumu, rapor/özet 0600-0700 izinleri, `summary.json` içeriği), `rollback_now` (armed değilken etkisiz; armed iken sonraki ufw/sshd değişiklikleri geri alınır) ve `rollback_disarm` (armed ve yedek silinir) sshpocket üzerinden uçtan uca denendi. Üretim kodu değişmedi.
+
 ## [3.6.1] - 2026-10-17
 
 Sunucuya ulaşılamayınca nedenini söyleyen ipuçları, paket yazarları için sözleşme uyum denetimi (`validate`) ve güvenilirlik düzeltmeleri.
