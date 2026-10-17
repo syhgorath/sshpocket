@@ -4,6 +4,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **Sunucuya ulaşılamayınca nedenini ve yapılacağı söyler:** işletim sistemi algılaması başarısız olduğunda ssh'ın hatası sınıflandırılır (`↳` ipucu satırı): zaman aşımı
+  (VPN/ufw), rota yok, bağlantı reddi, **host key değişmiş**, host key tanınmıyor, anahtar reddi, çok fazla kimlik doğrulama denemesi, ad çözülemedi, kesilen bağlantı (fail2ban).
+  Hata metni temizlenir ve kesilir, kabuğa verilmez. Tablo: `docs/hardening-kullanim.md`. Docker LAB'ında gerçek OpenSSH mesajlarıyla doğrulandı.
+
 ### Eklendi
 - **Docker LAB'ı ile uçtan uca paket testi (geliştirici):** `test/e2e/lab/` — systemd'li Ubuntu 26.04 konteyneri; `./test/e2e/lab/up.sh && bats test/e2e/components.bats`
   `linux-hardening` akışını (`rollback_status` → taze `preview` olmadan `apply` reddi → `preview` (sunucu değişmez) → `apply` → **erişim ağı tuzağı** → erişilemeyen sunucu,

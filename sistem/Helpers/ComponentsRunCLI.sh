@@ -12,11 +12,42 @@ comp_detect_profile() {
     local host="$1" port="$2" user="$3" key="$4" out id ver
     out=$(ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
               -o PreferredAuthentications=publickey -o PasswordAuthentication=no \
-              -p "$port" -i "$key" "$user@$host" 'cat /etc/os-release' 2>/dev/null) || return 1
+              -p "$port" -i "$key" "$user@$host" 'cat /etc/os-release' 2>"${COMP_DETECT_ERRFILE:-/dev/null}") || return 1
     id=$(printf '%s\n' "$out" | awk -F= '$1=="ID" { gsub(/"/, "", $2); print tolower($2); exit }')
     ver=$(printf '%s\n' "$out" | awk -F= '$1=="VERSION_ID" { gsub(/"/, "", $2); print tolower($2); exit }')
     [[ "$id" =~ ^[a-z0-9][a-z0-9._-]{0,31}$ ]] && [[ "$ver" =~ ^[a-z0-9][a-z0-9._-]{0,31}$ ]] || return 1
     printf '%s-%s' "$id" "$ver"
+}
+
+# comp_ssh_hint <ssh-hata-dosyası> → bilinen ssh hatalarını açıklar ve ne yapılacağını söyler (stdout; boşsa hiçbir şey yazmaz).
+# Hata metni sunucudan gelebilir (banner vb.) → denetim karakterleri temizlenir, kesilir; kabuğa/eval'e HİÇ verilmez.
+comp_ssh_hint() {
+    local f="$1" msg first
+    [ -s "$f" ] || return 0
+    msg=$(head -c 2000 "$f" | LC_ALL=C tr -d '\000-\010\013-\037\177')
+    case "$msg" in
+        *"REMOTE HOST IDENTIFICATION HAS CHANGED"*|*"Offending "*" key in "*)
+            echo "Sunucunun host key'i DEĞİŞMİŞ. Sunucu yeniden kurulduysa eski kaydı silin (ssh-keygen -R); aksi halde araya girilmiş olabilir, bağlanmayın." ;;
+        *"No "*" host key is known"*|*"Host key verification failed"*)
+            echo "Host key doğrulanamadı. Önce sshpocket'in Bağlan seçeneğiyle bu sunucuya bir kez bağlanıp host key'i kabul edin." ;;
+        *"Too many authentication failures"*)
+            echo "Çok fazla kimlik doğrulama denemesi (sunucuda MaxAuthTries düşük olabilir). ssh-agent'ta çok anahtar varsa ssh-add -D ile temizleyin." ;;
+        *"Permission denied"*)
+            echo "Anahtar reddedildi. Doğru anahtar mı (server.env KEY), sunucuda authorized_keys içinde mi, parolalı anahtar ajanda mı (ssh-add -l)?" ;;
+        *"timed out"*)
+            echo "Zaman aşımı: sunucuya ulaşılamıyor. VPN/ağ açık mı? Sunucuda güvenlik duvarı (ufw) bu ağdan SSH'a izin vermiyor olabilir (hardening_ssh_allow_from)." ;;
+        *"No route to host"*|*"Network is unreachable"*)
+            echo "Ağ yolu yok: sunucunun ağına ulaşılamıyor. VPN açık mı, doğru ağda mısınız?" ;;
+        *"Connection refused"*)
+            echo "Bağlantı reddedildi: sshd çalışmıyor ya da port yanlış (server.env PORT)." ;;
+        *"Could not resolve hostname"*)
+            echo "Sunucu adı çözülemedi: server.env IP/host değerini kontrol edin." ;;
+        *"Connection reset"*|*"closed by remote host"*|*"kex_exchange_identification"*)
+            echo "Bağlantı sunucu tarafından kesildi. Çok sayıda başarısız deneme sonrası fail2ban engellemiş olabilir; biraz bekleyip yeniden deneyin." ;;
+        *)
+            first=$(printf '%s\n' "$msg" | head -n 1 | cut -c1-160)
+            [ -z "$first" ] || echo "ssh: $first" ;;
+    esac
 }
 
 _comp_run_cli_usage() {
@@ -63,7 +94,16 @@ comp_cli_run() {
     # İşletim sistemi profili: anahtar ajanda olmalı, host key tanınmalı; sonra salt okunur algılama
     comp_gate_known_host "$ip" "$port" || return "$refused"
     comp_gate_agent "$prefix" "$key" || return "$refused"
-    profile=$(comp_detect_profile "$ip" "$port" "$user" "$key") || { echo "Sunucunun işletim sistemi algılanamadı (ssh)." >&2; return "$refused"; }
+    local derr hint
+    derr=$(mktemp "${TMPDIR:-/tmp}/sshpocket-sshdetect.XXXXXX") || derr=/dev/null
+    if ! profile=$(COMP_DETECT_ERRFILE="$derr" comp_detect_profile "$ip" "$port" "$user" "$key"); then
+        echo "Sunucunun işletim sistemi algılanamadı (ssh)." >&2
+        hint=$(comp_ssh_hint "$derr")
+        [ -z "$hint" ] || echo "  ↳ $hint" >&2
+        [ "$derr" = /dev/null ] || rm -f -- "$derr"
+        return "$refused"
+    fi
+    [ "$derr" = /dev/null ] || rm -f -- "$derr"
     echo "Sunucu: $server ($user@$ip:$port)  Profil: $profile  Paket: $id $ver" >&2
 
     values="$dir/$id.vars"
