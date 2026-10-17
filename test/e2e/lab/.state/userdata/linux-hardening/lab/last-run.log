@@ -1,0 +1,299 @@
+[WARNING]: Could not match supplied host pattern, ignoring: ubuntu
+
+PLAY [Harden] ******************************************************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Host 'lab' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ok: [lab]
+
+TASK [Preflight (desteklenen OS/sürüm, sürüm değişkenleri)] ********************
+included: hardening_preflight for lab
+
+TASK [hardening_preflight : Check distribution and version are supported] ******
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
+Origin: /Users/ziyayesilbahce/Developer/sshpocket/components/linux-hardening/0.2.0/roles/hardening_preflight/tasks/main.yml:6:15
+
+4       - ansible_distribution in hardening_supported_os
+5       - ansible_distribution_version in hardening_supported_os[ansible_distribution]
+6     fail_msg: >-
+                ^ column 15
+
+Use `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.
+
+[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
+Origin: /Users/ziyayesilbahce/Developer/sshpocket/components/linux-hardening/0.2.0/roles/hardening_preflight/tasks/main.yml:4:9
+
+2   ansible.builtin.assert:
+3     that:
+4       - ansible_distribution in hardening_supported_os
+          ^ column 9
+
+Use `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.
+
+[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
+Origin: /Users/ziyayesilbahce/Developer/sshpocket/components/linux-hardening/0.2.0/roles/hardening_preflight/tasks/main.yml:5:9
+
+3     that:
+4       - ansible_distribution in hardening_supported_os
+5       - ansible_distribution_version in hardening_supported_os[ansible_distribution]
+          ^ column 9
+
+Use `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.
+
+ok: [lab] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [hardening_preflight : Load OS/version specific variables] ****************
+[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
+Origin: /Users/ziyayesilbahce/Developer/sshpocket/components/linux-hardening/0.2.0/roles/hardening_preflight/tasks/main.yml:16:11
+
+14     params:
+15       files:
+16         - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version }}.yml"
+             ^ column 11
+
+Use `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.
+
+ok: [lab]
+
+TASK [Erişim kaybı korumaları (allow_from, kaynak IP, root)] *******************
+included: hardening_preflight for lab
+
+TASK [hardening_preflight : Login user (become olmadan)] ***********************
+ok: [lab]
+
+TASK [hardening_preflight : Login user must not be root (PermitRootLogin no yazılıyor, root ile çalışmak erişimi keser)] ***
+ok: [lab] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [hardening_preflight : Allow-from list must be a non-empty list] **********
+ok: [lab] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [hardening_preflight : Client address as the server sees it (SSH_CONNECTION, become olmadan)] ***
+ok: [lab]
+
+TASK [hardening_preflight : SSH_CONNECTION must be readable] *******************
+ok: [lab] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [hardening_preflight : Check client address is inside hardening_ssh_allow_from (ek koleksiyon gerekmez)] ***
+ok: [lab]
+
+TASK [hardening_preflight : Client address must be allowed (aksi halde ufw bu bağlantıyı keser)] ***
+ok: [lab] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [hardening_base : Install dma (sadece giden mail, port dinlemez)] *********
+ok: [lab]
+
+TASK [hardening_base : Purge listening MTAs (postfix, courier)] ****************
+ok: [lab]
+
+TASK [hardening_base : Install unattended-upgrades] ****************************
+ok: [lab]
+
+TASK [hardening_base : Enable automatic security updates (otomatik reboot YOK)] ***
+ok: [lab]
+
+TASK [hardening_base : Disable usb-storage] ************************************
+ok: [lab]
+
+TASK [hardening_base : Legal banner] *******************************************
+ok: [lab] => (item=/etc/issue)
+ok: [lab] => (item=/etc/issue.net)
+
+TASK [hardening_auth : Install libpam-pwquality] *******************************
+ok: [lab]
+
+TASK [hardening_auth : Set login.defs password aging and umask] ****************
+ok: [lab] => (item={'key': 'PASS_MAX_DAYS', 'value': 365})
+ok: [lab] => (item={'key': 'PASS_MIN_DAYS', 'value': 1})
+ok: [lab] => (item={'key': 'PASS_WARN_AGE', 'value': 7})
+ok: [lab] => (item={'key': 'UMASK', 'value': '027'})
+ok: [lab] => (item={'key': 'SHA_CRYPT_MIN_ROUNDS', 'value': '65536'})
+ok: [lab] => (item={'key': 'SHA_CRYPT_MAX_ROUNDS', 'value': '65536'})
+
+TASK [hardening_auth : Ensure pwquality.conf.d exists] *************************
+ok: [lab]
+
+TASK [hardening_auth : Configure pwquality policy] *****************************
+ok: [lab]
+
+TASK [hardening_kernel : Apply sysctl hardening] *******************************
+ok: [lab]
+
+TASK [hardening_kernel : Disable unused network protocols] *********************
+ok: [lab]
+
+TASK [hardening_auditd : Install auditd] ***************************************
+ok: [lab]
+
+TASK [hardening_auditd : Audit rules] ******************************************
+ok: [lab]
+
+TASK [hardening_auditd : Enable and start auditd] ******************************
+skipping: [lab]
+
+TASK [hardening_fail2ban : Install fail2ban] ***********************************
+ok: [lab]
+
+TASK [hardening_fail2ban : Client address as the server sees it (SSH_CONNECTION, become olmadan)] ***
+ok: [lab]
+
+TASK [hardening_fail2ban : Compute effective ignoreip (base list + controller address)] ***
+ok: [lab]
+
+TASK [hardening_fail2ban : Configure sshd jail] ********************************
+ok: [lab]
+
+TASK [hardening_fail2ban : Enable and start fail2ban] **************************
+skipping: [lab]
+
+TASK [hardening_aide : Install AIDE] *******************************************
+ok: [lab]
+
+TASK [hardening_aide : Initialize AIDE database (ilk seferde dakikalar sürebilir)] ***
+ASYNC OK on lab: jid=j891968606020.25655
+ok: [lab]
+
+TASK [hardening_rollback : Note that the rollback safety net is disabled] ******
+skipping: [lab]
+
+TASK [hardening_rollback : Validate timeout (30..3600 sn)] *********************
+skipping: [lab]
+
+TASK [hardening_rollback : Check systemd is available] *************************
+skipping: [lab]
+
+TASK [hardening_rollback : Refuse to continue without systemd (güvenlik ağı kurulamaz)] ***
+skipping: [lab]
+
+TASK [hardening_rollback : Install rollback script] ****************************
+skipping: [lab]
+
+TASK [hardening_rollback : Install rollback units] *****************************
+skipping: [lab] => (item=hardening-rollback.service) 
+skipping: [lab] => (item=hardening-rollback.timer) 
+skipping: [lab]
+
+TASK [hardening_rollback : Reload systemd units] *******************************
+skipping: [lab]
+
+TASK [hardening_rollback : Arm (backup previous state + start timer)] **********
+skipping: [lab]
+
+TASK [hardening_ufw : Install ufw] *********************************************
+ok: [lab]
+
+TASK [hardening_ufw : Read ports sshd is really listening on (ss, sshd süreci)] ***
+ok: [lab]
+
+TASK [hardening_ufw : Derive SSH ports from listening sockets] *****************
+ok: [lab]
+
+TASK [hardening_ufw : A listening sshd must be found (aksi halde ufw SSH izni olmadan açılırdı)] ***
+ok: [lab] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [hardening_ufw : Warn that hardening_ssh_port is no longer used] **********
+skipping: [lab]
+
+TASK [hardening_ufw : Allow SSH from management networks (enable'dan ÖNCE)] ****
+skipping: [lab] => (item=['172.17.0.0/16', '22']) 
+skipping: [lab] => (item=['172.17.0.0/24', '22']) 
+skipping: [lab] => (item=['192.168.99.0/24', '22']) 
+skipping: [lab]
+
+TASK [hardening_ufw : Allow extra ports] ***************************************
+skipping: [lab]
+
+TASK [hardening_ufw : Default policies] ****************************************
+skipping: [lab] => (item={'key': 'incoming', 'value': 'deny'}) 
+skipping: [lab] => (item={'key': 'outgoing', 'value': 'allow'}) 
+skipping: [lab]
+
+TASK [hardening_ufw : Read ufw current state] **********************************
+ok: [lab]
+
+TASK [hardening_ufw : Enable ufw] **********************************************
+skipping: [lab]
+
+TASK [hardening_ssh : Validate SSH variables] **********************************
+ok: [lab] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [hardening_ssh : Login user (become olmadan)] *****************************
+ok: [lab]
+
+TASK [hardening_ssh : Login user's real home directory (getent passwd)] ********
+ok: [lab]
+
+TASK [hardening_ssh : Authorized key must exist before disabling password auth] ***
+[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
+Origin: /Users/ziyayesilbahce/Developer/sshpocket/components/linux-hardening/0.2.0/roles/hardening_ssh/tasks/main.yml:27:11
+
+25 - name: Authorized key must exist before disabling password auth
+26   ansible.builtin.stat:
+27     path: "{{ getent_passwd[hardening_ssh_login_user.stdout][4] }}/.ssh/authorized_keys"
+             ^ column 11
+
+Use `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.
+
+ok: [lab]
+
+TASK [hardening_ssh : Refuse to continue without a usable key (erişim kaybını önler)] ***
+[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
+Origin: /Users/ziyayesilbahce/Developer/sshpocket/components/linux-hardening/0.2.0/roles/hardening_ssh/tasks/main.yml:36:15
+
+34       - hardening_ssh_keys.stat.exists
+35       - hardening_ssh_keys.stat.size > 0
+36     fail_msg: >-
+                 ^ column 15
+
+Use `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.
+
+ok: [lab] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [hardening_ssh : Write sshd drop-in (00- oneki: cloud-init drop-in dosyasindan once okunur)] ***
+ok: [lab]
+
+TASK [Yeni bağlantı doğrulaması ve geri alma] **********************************
+included: hardening_verify_access for lab
+
+TASK [hardening_verify_access : Flush pending handlers (sshd reload burada uygulanır)] ***
+skipping: [lab]
+
+TASK [hardening_verify_access : Login user (become olmadan)] *******************
+skipping: [lab]
+
+TASK [hardening_verify_access : Verify a NEW TCP connection shows the SSH banner (kbd-interactive açık)] ***
+skipping: [lab]
+
+TASK [hardening_verify_access : Open a NEW SSH connection from the controller (BatchMode, çoklama yok)] ***
+skipping: [lab]
+
+TASK [Disarm rollback safety net (erişim doğrulandı)] **************************
+skipping: [lab]
+
+PLAY RECAP *********************************************************************
+lab                        : ok=44   changed=0    unreachable=0    failed=0    skipped=19   rescued=0    ignored=0   
+

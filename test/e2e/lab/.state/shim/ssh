@@ -1,0 +1,2 @@
+#!/bin/bash
+exec /usr/bin/ssh -o UserKnownHostsFile=/Users/ziyayesilbahce/Developer/sshpocket/test/e2e/lab/.state/kh "$@"

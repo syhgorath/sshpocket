@@ -192,3 +192,30 @@ STUB
     FAKE_CONN=' ' run comp_net_seen_by_server 10.1.10.193 22 syhgorath /k;              [ "$status" -ne 0 ]
     FAKE_RC=255 run comp_net_seen_by_server 10.1.10.193 22 syhgorath /k;               [ "$status" -ne 0 ]
 }
+
+# ---------- net-add: kapsama ----------
+@test "net_add: ayrık ağ eklenir; yinelenen ve kapsanan atlanır; kapsayan, dar girdilerin yerine geçer" {
+    run comp_net_add "10.0.0.0/24" "192.168.1.0/24"
+    [ "${lines[0]}" = "added" ];                          [ "${lines[1]}" = "10.0.0.0/24,192.168.1.0/24" ]
+    run comp_net_add "10.0.0.0/24" "10.0.0.0/24"
+    [ "${lines[0]}" = "duplicate" ];                      [ "${lines[1]}" = "10.0.0.0/24" ]
+    run comp_net_add "10.0.0.0/16" "10.0.1.0/24"
+    [ "${lines[0]}" = "covered:10.0.0.0/16" ];            [ "${lines[1]}" = "10.0.0.0/16" ]
+    run comp_net_add "10.0.0.0/24,10.1.0.0/24,192.168.1.0/24" "10.0.0.0/8"
+    [ "${lines[0]}" = "replaced:10.0.0.0/24,10.1.0.0/24" ]; [ "${lines[1]}" = "192.168.1.0/24,10.0.0.0/8" ]
+    run comp_net_add "10.0.0.5" "10.0.0.0/24"                                   # tek adres de kapsanır
+    [ "${lines[0]}" = "replaced:10.0.0.5" ];              [ "${lines[1]}" = "10.0.0.0/24" ]
+    run comp_net_add "" "10.0.0.0/24"                                           # boş liste
+    [ "${lines[0]}" = "added" ];                          [ "${lines[1]}" = "10.0.0.0/24" ]
+}
+
+@test "net_add: farklı IP sürümleri birbirini kapsamaz; geçersiz girdi reddedilir" {
+    run comp_net_add "10.0.0.0/8" "fd00::/8"
+    [ "${lines[0]}" = "added" ]
+    for bad in "evil" "10.0.0.0/99" "10.0.0.0/24;id"; do
+        run comp_net_add "10.0.0.0/24" "$bad"
+        [ "$status" -ne 0 ] || { echo "KABUL EDİLDİ: $bad"; return 1; }
+    done
+    run comp_net_add "kotu,10.0.0.0/24" "10.1.0.0/24"
+    [ "$status" -ne 0 ]
+}
