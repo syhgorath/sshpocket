@@ -42,7 +42,7 @@ echo "\$ANSIBLE_CONFIG|\$ANSIBLE_HOST_KEY_CHECKING" > "$T/envseen"
 # -i ve -e @ dosyalarının İÇERİĞİNİ çalışma sırasında kaydet
 while [ \$# -gt 0 ]; do case "\$1" in -i) cp "\$2" "$T/seen_inv"; stat -c %a "\$2" >/dev/null 2>&1 && stat -c %a "\$2" > "$T/inv_mode" || stat -f %Lp "\$2" > "$T/inv_mode"; echo "\$2" > "$T/inv_path";; -e) f="\${2#@}"; cp "\$f" "$T/seen_vars"; echo "\$f" > "$T/vars_path";; esac; shift; done
 [ -n "\${FAKE_OUT:-}" ] && printf '%s\n' "\$FAKE_OUT"
-[ -n "\${FAKE_KILL_PARENT:-}" ] && { touch "$T/started"; kill -TERM \$(ps -o ppid= -p \$PPID | tr -d ' '); sleep 30; }
+[ -n "\${FAKE_KILL_PARENT:-}" ] && { touch "$T/started"; kill -\${FAKE_SIG:-TERM} \$(ps -o ppid= -p \$PPID | tr -d ' '); sleep 30; }
 exit \${FAKE_RC:-0}
 STUB
     chmod +x "$T/bin/ansible-playbook"
@@ -163,13 +163,17 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     [ "$(tmpleft)" = "0" ]
 }
 
-@test "yürütme: TERM (Ctrl-C benzeri) gelirse geçici dosyalar yine de silinir" {
-    FAKE_KILL_PARENT=1 run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
-    [ -e "$T/started" ]
-    [ "$status" -ne 0 ]
-    sleep 1
-    [ "$(tmpleft)" = "0" ]
-    [ ! -e "$(cat "$T/inv_path")" ]
+@test "yürütme: TERM ve HUP (terminal kapanması) gelirse geçici dosyalar yine de silinir" {
+    local sig
+    for sig in TERM HUP; do
+        rm -f "$T/started" "$T/inv_path"
+        FAKE_SIG=$sig FAKE_KILL_PARENT=1 run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+        [ -e "$T/started" ] || { echo "BAŞLAMADI: $sig"; return 1; }
+        [ "$status" -ne 0 ] || { echo "KOD 0: $sig"; return 1; }
+        sleep 1
+        [ "$(tmpleft)" = "0" ] || { echo "GEÇİCİ DOSYA KALDI: $sig"; return 1; }
+        [ ! -e "$(cat "$T/inv_path")" ] || { echo "INVENTORY KALDI: $sig"; return 1; }
+    done
 }
 
 # ---------- sonuç satırı ----------

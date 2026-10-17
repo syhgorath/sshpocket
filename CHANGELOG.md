@@ -4,6 +4,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **Terminal kapanınca (SIGHUP) geçici inventory/değişken dosyaları silinmiyordu:** yürütücü yalnızca Ctrl-C (INT) ve TERM'i yakalıyordu. HUP da yakalanır (geri alma e2e testinde
+  `kill -9` sonrası bulundu); TERM ve HUP testi eklendi.
+
+### Eklendi
+- **Geri alma güvenlik ağı için e2e testleri (Docker LAB):** (A) yeni bağlantı doğrulaması başarısız olunca `apply` önceki duruma döner ve `fail` kaydedilir; (B) denetleyici ortada
+  ölünce (ansible SSH reload'unda öldürülür) sunucu `systemd` zamanlayıcısıyla kendini geri alır. LAB'da `hardening_rollback_timeout=30`; ssh sarmalayıcısı `LAB_BREAK_VERIFY=1`,
+  `drive.exp` `E2E_KILL_ON_RELOAD=1` destekler (yalnızca LAB'ın geçici klasörünü kullanan ansible öldürülür).
+
 ### Değişti
 - **Sunucuya ulaşılamayınca nedenini ve yapılacağı söyler:** işletim sistemi algılaması başarısız olduğunda ssh'ın hatası sınıflandırılır (`↳` ipucu satırı): zaman aşımı
   (VPN/ufw), rota yok, bağlantı reddi, **host key değişmiş**, host key tanınmıyor, anahtar reddi, çok fazla kimlik doğrulama denemesi, ad çözülemedi, kesilen bağlantı (fail2ban).

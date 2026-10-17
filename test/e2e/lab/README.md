@@ -5,7 +5,7 @@ Yerel, tek kullanımlık bir "sunucu": **systemd'li Ubuntu 26.04** konteyneri (s
 
 ```bash
 ./test/e2e/lab/up.sh                  # imajı kurar, konteyneri sıfırdan başlatır (~1 dk)
-bats test/e2e/components.bats         # rollback_status → ret → preview → apply → erişim ağı tuzağı → hata yolları (~3-4 dk)
+bats test/e2e/components.bats         # rollback_status → ret → preview → GERİ ALMA (A: doğrulama başarısız, B: denetleyici kaybı) → apply → erişim ağı tuzağı → hata yolları (~6-8 dk)
 ./test/e2e/lab/run.sh preview         # tek eylem (BECOME password: otomatik cevaplanır)
 ./test/e2e/lab/down.sh [--clean]      # kaldırır (--clean: anahtarlar, host key, durum ve imaj da)
 ```

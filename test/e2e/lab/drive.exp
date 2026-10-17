@@ -2,6 +2,7 @@
 # drive.exp <eylem> [paket] [sunucu] — sshpocket --components run'ı bir pty'de çalıştırır ve istemlere cevap verir.
 # (BECOME password: getpass girdi tamponunu boşalttığı için cevap önceden verilemez; istem görülünce verilir.)
 # Cevaplar ortamdan değiştirilebilir: E2E_CONFIRM_NAME (sunucu adı), E2E_YESNO (e/h), E2E_INSTALL_VENV (e/H).
+# E2E_KILL_ON_RELOAD=1: apply sırasında SSH yeniden yüklenince ansible'ı öldürür (geri alma zamanlayıcısı testi).
 set timeout 900
 set action [lindex $argv 0]
 set pkg    [expr {[llength $argv] > 1 ? [lindex $argv 1] : "linux-hardening"}]
@@ -16,6 +17,17 @@ expect {
     -re {Yine de kaydedilsin mi|Yine de devam} { send "h\r"; exp_continue }
     -re {Devam edilsin mi}                     { send "$::env(E2E_YESNO)\r"; exp_continue }
     -re {BECOME password:}                     { send "\r"; exp_continue }
+    -re {RUNNING HANDLER \[hardening_ssh : Reload ssh\]} {
+        # E2E_KILL_ON_RELOAD=1: denetleyici kaybı simülasyonu. YALNIZCA bu LAB'ın geçici klasörünü kullanan ansible öldürülür.
+        if {[info exists ::env(E2E_KILL_ON_RELOAD)] && $::env(E2E_KILL_ON_RELOAD) eq "1" && [info exists ::env(E2E_LAB_TMPDIR)]} {
+            after 1500
+            catch {exec pkill -9 -f "$::env(E2E_LAB_TMPDIR)/sshpocket-run"}
+            puts "\n>>> ANSIBLE ÖLDÜRÜLDÜ (denetleyici kaybı simülasyonu)"
+            after 500
+            exit 0
+        }
+        exp_continue
+    }
     timeout                                    { puts "\n\[zaman aşımı\]"; exit 124 }
     eof
 }
