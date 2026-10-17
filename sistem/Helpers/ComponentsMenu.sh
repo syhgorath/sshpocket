@@ -72,6 +72,49 @@ _comp_menu_field() { printf '%s' "$1" | awk -F'\t' -v n="$2" '{ print $n }'; }
 # _comp_menu_unq <değer> → JSON dizgesinin çevreleyen tırnaklarını soyar
 _comp_menu_unq() { local v="$1"; if [[ "$v" == \"*\" ]]; then v="${v#\"}"; v="${v%\"}"; fi; printf '%s' "$v"; }
 
+# _comp_menu_age <saniye> → "N sn/dk/sa/gün önce"
+_comp_menu_age() {
+    local s="$1"
+    if [ "$s" -lt 60 ]; then printf '%s sn önce' "$s"
+    elif [ "$s" -lt 3600 ]; then printf '%s dk önce' $((s / 60))
+    elif [ "$s" -lt 86400 ]; then printf '%s sa önce' $((s / 3600))
+    else printf '%s gün önce' $((s / 86400)); fi
+}
+
+# _comp_menu_req_label <paket> <sunucu> <sürüm> <requires-csv> → "preview ✅ 12 dk önce, ..." (taze), "⏳ süresi doldu" ya da yalnızca ad
+_comp_menu_req_label() {
+    local id="$1" server="$2" ver="$3" csv="$4" r age out="" sep=""
+    local -a reqs
+    IFS=',' read -r -a reqs <<< "$csv"
+    for r in ${reqs[@]+"${reqs[@]}"}; do
+        if age=$(comp_gate_requires_age "$id" "$server" "$ver" "$r"); then
+            if [ "$age" -le "$COMP_REQUIRES_TTL" ]; then out="$out$sep$r ✅ $(_comp_menu_age "$age")"
+            else out="$out$sep$r ⏳ süresi doldu"; fi
+        else out="$out$sep$r"; fi
+        sep=", "
+    done
+    printf '%s' "$out"
+}
+
+# _comp_menu_status_lines <paket> <sunucu> <bilgi> → durum (outputs.format) eylemlerinin son bilinen sonucu, satır satır
+_comp_menu_status_lines() {
+    local id="$1" server="$2" info="$3" name last ts rest now
+    now=$(date +%s)
+    while IFS= read -r name; do
+        [ -n "$name" ] || continue
+        [ "$(comp_action_get "$info" "$name" outputs.format)" = "keyvalue-line" ] || continue
+        if last=$(comp_exec_last_result "$id" "$server" "$name"); then
+            ts=$(printf '%s\n' "$last" | head -n 1)
+            rest=$(printf '%s\n' "$last" | tail -n +2 | tr '\n' ' ')
+            if [[ "$ts" =~ ^[0-9]+$ ]] && [ "$ts" -le "$now" ]; then
+                printf '  ℹ️  %s (%s): %s\n' "$name" "$(_comp_menu_age $((now - ts)))" "${rest% }"
+            else printf '  ℹ️  %s: %s\n' "$name" "${rest% }"; fi
+        else
+            printf '  ℹ️  %s: henüz çalıştırılmadı\n' "$name"
+        fi
+    done < <(comp_info_all "$info" action)
+}
+
 # comp_menu_actions <paket> <sunucu> → hazırlık durumu + (📝 Değişkenler | eylemler); seçileni çalıştırır; geri dönene kadar döngü
 comp_menu_actions() {
     local id="$1" server="$2" info name pick i act eff req missing m
@@ -95,23 +138,30 @@ comp_menu_actions() {
         else
             echo "  ✅ Zorunlu değişkenler tamam"
         fi
+        _comp_menu_status_lines "$id" "$server" "$info"
         echo ""
         labels=("📝 Değişkenler${missing:+  ← önce burası}")
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır.")
         for name in "${names[@]}"; do
             req=$(comp_action_get "$info" "$name" requires)
-            labels+=("$name — $(_comp_menu_badge "$info" "$name")${req:+  (önce: ${req//,/, })}${missing:+  ⛔}")
+            labels+=("$name — $(_comp_menu_badge "$info" "$name")${req:+  (önce: $(_comp_menu_req_label "$id" "$server" "$COMP_MENU_VER" "$req"))}${missing:+  ⛔}")
             act=$(comp_info_all "$info" "action.$name.warning" | head -n 1)
             eff=$(comp_action_get "$info" "$name" confirm)
             UI_PICK_DESCS+=("${act:-Ek uyarı yok.} [onay: ${eff:-none}]")
         done
+        labels+=("📜 Geçmiş ve son sonuçlar")
+        UI_PICK_DESCS+=("Bu sunucudaki son çalıştırmalar, ön koşulların tazeliği (örn. apply için preview) ve son çalıştırma günlüğü.")
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
         if [ "$pick" -eq 1 ]; then
             comp_menu_vars "$id" "$server" "$info"
+            continue
+        fi
+        if [ "$pick" -eq $((${#names[@]} + 2)) ]; then
+            comp_menu_history "$id" "$server" "$info" || return 0
             continue
         fi
         if [ -n "$missing" ]; then
@@ -125,6 +175,57 @@ comp_menu_actions() {
         echo ""
         read -r -p "Devam için Enter..." _ || return 0
     done
+}
+
+# comp_menu_history <paket> <sunucu> <bilgi> → son çalıştırmalar, ön koşul tazeliği, son sonuçlar, günlük
+comp_menu_history() {
+    local id="$1" server="$2" info="$3" log name req r age sdir now a ans t v act res
+    log="$COMP_MENU_DIR/components.log"
+    now=$(date +%s)
+    clear
+    if declare -F ui_header >/dev/null; then ui_header "Sunucu › $server › Paketler › $id › Geçmiş"; fi
+    echo ""
+    echo "Son çalıştırmalar (${log##*/}, en yeni altta)"
+    if [ -f "$log" ] && grep -qF "|$id|" "$log"; then
+        grep -F "|$id|" "$log" | tail -n 10 | while IFS='|' read -r t _ v act res; do
+            printf '  %s  %-16s %s  (%s)\n' "$t" "$act" "$([ "$res" = ok ] && echo '✅ ok' || echo '❌ başarısız')" "$v"
+        done
+    else
+        echo "  (kayıt yok)"
+    fi
+    echo ""
+    echo "Ön koşullar (tazelik süresi $((COMP_REQUIRES_TTL / 60)) dk)"
+    a=0
+    while IFS= read -r name; do
+        [ -n "$name" ] || continue
+        req=$(comp_action_get "$info" "$name" requires)
+        [ -n "$req" ] || continue
+        a=1
+        for r in ${req//,/ }; do
+            if age=$(comp_gate_requires_age "$id" "$server" "$COMP_MENU_VER" "$r"); then
+                if [ "$age" -le "$COMP_REQUIRES_TTL" ]; then
+                    echo "  $name için $r: ✅ taze ($(_comp_menu_age "$age"); $(( (COMP_REQUIRES_TTL - age) / 60 )) dk daha geçerli)"
+                else
+                    echo "  $name için $r: ⏳ süresi doldu ($(_comp_menu_age "$age")); önce $r'i yeniden çalıştırın"
+                fi
+            else
+                echo "  $name için $r: ❌ başarılı kayıt yok; önce $r çalıştırın"
+            fi
+        done
+    done < <(comp_info_all "$info" action)
+    [ "$a" -eq 1 ] || echo "  (ön koşullu eylem yok)"
+    echo ""
+    echo "Son bilinen durum"
+    if [ -n "$(_comp_menu_status_lines "$id" "$server" "$info")" ]; then _comp_menu_status_lines "$id" "$server" "$info"; else echo "  (durum eylemi yok)"; fi
+    echo ""
+    sdir="$(_comp_gate_state_dir)/$id/$server"
+    if [ -f "$sdir/last-run.log" ]; then
+        echo "Son çalıştırma günlüğü: $sdir/last-run.log"
+        IFS= read -r -p "Son 30 satırı gösterilsin mi? [e/H]: " ans || return 1
+        case "$ans" in e|E|evet|Evet) echo ""; tail -n 30 "$sdir/last-run.log" | LC_ALL=C tr -d '\000-\010\013-\037\177' ;; esac
+    fi
+    echo ""
+    read -r -p "Devam için Enter..." _ || return 1
 }
 
 # comp_menu_vars <paket> <sunucu> <bilgi> → değişken listesi; seçileni düzenletir

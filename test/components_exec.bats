@@ -70,7 +70,8 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     [ "$(cat "$T/inv_mode")" = "600" ]
     grep -q '"allow_from"' "$T/seen_vars"
     [ "$(tmpleft)" = "0" ]                                  # geçici dosyalar silindi
-    [ ! -e "$(cat "$T/inv_path")" ] && [ ! -e "$(cat "$T/vars_path")" ]
+    [ ! -e "$(cat "$T/inv_path")" ]
+    [ ! -e "$(cat "$T/vars_path")" ]
     [ "$(modeof "$T/state/demo/web1/last-run.log")" = "600" ]
     grep -q '|1.0.0|preview|ok$' "$T/state/demo/web1/results"
 }
@@ -203,6 +204,12 @@ res() { printf '%s\n' "$1" > "$T/log"; comp_exec_parse_result "$INFO" status "$T
 @test "yürütme + sonuç: status çalışınca COMP_EXEC_RESULT dolar" {
     FAKE_OUT='SSHPOCKET_RESULT demo.status armed=yes timer=active remaining_seconds=42' comp_exec_action "$INFO" demo 1.0.0 status </dev/null
     [ "$COMP_EXEC_RESULT" = $'armed=yes\ntimer=active\nremaining_seconds=42' ]
+    # son sonuç kullanıcı klasörüne saklanır (menüde "son bilinen durum" olarak gösterilir)
+    run comp_exec_last_result demo web1 status
+    [ "$status" -eq 0 ]
+    [ "${lines[1]}" = "armed=yes" ]
+    [ "${lines[3]}" = "remaining_seconds=42" ]
+    [ "$(modeof "$T/state/demo/web1/result.status")" = "600" ]
 }
 
 # ---------- bildirim: outputs doğrulaması ----------
