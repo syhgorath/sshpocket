@@ -62,6 +62,15 @@ Hata metni sunucudan gelebileceği için denetim karakterleri temizlenir, 160 ka
 bağlantı kaybolursa sunucu `hardening_rollback_timeout` (varsayılan 300 sn) sonra **SSH drop-in'ini ve ufw'yi** önceki duruma döndürür; o sürede erişim
 olmayabilir. Paketler, sysctl, auditd, fail2ban ve AIDE geri alınmaz.
 
+**İki durum, Docker LAB'ında gerçek `systemd` ile denendi** (`bats test/e2e/components.bats`; LAB'da süre 30 sn):
+
+| Durum | Ne olur |
+|---|---|
+| Yeni bağlantı doğrulaması **başarısız** (örn. kural bağlantınızı kesti) | Playbook hemen yedekten geri yükler (`ROLLBACK - restore previous state`) ve durur; sunucu hardening öncesi hâlinde, `apply` kaydı `fail` |
+| **Denetleyici kaybolur** (bilgisayar kapanır, VPN düşer; playbook ortada ölür) | Sunucu `armed` kalır; `hardening_rollback_timeout` sn sonra zamanlayıcı SSH drop-in'ini siler ve ufw'yi eski hâline getirir (`armed=no`). Kurtarılana kadar bekleyin, ardından yeniden bağlanın |
+
+Durumu görmek için `rollback_status` eylemi (`installed`, `armed`, `timer`, `remaining_seconds`) ya da menüdeki Hazırlık bloğu.
+
 ## Denemek için güvenli laboratuvar (Docker)
 
 Gerçek bir sunucuyu riske atmadan akışı (`preview` → `apply`, erişim ağı tuzağı, hata yolları) denemek için tek kullanımlık, systemd'li bir **Ubuntu 26.04

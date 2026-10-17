@@ -69,6 +69,7 @@ _comp_exec_body() {
     trap "rm -r -- $(printf '%q' "$work") 2>/dev/null" EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
+    trap 'exit 129' HUP      # terminal penceresi kapanırsa da geçici dosyalar silinsin
     vf="$work/vars.json"; inv="$work/inventory"
 
     # ---- değişkenler: dir_var HER ZAMAN kullanıcı klasörüne yönlendirilir (hassas çıktı USB'ye yazılmaz) ----

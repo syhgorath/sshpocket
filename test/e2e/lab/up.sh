@@ -16,9 +16,21 @@ mkdir -p "$STATE/servers/lab" "$STATE/shim" "$STATE/hostkey"
 cp "$STATE/id_lab" "$STATE/servers/lab/id_ed25519_lab"; chmod 600 "$STATE/servers/lab/id_ed25519_lab"
 printf 'IP=127.0.0.1\nUSER=tester\nPORT=%s\n' "$PORT" > "$STATE/servers/lab/server.env"
 # Docker köprüsü 172.17.0.0/16: sunucu bizi 172.17.0.1 olarak görür (gerçek ağ değil, LAB'a özgü)
-printf 'hardening_ssh_allow_from=172.17.0.0/16\n' > "$STATE/servers/lab/linux-hardening.vars"
-# ssh sarmalayıcı: ~/.ssh/known_hosts yerine lab'a özgü dosya (OpenSSH $HOME'u yok sayar, bu yüzden PATH'e koyulur)
-printf '#!/bin/bash\nexec /usr/bin/ssh -o UserKnownHostsFile=%s "$@"\n' "$STATE/kh" > "$STATE/shim/ssh"; chmod +x "$STATE/shim/ssh"
+# hardening_rollback_timeout=30 (izin verilen en düşük): geri alma testleri hızlı bitsin
+printf 'hardening_ssh_allow_from=172.17.0.0/16\nhardening_rollback_timeout=30\n' > "$STATE/servers/lab/linux-hardening.vars"
+# ssh sarmalayıcı: ~/.ssh/known_hosts yerine lab'a özgü dosya (OpenSSH $HOME'u yok sayar, bu yüzden PATH'e koyulur).
+# LAB_BREAK_VERIFY=1: paketin "denetleyiciden YENİ bağlantı" doğrulamasını (ControlMaster=no ile tanınır) bilerek başarısız eder (geri alma testi).
+cat > "$STATE/shim/ssh" <<SHIM
+#!/bin/bash
+if [ "\${LAB_BREAK_VERIFY:-0}" = 1 ]; then
+    for a in "\$@"; do
+        if [ "\$a" = "ControlMaster=no" ]; then echo "ssh: connect to host 127.0.0.1 port $PORT: Connection timed out" >&2; exit 255; fi
+    done
+fi
+exec /usr/bin/ssh -o UserKnownHostsFile=$STATE/kh "\$@"
+SHIM
+chmod +x "$STATE/shim/ssh"
+mkdir -p "$STATE/tmp"
 rm -rf "$STATE/userdata"     # sshpocket durumu (sonuç kayıtları, günlükler) sıfırlanır
 
 docker build -q -t "$IMG" . >/dev/null

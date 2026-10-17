@@ -348,8 +348,9 @@ editörü: öneri, kapsama, tek-ağ uyarısı), `📜 Geçmiş ve son sonuçlar`
 ## 11. Riskler ve açık noktalar
 - **Python/Ansible kurulumu:** karar → `--doctor` denetler, onayla `brew install python@3.x` yapabilir (Homebrew'u kurmaz); venv kurulumu sshpocket'ındır.
 - ~~**linux-hardening canlıda hiç doğrulanmadı**~~ → **Çözüldü (2026-10-16/17):** `v0.2.0` imzalı ön sürüm olarak yayımlandı ve gerçek Ubuntu 26.04.1 VM'inde ve Docker LAB'ında
-  `preview` + `apply` ile doğrulandı. Hâlâ izlenecek: rpi/Proxmox profilleri (`planned`), gerçek ağ kesintisinde güvenlik ağının zamanlayıcıyla kendini geri alması (yalnızca yerel
-  `rollback_status`/`disarm` yolu denendi).
+  `preview` + `apply` ile doğrulandı. **Geri alma güvenlik ağı da denendi (Docker LAB'ı, 2026-10-17):** (A) denetleyiciden açılan yeni bağlantı doğrulaması başarısız olunca playbook yedekten geri yükler
+  ve durur; (B) denetleyici kaybolunca (ansible SSH reload'unda `kill -9`) sunucu `systemd` zamanlayıcısıyla `hardening_rollback_timeout` sn sonra kendini önceki duruma döndürür
+  (SSH drop-in silinir, ufw eski hâline döner). Hâlâ izlenecek: rpi/Proxmox profilleri (`planned`) ve gerçek bir ağ kesintisinde (VPN düşmesi) aynı davranış.
 - **Canlı test erişimi:** (Docker LAB'ı çoğu akışı VM'siz dener; gerçek VM son doğrulama içindir.) PR serisi gerçek bir test VM'i ister. Başka bir (otomatik) oturumun VM'e erişimi, VM'in kendi key'i/agent'ı ile
   yapılmalı; `sudo` parolasını yalnızca kullanıcı yazar. Yalnızca test VM'i, önce snapshot.
 - **Bilgisayar kaybı senaryosu:** key dosyaları ve bileşenler USB'de kalır, ama **passphrase'ler Keychain'de (Mac'te)**. Parola yöneticisinde de saklanmalı;

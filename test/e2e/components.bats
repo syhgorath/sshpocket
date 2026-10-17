@@ -59,6 +59,46 @@ applied_or_skip() { applied || skip "LAB'a henüz apply yapılmamış"; }
     grep -q '|preview|ok$' "$STATE/userdata/linux-hardening/lab/results"
 }
 
+# ---------- GERİ ALMA GÜVENLİK AĞI (apply'ın en kritik güvencesi): sunucu kendi kendini kurtarır ----------
+preview_ok_or_skip() { grep -q '|preview|ok$' "$STATE/userdata/linux-hardening/lab/results" 2>/dev/null || skip "önce preview testi"; }
+server_unchanged() {   # sunucu hardening öncesi hâlinde: drop-in yok, ufw pasif, zamanlayıcı kapalı, armed=no
+    run in_lab 'test -e /etc/ssh/sshd_config.d/00-hardening.conf'; [ "$status" -ne 0 ]
+    run in_lab 'ufw status | head -1';                                  [[ "$output" == *"inactive"* ]] || false
+    run in_lab 'systemctl is-active hardening-rollback.timer';          [ "$output" = "inactive" ]
+    run in_lab '/usr/local/sbin/hardening-rollback status';             [[ "$output" == *"armed=no"* ]] || false
+    run in_lab 'sshd -T | grep -i "^passwordauthentication"';            [[ "$output" == *"passwordauthentication yes"* ]] || false
+}
+
+@test "GERİ ALMA (A): yeni bağlantı doğrulaması BAŞARISIZ olursa apply önceki duruma döner ve 'fail' kaydedilir" {
+    fresh_or_skip; preview_ok_or_skip
+    LAB_BREAK_VERIFY=1 lab_run apply
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"ROLLBACK - restore previous state"* ]] || false
+    [[ "$output" == *"rescued=1"* ]] || false
+    server_unchanged
+    grep -q '|apply|fail$' "$STATE/userdata/linux-hardening/lab/results"
+}
+
+@test "GERİ ALMA (B): DENETLEYİCİ KAYBOLURSA (ansible SSH reload'unda öldürülür) sunucu zamanlayıcıyla kendini geri alır" {
+    fresh_or_skip; preview_ok_or_skip
+    LAB_BREAK_VERIFY=1 E2E_KILL_ON_RELOAD=1 lab_run apply
+    [[ "$output" == *"ANSIBLE ÖLDÜRÜLDÜ"* ]] || false
+    # öldürülme anında sunucu DEĞİŞMİŞ ve güvenlik ağı KURULU (armed)
+    run in_lab 'test -e /etc/ssh/sshd_config.d/00-hardening.conf'
+    [ "$status" -eq 0 ]
+    run in_lab '/usr/local/sbin/hardening-rollback status'
+    [[ "$output" == *"armed=yes"* ]] || false
+    # hardening_rollback_timeout=30 sn sonra systemd zamanlayıcısı geri alır (en çok 60 sn bekle)
+    local i
+    for i in $(seq 1 30); do
+        sleep 2
+        in_lab 'test ! -e /etc/ssh/sshd_config.d/00-hardening.conf' && break
+    done
+    server_unchanged
+    run in_lab 'journalctl -t hardening-rollback --no-pager -n 20'
+    [[ "$output" == *"geri alma tamamlandi"* ]] || false
+}
+
 @test "apply (preview sonrası): başarılı olur; SSH, ufw ve servisler beklenen duruma gelir; güvenlik ağı disarm edilir" {
     fresh_or_skip
     grep -q '|preview|ok$' "$STATE/userdata/linux-hardening/lab/results" 2>/dev/null || skip "önce preview testi"
