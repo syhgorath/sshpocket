@@ -32,6 +32,7 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 - `~/.ssh/config`'te `Include` desteği.
 
 ### Dağıtım
+- **Kilit kanalı:** paket sürümleri için sshpocket sürümü beklememek (imzalı, sayaçlı, süreli, onaylı); tasarım taslağı [docs/kilit-kanali.md](docs/kilit-kanali.md).
 - Homebrew formülü / kurulum betiği.
 - Demo GIF'i.
 
