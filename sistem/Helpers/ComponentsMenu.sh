@@ -302,10 +302,25 @@ comp_menu_edit_value() {
     read -r -p "Devam için Enter..." _ || return 1
 }
 
+# _comp_menu_cidr_add <cidr> → list dizisine (dinamik kapsam) ekler; kapsanan/yinelenen/yerine geçen durumunu yazar
+_comp_menu_cidr_add() {
+    local c="$1" csv res st rest v
+    csv=$(IFS=,; printf '%s' "${list[*]-}")
+    res=$(comp_net_add "$csv" "$c") || { echo "⚠️  Geçersiz CIDR."; return 1; }
+    st=$(printf '%s\n' "$res" | head -n 1); rest=$(printf '%s\n' "$res" | sed -n 2p)
+    case "$st" in
+        duplicate) echo "Zaten listede." ;;
+        covered:*) echo "Zaten kapsanıyor: ${st#covered:} (daha geniş bir ağ listede)." ;;
+        replaced:*) echo "Daha dar girdi(ler) yerine geçti, kapsadığı için kaldırıldı: ${st#replaced:}" ;;
+    esac
+    list=()
+    IFS=',' read -r -a list <<< "$rest"
+}
+
 # comp_menu_edit_cidr <değişken> <sunucu> → CIDR listesi: öneri ekle / elle ekle / sil / temizle / kaydet
 # Öneri yalnızca ŞU ANKİ bağlantının ağını bilir; başka ağlar (ev LAN, başka VPN) kullanıcıya sorulur. Hiçbir şey otomatik yazılmaz.
 comp_menu_edit_cidr() {
-    local n="$1" server="$2" cur la seen prefix ip port user key choice c x i k v ans out found
+    local n="$1" server="$2" cur la seen prefix ip port user key choice c x i k v ans out
     local -a list sc sd keep
     prefix=$(module_prefix "$server")
     ip=$(srv_get "$COMP_MENU_DIR" "$prefix" IP); port=$(srv_get "$COMP_MENU_DIR" "$prefix" PORT); port="${port:-22}"
@@ -334,7 +349,7 @@ comp_menu_edit_cidr() {
             0|q|Q) return 0 ;;
             e|E)
                 IFS= read -r -p "CIDR (örn. 192.168.1.0/24): " c || return 1
-                if out=$(comp_vars_check "$COMP_MENU_MF" "$n" "$c" 2>&1); then list+=("$c"); else echo "⚠️  $out"; fi ;;
+                if out=$(comp_vars_check "$COMP_MENU_MF" "$n" "$c" 2>&1); then _comp_menu_cidr_add "$c"; else echo "⚠️  $out"; fi ;;
             d|D)
                 IFS= read -r -p "Silinecek sıra numarası: " x || return 1
                 if [[ "$x" =~ ^[0-9]+$ ]] && [ "$x" -ge 1 ] && [ "$x" -le "${#list[@]}" ]; then
@@ -360,9 +375,7 @@ comp_menu_edit_cidr() {
                 return 0 ;;
             *)
                 if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#sc[@]}" ]; then
-                    c="${sc[$((choice - 1))]}"; found=0
-                    for v in ${list[@]+"${list[@]}"}; do [ "$v" = "$c" ] && found=1; done
-                    if [ "$found" -eq 1 ]; then echo "Zaten listede."; else list+=("$c"); fi
+                    _comp_menu_cidr_add "${sc[$((choice - 1))]}"
                 else echo "Geçersiz seçim."; fi ;;
         esac
     done
