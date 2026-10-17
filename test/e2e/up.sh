@@ -7,7 +7,7 @@ PORT="${E2E_PORT:-2222}"
 NAME="sshpocket-e2e"
 
 command -v docker >/dev/null || { echo "docker bulunamadı"; exit 1; }
-docker info >/dev/null 2>&1 || { echo "Docker çalışmıyor. Docker Desktop'u açın."; exit 1; }
+docker info >/dev/null 2>&1 || { echo "Docker çalışmıyor (Colima: 'colima start'; Docker Desktop: uygulamayı açın)."; exit 1; }
 
 # Rastgele test şifresi (yalnızca bu yerel konteyner için)
 if [ ! -f .secrets ]; then

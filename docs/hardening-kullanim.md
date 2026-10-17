@@ -45,6 +45,12 @@ Sonra `.vars` dosyasını düzeltip `apply`'ı yeniden çalıştırın ki dosya 
 bağlantı kaybolursa sunucu `hardening_rollback_timeout` (varsayılan 300 sn) sonra **SSH drop-in'ini ve ufw'yi** önceki duruma döndürür; o sürede erişim
 olmayabilir. Paketler, sysctl, auditd, fail2ban ve AIDE geri alınmaz.
 
+## Denemek için güvenli laboratuvar (Docker)
+
+Gerçek bir sunucuyu riske atmadan akışı (`preview` → `apply`, erişim ağı tuzağı, hata yolları) denemek için tek kullanımlık, systemd'li bir **Ubuntu 26.04
+Docker LAB'ı** vardır: `./test/e2e/lab/up.sh && bats test/e2e/components.bats`. Sınırları (çekirdek paylaşılır, `auditd` taklit edilir) ve kurulum için
+[test/e2e/lab/README.md](../test/e2e/lab/README.md). Gerçek bir VM'de son doğrulama yine önerilir.
+
 ## Bilinen küçük pürüzler (paket tarafı)
 - Her çalıştırmada `Could not match supplied host pattern, ignoring: ubuntu` uyarısı: playbook'lar `hosts: "hardening:ubuntu"` der, eski `ubuntu` grubu yoktur. Zararsızdır.
 - `INJECT_FACTS_AS_VARS` kullanımdan kaldırma uyarıları: ansible-core 2.24'te `ansible_distribution` yerine `ansible_facts[...]` gerekecek.
