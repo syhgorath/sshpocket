@@ -2,7 +2,7 @@
 
 > **Durum (2026-10-17):** Aşama 1 (veri ayrımı), Aşama 2 (paket altyapısı: kilit, imza, kurulum, bildirim, venv, `--doctor`, `--components`) ve
 > **Aşama 3 (🛡️ Hardening: `--components run`, çalıştırma öncesi kapılar, sunucu menüsünde Paketler/Değişkenler/Geçmiş)** **uygulandı** ve sshpocket **3.6.0**'da.
-> `linux-hardening 0.2.0` gerçek bir Ubuntu 26.04 sunucusunda ve Docker LAB'ında `preview` + `apply` ile denendi. **Sırada:** Aşama 4 (🧰 Araçlar, `runner: script`),
+> `linux-hardening 0.2.0` ve (2026-10-18) **0.3.0** gerçek bir Ubuntu 26.04 sunucusunda ve Docker LAB'ında `preview` + `apply` ile denendi. **Sırada:** Aşama 4 (🧰 Araçlar, `runner: script`),
 > klasik knock sunucu paketi, rpi/Proxmox profilleri. Kararlar 2026-10-10'da alındı; uygulama kararları [package-standard.md](package-standard.md) §13-§14'te.
 >
 > **Uygulamada tasarımdan sapmalar:** (1) bildirim `component.json`'dır (YAML değil; bkz. package-standard §13); (2) daha yeni bir paket

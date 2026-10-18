@@ -93,7 +93,7 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
   use `numbers` if a terminal misbehaves.
 - **`./start.sh --doctor`:** prerequisite check (ssh tools, Python range, venv, disk, network); read-only, installs nothing.
 - **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new`; run an installed package's action: `./start.sh --components run <package> <action> <server>` (connects to the server; preview/confirmation gates apply).
-  `linux-hardening 0.3.0` is in the lock (every action tried through sshpocket on the Docker LAB; **0.2.0** was tried with `preview` + `apply` on a real Ubuntu 26.04 VM, a real-VM run of 0.3.0 through sshpocket is still pending). Usage and the **access-network trap**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish); standard: [docs/package-standard.md](docs/package-standard.md).
+  `linux-hardening 0.3.0` is in the lock (every action tried through sshpocket on the Docker LAB; `rollback_status` → `preview` → `apply` tried on a real Ubuntu 26.04.1 VM). Usage and the **access-network trap**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish); standard: [docs/package-standard.md](docs/package-standard.md).
 - Automated tests (Bats, bash 5 and macOS bash 3.2) + ShellCheck run in CI on every PR.
 
 ## Sending the key to the server
