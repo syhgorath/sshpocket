@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- `components validate`: adında `password`/`token` geçen **bool ve int** değişkenler (örn. `hardening_password_inactive_days`, gün sayısı) artık "gizli değer izlenimi" uyarısı vermez; yanlış alarmdı (bool/int parola taşıyamaz). Metin alabilen türler (string, list) için uyarı aynen sürer.
+
 ### Test (geliştirici)
 - Docker LAB e2e: `audit` (lynis kurulumu, rapor/özet 0600-0700 izinleri, `summary.json` içeriği), `rollback_now` (armed değilken etkisiz; armed iken sonraki ufw/sshd değişiklikleri geri alınır) ve `rollback_disarm` (armed ve yedek silinir) sshpocket üzerinden uçtan uca denendi. Üretim kodu değişmedi.
 
