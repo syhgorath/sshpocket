@@ -140,6 +140,14 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     run comp_exec_action "$INFO" demo 1.0.0 preview <<<"e"; [ "$status" -eq 0 ]
 }
 
+@test "yürütme: warn_if onayı salt okunur durum eylemlerinde SORULMAZ; değiştirici (audit) ve ön koşul (preview) eylemlerinde sorulur" {
+    printf 'allow_from=10.1.10.0/24\nrb_enabled=false\n' > "$T/values"
+    run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 0 ]; [ -e "$T/args" ]
+    rm -f "$T/args"
+    run comp_exec_action "$INFO" demo 1.0.0 audit <<<$'e\nh'; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+    run comp_exec_action "$INFO" demo 1.0.0 preview <<<"h"; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+}
+
 @test "yürütme: apply, taze preview kaydından sonra çalışır" {
     comp_gate_record demo web1 1.0.0 preview ok
     run comp_exec_action "$INFO" demo 1.0.0 apply <<<"e"

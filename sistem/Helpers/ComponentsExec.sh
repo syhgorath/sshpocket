@@ -87,7 +87,9 @@ _comp_exec_body() {
     while IFS= read -r line; do
         case "$line" in warn=*) warn_names+=("${line#warn=}") ;; esac
     done <<< "$w"
-    comp_gate_warn_vars ${warn_names[@]+"${warn_names[@]}"} || return "$refused"
+    if comp_gate_warn_applies "$info" "$action"; then
+        comp_gate_warn_vars ${warn_names[@]+"${warn_names[@]}"} || return "$refused"
+    fi
 
     # ---- onay (effects + uyarılar gösterilir) ----
     comp_gate_confirm "$info" "$action" "$server" || return "$refused"

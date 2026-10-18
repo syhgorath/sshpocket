@@ -105,7 +105,7 @@ Kurallar: `effects` boş olmayan eylem onaysız çalışmaz; `destructive` ve `c
 - sshpocket değeri **kendisi doğrular** (tür, aralık, `required`); geçersiz değer çalıştırmayı başlatmaz.
 - **Gizli değer yoktur:** `secret` türü bu sürümde **yok**. Parola/anahtar paket değişkeni olamaz; sshpocket bunları
   değişken dosyasına yazmaz.
-- `warn_if`: değer buna eşitse arayüz uyarı gösterir ve onay ister.
+- `warn_if`: değer buna eşitse arayüz uyarı gösterir ve onay ister. Onay yalnızca **değiştiren** eylemlerde ve başka bir eylemin ön koşulu olan eylemlerde (örn. `preview`) sorulur; salt okunur durum/rapor eylemleri (`rollback_status`) sormaz. **Varsayılanı `warn_if`'e eşit olan değişken her çalıştırmada uyarı tetikler**: varsayılandan sapmayı yakalamak için `warn_if`'i varsayılanın TERSİ yapın.
 - Değerler kullanıcı klasöründe geçici, izni 600 olan bir değişken dosyasıyla verilir, iş bitince silinir.
 
 ## 7. Çalıştırma sözleşmesi

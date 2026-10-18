@@ -155,6 +155,20 @@ comp_gate_confirm() {
     esac
 }
 
+# comp_gate_warn_applies <bilgi> <eylem> → 0 ise warn_if onayı bu eylemde sorulur: eylem değiştiriciyse YA DA başka bir eylemin
+# ön koşuluysa (preview: riskli ayarı apply'dan önce göstermek için). Salt okunur durum/rapor eylemleri (rollback_status vb.) sormaz.
+comp_gate_warn_applies() {
+    local info="$1" action="$2" a r
+    comp_gate_mutating "$info" "$action" && return 0
+    while IFS= read -r a; do
+        [ -n "$a" ] || continue
+        for r in $(comp_action_get "$info" "$a" requires | tr ',' ' '); do
+            [ "$r" = "$action" ] && return 0
+        done
+    done <<< "$(comp_info_all "$info" action)"
+    return 1
+}
+
 # comp_gate_warn_vars <ad>... → warn_if eşleşen her değişken için ayrıca onay ister (e/evet)
 comp_gate_warn_vars() {
     local n ans

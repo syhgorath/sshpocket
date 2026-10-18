@@ -82,6 +82,20 @@ teardown() {
     run comp_gate_profile "$INFO" "";           [ "$status" -ne 0 ]
 }
 
+@test "warn_applies: değiştirici ya da başka eylemin ön koşulu ise evet; salt okunur durum eylemi hayır" {
+    cat > "$T/w.json" <<'JSON'
+{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "actions":{
+  "preview":{"cmd":"ansible-playbook a.yml --check","effects":[]},
+  "status":{"cmd":"ansible-playbook s.yml","effects":[]},
+  "apply":{"cmd":"ansible-playbook c.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no"}}}
+JSON
+    local W; W=$(comp_manifest_info "$T/w.json" demo 1.0.0)
+    run comp_gate_warn_applies "$W" apply;   [ "$status" -eq 0 ]
+    run comp_gate_warn_applies "$W" preview; [ "$status" -eq 0 ]
+    run comp_gate_warn_applies "$W" status;  [ "$status" -ne 0 ]
+}
+
 # ---------- requires ----------
 @test "requires: kayıt yokken reddedilir; preview ok sonrası geçer; dizin 0700, dosya 0600" {
     run comp_gate_requires "$INFO" demo web1 1.0.0 apply; [ "$status" -ne 0 ]

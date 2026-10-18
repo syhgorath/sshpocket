@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Düzeltildi
+- Paket çalıştırma: `warn_if` ("riskli değer") onayı artık salt okunur durum eylemlerinde (örn. `rollback_status`) sorulmaz; yalnızca değiştiren eylemlerde ve ön koşul olan eylemlerde (`preview`) sorulur. Önceden her eylemde sorulduğu için varsayılanı zaten uyarı değerinde olan bir değişken (linux-hardening 0.3.0'da `hardening_disable_apport`) en zararsız eylemi bile onaya bağlıyordu.
 - `components validate`: adında `password`/`token` geçen **bool ve int** değişkenler (örn. `hardening_password_inactive_days`, gün sayısı) artık "gizli değer izlenimi" uyarısı vermez; yanlış alarmdı (bool/int parola taşıyamaz). Metin alabilen türler (string, list) için uyarı aynen sürer.
 
 ### Test (geliştirici)
