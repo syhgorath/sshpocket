@@ -139,6 +139,20 @@ or use **⬆️ Check for updates / update** in the main menu.
 - A write-protected USB cannot be updated (by design).
 - Note: the updater ships with `v2.2.0`; older copies need one manual update first.
 
+### Verifying your first download
+`--update` verifies signatures itself, but it cannot verify your **first copy** (the archive you downloaded from the Release page): that trust rests on GitHub and HTTPS.
+You can verify the archive yourself before unpacking it (OpenSSH ≥ 8.0, ships with macOS). The key fingerprint is `SHA256:0gjAyj8b7VlmtHIFbwmgAmKjK06sw/a5wdEoE8UECwU`;
+confirm it with the maintainer through a **different channel** rather than trusting the file in the repo blindly.
+
+```bash
+# after downloading sshpocket-X.Y.Z.tar.gz and sshpocket-X.Y.Z.tar.gz.sig from the Release:
+cat > /tmp/sshpocket_signers <<'EOF'
+sshpocket-release namespaces="sshpocket-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
+EOF
+ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket-release \
+  -s sshpocket-X.Y.Z.tar.gz.sig < sshpocket-X.Y.Z.tar.gz        # must print "Good ... signature"
+```
+
 ## Security model
 
 - **Passphrases are never written to disk.** They live in the Keychain (`USBMonitor_<PREFIX>_Passphrase`)

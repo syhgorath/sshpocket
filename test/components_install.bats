@@ -125,6 +125,27 @@ nothing_installed() { [ ! -e "$SSHPOCKET_COMPONENTS_DIR/demo/current" ] && [ -z 
     nothing_installed
 }
 
+@test "kurulum: GÜVENİLEN anahtarla ama yanlış ad alanıyla (sshpocket-release) imzalı paket reddedilir" {
+    make_pkg 1.0.0
+    rm -f "$T/demo-1.0.0.tar.gz.sig"
+    ssh-keygen -q -Y sign -f "$T/good" -n sshpocket-release "$T/demo-1.0.0.tar.gz"
+    run install_ver 1.0.0
+    [ "$status" -ne 0 ]
+    nothing_installed
+}
+
+@test "kurulum: kilitte signers satırı boş ya da bozuksa hiçbir şey kurulmaz" {
+    make_pkg 1.0.0
+    sed -i.bak 's/^signers = .*/signers = /' "$SSHPOCKET_COMPONENTS_LOCK"
+    run install_ver 1.0.0
+    [ "$status" -ne 0 ]
+    nothing_installed
+    sed -i.bak 's/^signers = .*/signers = anahtar-degil/' "$SSHPOCKET_COMPONENTS_LOCK"
+    run install_ver 1.0.0
+    [ "$status" -ne 0 ]
+    nothing_installed
+}
+
 @test "arşiv saldırıları reddedilir: .., mutlak yol, farklı kök, symlink, hardlink, fifo" {
     local m
     for m in dotdot abs otherroot symlink hardlink fifo; do
