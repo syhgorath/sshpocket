@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi (belge ve test)
+- README (TR/EN): **"İlk indirmeyi doğrulama"**: `--update` yalnızca sonraki sürümleri doğrular; ilk indirilen arşivi `ssh-keygen -Y verify` ile elle doğrulama tarifi ve anahtarın parmak izi. Bir test README'deki anahtar/parmak izinin `sistem/release_signers` ile aynı kaldığını denetler.
+- Test: paket kurulumunda **güvenilen anahtarla ama yanlış ad alanıyla** (`sshpocket-release`) imzalı paket reddedilir; kilitte `signers` satırı boş/bozuksa hiçbir şey kurulmaz.
+
 ### Doğrulandı (belge)
 - `linux-hardening 0.3.0`, sshpocket 3.6.2 ile USB'den gerçek bir Ubuntu 26.04.1 VM'inde denendi: `rollback_status` → `preview` → `apply` (ok=117 changed=35 failed=0); hardening sonrası yeni SSH bağlantısı doğrulaması geçti, güvenlik ağı disarm edildi; ufw/sshd/postfix durumu bağımsız kontrol edildi. Denenmedi: `audit`, `rollback_now`, `rollback_disarm` (yalnızca LAB), menü ve Terminal açma.
 

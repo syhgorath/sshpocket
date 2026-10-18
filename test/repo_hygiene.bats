@@ -40,3 +40,13 @@ load test_helper
     [ "$status" -ne 0 ] || { echo "ÇALIŞTIRILABİLİR DEĞİL: $output"; return 1; }
 }
 
+@test "README'lerdeki imza anahtarı ve parmak izi sistem/release_signers ile aynı (anahtar değişince belge unutulmasın)" {
+    local key fp
+    key=$(grep -v '^#' "$ROOT/sistem/release_signers" | head -n1 | cut -d' ' -f3,4)
+    fp=$(printf '%s\n' "$key" | ssh-keygen -lf - | cut -d' ' -f2)
+    [ -n "$key" ] && [ -n "$fp" ]
+    grep -qF "$key" "$ROOT/README.md"
+    grep -qF "$key" "$ROOT/README.en.md"
+    grep -qF "$fp" "$ROOT/README.md"
+    grep -qF "$fp" "$ROOT/README.en.md"
+}

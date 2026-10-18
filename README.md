@@ -138,6 +138,20 @@ ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle**.
 - USB yazma korumalıysa güncelleme yapılamaz (bilerek).
 - Not: güncelleyici `v2.2.0` ile gelir; daha eski kopyalar bir kez elle güncellenmelidir.
 
+### İlk indirmeyi doğrulama
+`--update` imzayı kendisi doğrular, ama **ilk kopyayı** (Release sayfasından indirdiğiniz arşivi) doğrulayamaz: ona güveniniz GitHub'a ve HTTPS'e dayanır.
+İsterseniz arşivi açmadan önce kendiniz doğrulayın (OpenSSH ≥ 8.0, macOS'ta hazır). Anahtarın parmak izi `SHA256:0gjAyj8b7VlmtHIFbwmgAmKjK06sw/a5wdEoE8UECwU`;
+bunu bakımcıdan **başka bir yoldan** da teyit etmeniz, depodaki dosyaya körü körüne güvenmekten iyidir.
+
+```bash
+# Release'ten sshpocket-X.Y.Z.tar.gz ve sshpocket-X.Y.Z.tar.gz.sig dosyalarını indirdikten sonra:
+cat > /tmp/sshpocket_signers <<'EOF'
+sshpocket-release namespaces="sshpocket-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
+EOF
+ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket-release \
+  -s sshpocket-X.Y.Z.tar.gz.sig < sshpocket-X.Y.Z.tar.gz        # "Good ... signature" yazmalı
+```
+
 ## Güvenlik modeli
 
 - **Passphrase diske yazılmaz.** Keychain'de durur (`USBMonitor_<ÖNEK>_Passphrase`),
