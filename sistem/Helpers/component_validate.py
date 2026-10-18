@@ -287,7 +287,8 @@ def check_vars(root, info):
         notes = []
         if typed == "0":
             notes.append("eski biçim (yalnızca ad; tür/varsayılan/açıklama üst verisi yok)")
-        if SECRET_NAME.search(name):
+        # bool/int bir parola taşıyamaz (örn. password_inactive_days = gün sayısı): yalnızca metin alabilen türlerde uyar
+        if SECRET_NAME.search(name) and vtype not in ("bool", "int"):
             notes.append("adı parola/anahtar/token izlenimi veriyor: gizli değer değişken OLAMAZ (standart §6)")
         if name not in code:
             notes.append("playbook/rol/vars içinde kullanılmıyor")

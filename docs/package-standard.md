@@ -191,7 +191,7 @@ Her iki runner için ortak kurallar:
 | Paket içinde sembolik bağ, özel anahtar bloğu, `.env`/`id_*`/`.pem` yok | ❌ hata |
 | Değiştiren eylemin salt okunur ön koşulu (`preview`), `warnings`'i ve `requires_sudo`'su var | ⚠️ uyarı (geri alma/kurtarma eylemleri bilerek ön koşulsuz olabilir) |
 | `outputs.format` varsa playbook'ta `SSHPOCKET_RESULT <id>.<eylem>` çıktısı var | ⚠️ uyarı (dinamik üretilen metin yanlış alarm verebilir) |
-| Değişken adı parola/token/anahtar izlenimi vermiyor; her değişken kullanılıyor; üst veri (tür) var | ⚠️ uyarı |
+| Değişken adı parola/token/anahtar izlenimi vermiyor (bool/int değişkenler hariç); her değişken kullanılıyor; üst veri (tür) var | ⚠️ uyarı |
 | Değiştiren eylem için belgede geri alma/kurtarma anlatılmış (anahtar sözcük) | ⚠️ uyarı |
 | `.sig` arşivin yanında | ⚠️ uyarı (imzayı `scripts/lock-component.sh` doğrular) |
 | Geri almanın kapsamı dürüstçe yazılı mı; kilit PR'ının tek satır olması | elle (insan kontrolü) |

@@ -142,6 +142,15 @@ val() { run python3 -I "$VAL" "$@"; }
     [[ "$output" == *"demo_eski_bicim: eski biçim"* ]] || false
 }
 
+@test "gizli-ad uyarısı: adında password/token geçen bool ve int değişkenler (gün sayısı gibi) UYARILMAZ; string olan uyarılır" {
+    jedit "$P/component.json" 'd["vars"]=d["vars"]+[{"name":"demo_password_inactive_days","type":"int"}, {"name":"demo_token_enabled","type":"bool"}, {"name":"demo_password_file","type":"string"}]'
+    val "$P"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"demo_password_inactive_days: adı parola"* ]] || false
+    [[ "$output" != *"demo_token_enabled: adı parola"* ]] || false
+    [[ "$output" == *"demo_password_file: adı parola/anahtar/token izlenimi veriyor"* ]] || false
+}
+
 @test "uyarı: outputs.format var ama playbook'ta SSHPOCKET_RESULT çıktısı yok" {
     printf -- '- hosts: all\n  tasks: []\n' > "$P/playbooks/s.yml"
     val "$P"
