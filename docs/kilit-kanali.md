@@ -1,6 +1,6 @@
 # Tasarım: kilit kanalı (paket sürümü için sshpocket sürümü gerekmesin)
 
-> **Durum (2026-10-17): TASARIM TASLAĞI, kod yok.** Karar bekleyen noktalar §9'da. Üretim kodu yazılmadan önce bu belge tartışılır ve kararlar §9'a işlenir.
+> **Durum (2026-10-17): TASARIM, §9 kararları ALINDI, kod yok.** Kodlama zamanı ayrıca kararlaştırılır (§11 sırasıyla, küçük PR'lar).
 
 ## 1. Sorun
 `components.lock` imzalı **sshpocket sürümüyle** gelir. Yeni bir paket sürümü (örn. `linux-hardening 0.2.1`) kullanıcıya ancak **yeni bir sshpocket sürümü** çıkınca ulaşır:
@@ -26,7 +26,7 @@ ama bakımcıda darboğaz: her paket sürümü, istemcide hiçbir değişiklik o
 | Ağ üzerinde araya giren (MITM, TLS inceleyen güvenlik yazılımı) | Kilit dosyasını değiştirmek | İmza (çevrimdışı anahtar); TLS yalnızca taşıyıcı |
 | GitHub hesabı/repo ele geçirilirse | Sahte kilit veya eski kilit sunmak | İmza anahtarı GitHub'da DEĞİL; **sayaç** + **son kullanma** |
 | **Geri alma (rollback)** | Eski, zafiyetli bir kilidi/sürümü yeniden sunmak | Tek yönlü `serial` sayacı; yerelde görülen en yüksek değer saklanır |
-| **Donma (freeze)** | Güncellemeyi sonsuza dek gizlemek | `expires`: süresi dolan kilit YENİ kurulum yapmaz (kurulu olanı bozmaz) |
+| **Donma (freeze)** | Güncellemeyi sonsuza dek gizlemek | `expires` (90 gün): süresi dolan kilit YENİ kurulum yapmaz (kurulu olanı bozmaz) |
 | **Karışık eşleştirme (mix-and-match)** | Bir kilidin satırlarını başka sürümlerle karıştırmak | Kilidin TAMAMI tek imzayla imzalanır |
 | Kötü niyetli/hatalı paket sürümü | Sunucularda root ile kod çalıştırmak | Paket arşivi ayrıca imzalı + sha256 kilitte; **izin farkı** onayı (§6); `validate` kapısı |
 | Sızan/yanlış kilit | Zafiyetli sürüm yaygınlaşır | **İptal (kill switch)** satırı: o sürüm çalıştırılmaz (§7) |
@@ -71,7 +71,7 @@ Kilit, bir sürümü **engelli** işaretleyebilir: `[linux-hardening]` altında 
 (*"bu sürüm bakımcı tarafından geri çekildi; `--components channel update`"*) ve menüde ❌ görünür; kurulu dosyalar silinmez. Güvenlik düzeltmeleri için bunun sshpocket sürümünü beklememesi kanalın en değerli kullanımıdır.
 
 ## 7b. Süre dolumu
-`expires` geçmişse: **yeni kurulum/güncelleme yapılmaz**, kurulu ve kilitle eşleşen paketler çalışmaya devam eder (kullanıcıyı kilitlemeyiz), ekranda uyarı çıkar. Önerilen süre: 90 gün; bakımcı en az ayda bir kanalı yeniler (bir cron/`lock` PR'ı değil, bir sürüm komutu).
+`expires` geçmişse: **yeni kurulum/güncelleme yapılmaz**, kurulu ve kilitle eşleşen paketler çalışmaya devam eder (kullanıcıyı kilitlemeyiz), ekranda uyarı çıkar. Süre: 90 gün; bakımcı süre dolmadan kanalı yeniden imzalar (`lock-channel.sh`; sürüm gerekmez), hatırlatma issue'su §9/5.
 
 ## 8. Komutlar ve menü
 ```
@@ -81,15 +81,18 @@ Kilit, bir sürümü **engelli** işaretleyebilir: `[linux-hardening]` altında 
 ```
 Menü: 📦 Paketler ekranında "Güncelleme var" rozeti; seçilince fark ve onay.
 
-## 9. Açık kararlar (öneri ile)
-| # | Soru | Öneri |
+## 9. Kararlar (2026-10-17, bakımcı ile)
+| # | Soru | KARAR |
 |---|---|---|
-| 1 | Kanal YENİ paket ekleyebilsin mi, yoksa yalnızca var olanların sürümünü mü güncellesin? | **Başta yalnızca mevcutlar**; yeni paket sshpocket sürümüyle gelir. Sonra, büyük uyarılı onayla açılabilir |
-| 2 | Kanal imzası için ayrı anahtar mı? | Önce **aynı anahtar, ayrı ad alanı**; ayrı anahtar bir sonraki adım |
-| 3 | `expires` süresi | 90 gün; kanal otomatik yenilenir mi, elle mi? **Elle** (bakımcı komutu) |
-| 4 | Eski istemciler | Etkilenmez: kanalı hiç sorgulamazlar; sorgulasalar bile bilinmeyen anahtardan dolayı dosyayı reddederler (fail-closed) |
-| 5 | İzin farkı zorunlu mu? | **Evet** (yetki genişlemesinde onay olmadan kurulum yok) |
-| 6 | Barındırma | sshpocket reposunun Release'leri (yeni altyapı yok) |
+| 1 | Kanal YENİ paket ekleyebilsin mi? | **Evet, ama ayrı ve belirgin onayla.** Her ekleme zaten bakımcının incelemesinden ve imzasından geçer; asıl risk anahtar çalınmasıdır ve bu sürüm imzasında da vardır. Yeni paket, güncellemeden farklı, büyük uyarılı bir onay ister ("yeni paket: X; şunları yapabilir") |
+| 2 | Kanal imzası için ayrı anahtar mı? | **Aynı anahtar, ayrı ad alanı** (`sshpocket-lock`). Anahtar süresiz kalır; rotasyon (eski anahtarın imzaladığı "yeni anahtar" bildirimi) ayrı bir tasarım, ihtiyaç doğunca |
+| 3 | İzin farkı zorunlu mu? | **Evet**, ilk sürümden itibaren (§6) |
+| 4 | `expires` süresi | **90 gün.** Yenileme elle: `scripts/lock-channel.sh` kilidi yeniden imzalar (anahtar değişmez, sshpocket sürümü GEREKMEZ) |
+| 5 | Yenileme hatırlatması | Yayındaki kilidin `expires`'ine bakan zamanlanmış bir GitHub işi, 30 günden az kalınca issue açar (imza yine bakımcıda; anahtar CI'a konmaz). Kullanıcı tarafında `doctor`/kanal ekranında kalan gün uyarısı |
+| 6 | Eski istemciler | Etkilenmez: kanalı hiç sorgulamazlar; sorgulasalar bile bilinmeyen anahtardan dolayı dosyayı reddederler (fail-closed) |
+| 7 | Barındırma | sshpocket reposunun Release'leri (yeni altyapı yok) |
+
+**Çalışma modeli:** başkası paket yazar (şablonla) ve bakımcıya gönderir; bakımcı `components validate` ve kod incelemesinden sonra imzalar, kilide ekler. İmza = inceleme onayı. Kanal yalnızca bu eklemenin bir sshpocket sürümüne bağlı olmasını kaldırır.
 
 ## 10. Daha sonra: çok kaynaklı depo
 Başka yazarların depoları ve kullanıcının eklediği anahtarlar (apt `signed-by` mantığı) **ancak gerçek bir üçüncü taraf ihtiyacı doğarsa**. Gerekenler: kullanıcının anahtarı açıkça eklemesi (büyük uyarı),
