@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **`components.lock`: `linux-hardening` 0.2.0 → 0.3.0** (CIS Ubuntu 26.04 Level 1 eşlemesi; yeni roller `files`/`sudo`/`docker`; değişken sayısı 5 → 27). Ek: davranışı değiştiren yeni varsayılan-AÇIK ayarlar paketin CHANGELOG'unda ve README "Dikkat" tablosunda. Docker LAB'da 16 e2e testin tamamı 0.3.0 ile geçti. **Gerçek VM'de sshpocket üzerinden denenmedi.**
+- Docker LAB varsayılan değişkenleri `hardening_disable_apport=false` ve `hardening_disable_update_notifier_motd=false` yazar (0.3.0'da varsayılanları `warn_if` ile aynı olduğundan her çalıştırmada onay istemi çıkıyor; syhgorath/linux-hardening#74).
+
 ### Düzeltildi
 - Paket çalıştırma: `warn_if` ("riskli değer") onayı artık salt okunur durum eylemlerinde (örn. `rollback_status`) sorulmaz; yalnızca değiştiren eylemlerde ve ön koşul olan eylemlerde (`preview`) sorulur. Önceden her eylemde sorulduğu için varsayılanı zaten uyarı değerinde olan bir değişken (linux-hardening 0.3.0'da `hardening_disable_apport`) en zararsız eylemi bile onaya bağlıyordu.
 - `components validate`: adında `password`/`token` geçen **bool ve int** değişkenler (örn. `hardening_password_inactive_days`, gün sayısı) artık "gizli değer izlenimi" uyarısı vermez; yanlış alarmdı (bool/int parola taşıyamaz). Metin alabilen türler (string, list) için uyarı aynen sürer.

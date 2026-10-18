@@ -91,7 +91,7 @@ passphrase'i **macOS Keychain**'e kaydeder.
   bir terminalde sorun çıkarırsa `numbers` yapın.
 - **`./start.sh --doctor`:** ön koşul denetimi (ssh araçları, Python aralığı, venv, disk, ağ); yalnızca okur, hiçbir şey kurmaz.
 - **Paketler (altyapı):** imzalı, kilitli (`components.lock`) paketlerin güvenli kurulumu: `./start.sh --components list|sync|check-new`; kurulu paketin eylemi: `./start.sh --components run <paket> <eylem> <sunucu>` (sunucuya bağlanır; önizleme/onay kapıları vardır); paket yazarları için sözleşme uyum denetimi: `./start.sh --components validate <paket|dizin|arşiv> [--strict]` (statik).
-  Kilitte `linux-hardening` vardır (gerçek bir Ubuntu 26.04 VM'inde `preview` + `apply` ile denendi). Kullanım ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md); standart: [docs/package-standard.md](docs/package-standard.md).
+  Kilitte `linux-hardening 0.3.0` vardır (sshpocket üzerinden Docker LAB'da tüm eylemler denendi; **0.2.0** gerçek bir Ubuntu 26.04 VM'inde `preview` + `apply` ile denenmişti, 0.3.0'ın sshpocket ile gerçek VM'de denemesi bekliyor). Kullanım ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md); standart: [docs/package-standard.md](docs/package-standard.md).
 - Otomatik testler (Bats, bash 5 ve macOS bash 3.2) + ShellCheck her PR'da CI'da çalışır.
 
 ## Key'i sunucuya gönderme
