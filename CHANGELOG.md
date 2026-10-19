@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Doğrulandı (belge)
+- `linux-hardening 0.4.0`, sshpocket 3.6.3 ile USB'den gerçek bir Ubuntu 26.04.1 VM'inde **taze kurulumda** denendi: `audit` (Lynis hardening_index 62, 0 uyarı) → `preview` → `apply` (ok=131 changed=38 failed=0). Hardening sonrası yeni SSH bağlantısı doğrulaması geçti, güvenlik ağı disarm edildi; ufw, sshd, sysctl (`kernel.sysrq=0`, `fs.protected_fifos=2`), `/etc/sudoers.d 0750`, `libpam-tmpdir`, `apt-listchanges`, AIDE zamanlayıcısı ve postfix yokluğu bağımsız kontrol edildi. `warn_if` onayı çıkmadı (linux-hardening#74 düzeltmesi gerçek akışta çalışıyor). Denenmedi: gerçek VM'de 0.3.0 üzerine ikinci koşu, `rollback_now`/`rollback_disarm`, menü ve Terminal açma.
+
 ## [3.6.3] - 2026-10-19
 
 Paket sürümü güncellemesi: `linux-hardening` 0.4.0 kilitlendi.
