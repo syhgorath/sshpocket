@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.3] - 2026-10-19
+
+Paket sürümü güncellemesi: `linux-hardening` 0.4.0 kilitlendi.
+
 ### Değişti
 - **`components.lock`: `linux-hardening` 0.3.0 → 0.4.0** (Lynis ölçümünden küçük maddeler, salt okunur raporlar: root ortamı, `/tmp` ve `/dev/shm`, AIDE zamanlayıcı; `su` kısıtı ve Docker `daemon.json` seçenekleri varsayılan KAPALI; değişken sayısı 27 → 38; `warn_if` apport/motd'dan kaldırıldı, linux-hardening#74 kapandı). Davranışı değiştiren yeni varsayılan-AÇIK ayarlar paketin CHANGELOG'unda (`kernel.sysrq=0`, `libpam-tmpdir`, `/etc/sudoers.d 0750` vb.). Docker LAB'da 16 e2e testin tamamı geçti. **Gerçek VM'de 0.4.0 sshpocket üzerinden denenmedi** (0.3.0 denendi).
 - Docker LAB varsayılan değişkenlerinden `hardening_disable_apport=false` ve `hardening_disable_update_notifier_motd=false` kaldırıldı (artık gerekmiyor).
