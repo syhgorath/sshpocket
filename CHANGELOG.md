@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **`components.lock`: `linux-hardening` 0.3.0 → 0.4.0** (Lynis ölçümünden küçük maddeler, salt okunur raporlar: root ortamı, `/tmp` ve `/dev/shm`, AIDE zamanlayıcı; `su` kısıtı ve Docker `daemon.json` seçenekleri varsayılan KAPALI; değişken sayısı 27 → 38; `warn_if` apport/motd'dan kaldırıldı, linux-hardening#74 kapandı). Davranışı değiştiren yeni varsayılan-AÇIK ayarlar paketin CHANGELOG'unda (`kernel.sysrq=0`, `libpam-tmpdir`, `/etc/sudoers.d 0750` vb.). Docker LAB'da 16 e2e testin tamamı geçti. **Gerçek VM'de 0.4.0 sshpocket üzerinden denenmedi** (0.3.0 denendi).
+- Docker LAB varsayılan değişkenlerinden `hardening_disable_apport=false` ve `hardening_disable_update_notifier_motd=false` kaldırıldı (artık gerekmiyor).
+
 ### Eklendi (belge ve test)
 - README (TR/EN): **"İlk indirmeyi doğrulama"**: `--update` yalnızca sonraki sürümleri doğrular; ilk indirilen arşivi `ssh-keygen -Y verify` ile elle doğrulama tarifi ve anahtarın parmak izi. Bir test README'deki anahtar/parmak izinin `sistem/release_signers` ile aynı kaldığını denetler.
 - Test: paket kurulumunda **güvenilen anahtarla ama yanlış ad alanıyla** (`sshpocket-release`) imzalı paket reddedilir; kilitte `signers` satırı boş/bozuksa hiçbir şey kurulmaz.
