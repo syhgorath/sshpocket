@@ -17,9 +17,7 @@ cp "$STATE/id_lab" "$STATE/servers/lab/id_ed25519_lab"; chmod 600 "$STATE/server
 printf 'IP=127.0.0.1\nUSER=tester\nPORT=%s\n' "$PORT" > "$STATE/servers/lab/server.env"
 # Docker köprüsü 172.17.0.0/16: sunucu bizi 172.17.0.1 olarak görür (gerçek ağ değil, LAB'a özgü)
 # hardening_rollback_timeout=30 (izin verilen en düşük): geri alma testleri hızlı bitsin
-# hardening_disable_apport / _update_notifier_motd = false: linux-hardening 0.3.0'da varsayılanları warn_if ile aynı olduğu için her
-# çalıştırmada onay istemi çıkar (syhgorath/linux-hardening#74); LAB testleri onay beklemesin. #74 düzelince bu iki satır silinebilir.
-printf 'hardening_ssh_allow_from=172.17.0.0/16\nhardening_rollback_timeout=30\nhardening_disable_apport=false\nhardening_disable_update_notifier_motd=false\n' > "$STATE/servers/lab/linux-hardening.vars"
+printf 'hardening_ssh_allow_from=172.17.0.0/16\nhardening_rollback_timeout=30\n' > "$STATE/servers/lab/linux-hardening.vars"
 # ssh sarmalayıcı: ~/.ssh/known_hosts yerine lab'a özgü dosya (OpenSSH $HOME'u yok sayar, bu yüzden PATH'e koyulur).
 # LAB_BREAK_VERIFY=1: paketin "denetleyiciden YENİ bağlantı" doğrulamasını (ControlMaster=no ile tanınır) bilerek başarısız eder (geri alma testi).
 cat > "$STATE/shim/ssh" <<SHIM
