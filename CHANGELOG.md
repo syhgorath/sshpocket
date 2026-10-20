@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.4] - 2026-10-20
+
+`--components prune` eklendi; linux-hardening 0.4.0 gerçek VM'de, profil kapısı gerçek Proxmox VE hostunda denendi.
+
+### Doğrulandı
+- **Profil kapısı gerçek bir Proxmox VE 9 hostunda (Debian 13) denendi:** `--components run linux-hardening rollback_status <proxmox>` → `Profil 'debian-13' bu paketin profilleri arasında yok.`, Ansible başlamadı, sunucuya hiçbir şey yazılmadı. Ubuntu 26.04 için yazılmış sertleştirme Debian/Proxmox'a uygulanmaz. Not: Proxmox'a özgü bir platform denetimi yok (`/etc/pve`); engel "Debian desteklenmiyor" mantığına dayanır, Debian profili eklenmeden önce platform denetimi eklenmelidir.
+
 ### Eklendi
 - **`./start.sh --components prune [--dry-run] [--yes]`:** paket güncellemelerinde yan yana biriken eski sürüm klasörlerini temizler. **Kalanlar:** etkin sürüm (`current`), bir önceki sürüm (geri dönüş için) ve kilitteki sürüm. Yalnızca `<X.Y.Z>` klasörü ve `<X.Y.Z>.files` silinir; `.bozuk-*` (kenara alınmış bozuk kurulum), sembolik bağlar ve geçersiz adlı klasörlere dokunulmaz. Silmeden önce onay ister (`--yes` ile atlanır); `--dry-run` yalnızca listeler. `current`'ı olmayan pakete dokunmaz.
 
