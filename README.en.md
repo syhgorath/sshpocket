@@ -92,7 +92,7 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
   (search + description preview pane). The style is set under ⚙️ Settings (`UI`: `auto` · `fzf` · `arrows` · `numbers`) or with `SSHPOCKET_UI=numbers ./start.sh`;
   use `numbers` if a terminal misbehaves.
 - **`./start.sh --doctor`:** prerequisite check (ssh tools, Python range, venv, disk, network); read-only, installs nothing.
-- **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new`; run an installed package's action: `./start.sh --components run <package> <action> <server>` (connects to the server; preview/confirmation gates apply).
+- **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new|prune`; clean up old version folders with `./start.sh --components prune [--dry-run] [--yes]` (the active, the previous and the locked version are kept); run an installed package's action: `./start.sh --components run <package> <action> <server>` (connects to the server; preview/confirmation gates apply).
   `linux-hardening 0.4.0` is in the lock (every action tried through sshpocket on the Docker LAB; `audit` → `preview` → `apply` tried on a real Ubuntu 26.04.1 VM with 0.4.0 on a fresh install; a second run on top of an existing 0.3.0 install was not tried). Usage and the **access-network trap**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish); standard: [docs/package-standard.md](docs/package-standard.md).
 - Automated tests (Bats, bash 5 and macOS bash 3.2) + ShellCheck run in CI on every PR.
 

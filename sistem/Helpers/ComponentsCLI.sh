@@ -163,6 +163,80 @@ comp_cli_validate() {
     python3 -I "$py" "$@"
 }
 
+# comp_cli_prune [--yes] [--dry-run] → eski sürüm klasörlerini siler. KALANLAR: etkin sürüm (current), bir önceki sürüm (geri dönüş
+# için) ve kilitteki sürüm (kurulu ise). Yalnızca <X.Y.Z> klasörü + <X.Y.Z>.files silinir; .bozuk-* (kenara alınmış bozuk kurulum),
+# sembolik bağlar ve geçersiz adlar DOKUNULMAZ. current'ı olmayan pakete dokunulmaz. --dry-run: yalnızca listeler.
+comp_cli_prune() {
+    local yes=0 dry=0 arg d id base cur lockv prev v rm_list n_rm=0 n_keep
+    for arg in "$@"; do
+        case "$arg" in
+            --yes) yes=1 ;;
+            --dry-run) dry=1 ;;
+            *) echo "kullanım: --components prune [--yes] [--dry-run]" >&2; return 2 ;;
+        esac
+    done
+    local ids_all=""
+    while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        id=$(basename "$d")
+        comp_id_valid "$id" || continue
+        [ -L "$d" ] && continue
+        ids_all="$ids_all$id"$'\n'
+    done < <(find "$(comp_dir)" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+    [ -n "$ids_all" ] || { echo "Kurulu paket yok."; return 0; }
+
+    local removals=""
+    while IFS= read -r id; do
+        [ -n "$id" ] || continue
+        base="$(comp_dir)/$id"
+        cur=$(comp_installed_version "$id")
+        if [ -z "$cur" ]; then echo "  $id: etkin sürüm (current) yok; dokunulmadı"; continue; fi
+        lockv=""
+        if [ -f "$(comp_lock_file)" ] && comp_known "$id"; then lockv=$(comp_get "$id" version); fi
+        prev=""
+        while IFS= read -r d; do
+            v=$(basename "$d")
+            comp_version_valid "$v" || continue
+            [ -L "$d" ] && continue
+            [ "$(comp_version_cmp "$v" "$cur")" = "-1" ] || continue
+            if [ -z "$prev" ] || [ "$(comp_version_cmp "$v" "$prev")" = "1" ]; then prev="$v"; fi
+        done < <(find "$base" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+        rm_list=""; n_keep=0
+        while IFS= read -r d; do
+            v=$(basename "$d")
+            comp_version_valid "$v" || continue
+            [ -L "$d" ] && continue
+            if [ "$v" = "$cur" ] || [ "$v" = "$prev" ] || [ "$v" = "$lockv" ]; then
+                n_keep=$((n_keep + 1))
+            else
+                rm_list="$rm_list$v"$'\n'
+            fi
+        done < <(find "$base" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+        if [ -z "$rm_list" ]; then
+            echo "  $id: temiz (kalan $n_keep sürüm; etkin $cur)"
+        else
+            echo "  $id: etkin $cur, önceki ${prev:--}, kilit ${lockv:--} KALIR; silinecek: $(printf '%s' "$rm_list" | tr '\n' ' ')"
+            while IFS= read -r v; do
+                [ -n "$v" ] || continue
+                removals="$removals$id $v"$'\n'; n_rm=$((n_rm + 1))
+            done <<< "$rm_list"
+        fi
+    done <<< "$ids_all"
+    [ "$n_rm" -gt 0 ] || { echo "Silinecek eski sürüm yok."; return 0; }
+    [ "$dry" -eq 0 ] || { echo "(--dry-run: hiçbir şey silinmedi)"; return 0; }
+    if [ "$yes" -eq 0 ] && ! _comp_confirm "$n_rm eski sürüm klasörü silinsin mi?"; then
+        echo "Atlandı."; return 1
+    fi
+    while IFS=' ' read -r id v; do
+        [ -n "$id" ] || continue
+        if ! comp_id_valid "$id" || ! comp_version_valid "$v"; then continue; fi
+        base="$(comp_dir)/$id"
+        if [ ! -d "$base/$v" ] || [ -L "$base/$v" ]; then continue; fi
+        rm -r -- "${base:?}/${v:?}" && rm -f -- "$base/$v.files" && echo "silindi: $id $v"
+    done <<< "$removals"
+    return 0
+}
+
 components_cli() {
     local sub="${1:-list}"
     [ $# -gt 0 ] && shift
@@ -172,6 +246,7 @@ components_cli() {
         check-new) comp_cli_check_new ;;
         run) comp_cli_run "$@" ;;
         validate) comp_cli_validate "$@" ;;
-        *) echo "kullanım: --components list | sync [--yes] | check-new | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict]" >&2; return 2 ;;
+        prune) comp_cli_prune "$@" ;;
+        *) echo "kullanım: --components list | sync [--yes] | check-new | prune [--yes] [--dry-run] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict]" >&2; return 2 ;;
     esac
 }
