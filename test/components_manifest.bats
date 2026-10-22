@@ -201,3 +201,20 @@ print(json.dumps(d))" > "$T/m.json"
     run comp_prepare demo
     [ "$status" -ne 0 ]
 }
+
+@test "değişken açıklaması en çok 1000 karakter (platform gibi uzun açıklamalar); aşan ve kontrol karakterli reddedilir; uyarı metni sınırı 500 kalır" {
+    local d500 d1000 d1001
+    d500=$(python3 -c "print('a'*500)"); d1000=$(python3 -c "print('a'*1000)"); d1001=$(python3 -c "print('a'*1001)")
+    mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"string\",\"description\":\"$d1000\"}]}"
+    valid
+    mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"string\",\"description\":\"$d1001\"}]}"
+    invalid
+    [[ "$output" == *"description geçersiz metin"* ]] || false
+    mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"string\",\"description\":\"a\\u0007b\"}]}"
+    invalid
+    # eylem uyarı metni 500'ü aşamaz (sınır değişmedi)
+    mf "{$BASE,\"actions\":{\"audit\":{\"cmd\":\"ansible-playbook playbooks/audit.yml\",\"effects\":[],\"warnings\":[\"$d500\"]}}}"
+    valid
+    mf "{$BASE,\"actions\":{\"audit\":{\"cmd\":\"ansible-playbook playbooks/audit.yml\",\"effects\":[],\"warnings\":[\"${d500}a\"]}}}"
+    invalid
+}

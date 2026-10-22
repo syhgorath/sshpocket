@@ -199,6 +199,28 @@ PY
     [[ "$output" == *"imza dosyası yanında"* ]] || false
 }
 
+@test "dizin modu: gitignore'lu geliştirme klasörü (.venv) atlanır ve bildirilir; ARŞİV modu atlamaz (içindeki özel anahtar ❌)" {
+    mkdir -p "$P/.venv/lib"
+    printf '%s %s\n' "-----BEGIN OPENSSH" "PRIVATE KEY-----" > "$P/.venv/lib/x.py"
+    ln -s /etc/passwd "$P/.venv/lib/bag"
+    val "$P"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"geliştirme klasörleri atlandı (.venv)"* ]] || false
+    [[ "$output" != *"❌"* ]] || false
+    rm "$P/.venv/lib/bag"      # sembolik bağlı arşiv zaten açılışta reddedilir; burada içerik taramasını sınıyoruz
+    mkarchive "$T/demo-1.0.0.tar.gz" "demo-1.0.0"
+    val "$T/demo-1.0.0.tar.gz"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"özel anahtar bloğu bulundu: .venv/lib/x.py"* ]] || false
+    [[ "$output" != *"atlandı"* ]] || false
+    # .venv dışındaki bir klasörde aynı şey dizin modunda da yakalanır
+    rm -rf "$P/.venv"; mkdir -p "$P/roles/x"
+    printf '%s %s\n' "-----BEGIN OPENSSH" "PRIVATE KEY-----" > "$P/roles/x/k.yml"
+    val "$P"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"özel anahtar bloğu bulundu: roles/x/k.yml"* ]] || false
+}
+
 @test "arşiv: --unsigned imzalamadan önceki denetimde .sig uyarısını atlar (--strict ile birlikte de 0)" {
     mkarchive "$T/demo-1.0.0.tar.gz" "demo-1.0.0"
     val "$T/demo-1.0.0.tar.gz" --strict

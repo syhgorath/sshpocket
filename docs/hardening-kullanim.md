@@ -77,6 +77,14 @@ Gerçek bir sunucuyu riske atmadan akışı (`preview` → `apply`, erişim ağ�
 Docker LAB'ı** vardır: `./test/e2e/lab/up.sh && bats test/e2e/components.bats`. Sınırları (çekirdek paylaşılır, `auditd` taklit edilir) ve kurulum için
 [test/e2e/lab/README.md](../test/e2e/lab/README.md). Gerçek bir VM'de son doğrulama yine önerilir.
 
-## Bilinen küçük pürüzler (paket tarafı)
-- Her çalıştırmada `Could not match supplied host pattern, ignoring: ubuntu` uyarısı: playbook'lar `hosts: "hardening:ubuntu"` der, eski `ubuntu` grubu yoktur. Zararsızdır.
-- `INJECT_FACTS_AS_VARS` kullanımdan kaldırma uyarıları: ansible-core 2.24'te `ansible_distribution` yerine `ansible_facts[...]` gerekecek.
+## Platformlar: Ubuntu, Proxmox VE, Raspberry Pi
+- **Profil kapısı (sshpocket):** sunucunun `os-release` `ID-VERSION_ID` değeri paketin `supported` profillerinden biri olmalı. Paket **0.6.0** ile `ubuntu-26.04` ve `debian-13` desteklenir.
+  **Proxmox VE 9 ve Raspberry Pi OS da `debian-13` görünür**; sshpocket bunları ayıramaz, kapıyı geçerler. (0.4.0'a kadar `debian-13` desteklenmediği için Proxmox hostu bu kapıda reddediliyordu.)
+- **Platform denetimi (paket):** asıl koruma paketin preflight'ındadır. Proxmox VE hostu (`/etc/pve` ya da `pveversion`) **`generic` platformla ASLA sertleştirilmez**; hiçbir bayrak (`hardening_allow_unsupported` dahil)
+  bunu atlatmaz ve `--check` (preview) içinde de çalışır. Proxmox hostunda gerçek değişiklik için `hardening_platform=proxmox-host` **ve** `hardening_pve_apply=true` gerekir; yanlış platform seçimi (ör. Ubuntu'da `proxmox-host`) da durur.
+- **Platformu ayarlamak:** `hardening_platform` (`generic` | `proxmox-host` | `raspberry-pi`) sunucu başına bir paket değişkenidir: 📝 Değişkenler ekranından ya da `servers/<ad>/linux-hardening.vars` dosyasından (`hardening_platform=proxmox-host`). Serbest metin olarak gösterilir; yanlış değerde paket durur.
+- Proxmox üstündeki **sıradan Ubuntu VM'leri** etkilenmez: `generic` platformla normal şekilde sertleştirilir. Proxmox hostunun **güvenlik duvarı** `playbooks/pve-firewall.yml` ile ayrıdır ve sshpocket'te henüz bir eylem olarak sunulmaz.
+- Önce snapshot (Proxmox için host disk imajı); önce `preview`.
+
+## Bilinen küçük pürüzler
+- Paket **0.3.0+** ile giderildi: `Could not match supplied host pattern ... ubuntu` uyarısı ve `INJECT_FACTS_AS_VARS` kullanımdan kaldırma uyarıları (linux-hardening#35, #36). 0.6.0 koşusunda ikisi de görünmüyor, ikinci `apply` `changed=0` (LAB).

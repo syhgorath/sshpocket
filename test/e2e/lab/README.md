@@ -19,7 +19,7 @@ geçici `ssh-agent`, `127.0.0.1:2223` portu. Anahtarlar ve host key `.state/` al
 
 ## Gerçek sunucudan farklar (LAB'ın sınırları)
 - **Çekirdek paylaşılır:** konteyner, Colima/Docker VM'inin çekirdeğini kullanır (`sysctl` ayarları o VM'e yazılır). `--privileged` çalışır; bu yüzden **yalnızca bu LAB için** kullanın.
-- **auditd taklit edilir:** konteynerde çekirdek denetim (audit netlink) yoktur; Dockerfile'daki "LAB UYUM KATMANI" `auditd`'yi "başlamış" gösterir ve `augenrules --load`'u boş geçer. Gerçek sunucuda bu fark yoktur.
+- **auditd taklit edilir:** konteynerde çekirdek denetim (audit netlink) yoktur; Dockerfile'daki "LAB UYUM KATMANI" `auditd`'yi "başlamış" gösterir ve `augenrules --load`'u boş geçer. Gerçek sunucuda bu fark yoktur. Ayrıca LAB'da `auditctl -l` çıkış kodu 255 döner (yüklü kural okunamaz); paket bunu tolere eder, e2e testleri etkilenmez.
 - **İstemci adresi:** sunucu sizi Docker köprüsünden `172.17.0.1` olarak görür; bu yüzden `hardening_ssh_allow_from=172.17.0.0/16` (up.sh yazar). Menünün "sunucunun gördüğü adres" sorgusu bunu gösterir.
 - Gerçek bir ağ kesintisi, NAT, VPN ve donanım davranışları test edilemez; yine de bir gerçek VM ile son doğrulama önerilir.
 

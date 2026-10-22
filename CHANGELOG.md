@@ -4,6 +4,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **`components.lock`: `linux-hardening` 0.4.0 → 0.6.0** (80 değişken: 43 bool, 15 int, 10 string, 8 list[string], list[cidr], list[int], 2 path; Raspberry Pi/Proxmox VE platform desteği: `hardening_platform`). Docker LAB'da 16 e2e testin tamamı geçti; ikinci koşu `changed=0`; eski `ubuntu` grubu ve `INJECT_FACTS` uyarıları kayboldu. 80 değişkenin tamamı için tür, 30 `warn_if` ve 30 min/max sınırı doğrulandı. **Gerçek VM'de 0.6.0 sshpocket üzerinden denenmedi** (0.4.0 denendi).
+- **Profil ve Proxmox:** paket 0.6.0 `debian-13`'ü destekler; Proxmox VE 9 ve Raspberry Pi OS de `debian-13` göründüğünden sshpocket'in profil kapısı artık Proxmox hostunu **geçirir**. Koruma paketin preflight'ındadır: Proxmox hostu `generic` platformla hiçbir bayrakla (`hardening_allow_unsupported` dahil) sertleştirilmez, `--check`'te de durur; gerçek değişiklik için `hardening_platform=proxmox-host` ve `hardening_pve_apply=true` gerekir. `docs/hardening-kullanim.md`'ye "Platformlar" bölümü eklendi.
+
+### Düzeltildi
+- `components validate` (dizin modu): gitignore'lu geliştirme klasörleri (`.venv`, `venv`, `.tox`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`) atlanır ve bildirilir; yazarın çalışma klasöründeki `.venv` yüzünden çıkan sahte ❌ (sembolik bağ, özel anahtar bloğu) giderildi. **Arşiv modu atlamaz**: yayın arşivinde bu klasörler varsa yine ❌.
+- Paket bildirimi: değişken `description` sınırı 500 → 1000 karakter (linux-hardening 0.6.0'daki `hardening_platform` açıklaması 565 karakter olduğundan kilide yazılamıyordu). Kontrol karakterleri ve diğer metin alanlarının 500 sınırı aynı.
+
+
 ## [3.6.4] - 2026-10-20
 
 `--components prune` eklendi; linux-hardening 0.4.0 gerçek VM'de, profil kapısı gerçek Proxmox VE hostunda denendi.
