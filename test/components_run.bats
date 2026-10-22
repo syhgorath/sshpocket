@@ -53,6 +53,23 @@ vars() { rm -f "$T/out.json"; comp_run_vars "$T/m.json" "$T/v" "$T/out.json" "$@
     [ ! -e "$T/out.json" ]
 }
 
+@test "vars: --no-required zorunlu EKSİKLİĞİNİ hoşgörür (varsayılanlar yazılır) ama verilmiş geçersiz değeri ve bilinmeyen adı yine reddeder" {
+    : > "$T/v"
+    run vars --no-required
+    [ "$status" -eq 0 ]
+    run python3 -I -c "import json;d=json.load(open('$T/out.json'));assert 'allow_from' not in d;assert d['rb_enabled'] is True;assert d['rb_timeout']==300"
+    [ "$status" -eq 0 ]
+    rm -f "$T/out.json"
+    printf 'allow_from=bu-cidr-degil\n' > "$T/v"
+    run vars --no-required
+    [ "$status" -ne 0 ]
+    [ ! -e "$T/out.json" ]
+    printf 'yok_boyle_degisken=1\n' > "$T/v"
+    run vars --no-required
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"pakette tanımlı bir değişken değil"* ]] || false
+}
+
 @test "vars: değerler dosyası yoksa yalnızca varsayılanlar/zorunlu denetimi (dosya yok = boş)" {
     rm -f "$T/v"
     run vars --set allow_from=10.0.0.0/8

@@ -106,6 +106,7 @@ Kurallar: `effects` boş olmayan eylem onaysız çalışmaz; `destructive` ve `c
 - **Gizli değer yoktur:** `secret` türü bu sürümde **yok**. Parola/anahtar paket değişkeni olamaz; sshpocket bunları
   değişken dosyasına yazmaz.
 - `warn_if`: değer buna eşitse arayüz uyarı gösterir ve onay ister. Onay yalnızca **değiştiren** eylemlerde ve başka bir eylemin ön koşulu olan eylemlerde (örn. `preview`) sorulur; salt okunur durum/rapor eylemleri (`rollback_status`) sormaz. **Varsayılanı `warn_if`'e eşit olan değişken her çalıştırmada uyarı tetikler**: varsayılandan sapmayı yakalamak için `warn_if`'i varsayılanın TERSİ yapın.
+- `required: true`: değişken zorunludur; eksikse **değiştiren eylemler ve başka bir eylemin ön koşulu olan eylemler** (örn. `preview`) çalışmaz. Salt okunur durum eylemleri (örn. `rollback_status`) zorunlu değişken olmadan da çalışır (verilen değerler yine doğrulanır). Bir değişkeni zorunlu yapan paket, bu eylemlerin onu kullandığından emin olmalıdır.
 - Değerler kullanıcı klasöründe geçici, izni 600 olan bir değişken dosyasıyla verilir, iş bitince silinir.
 
 ## 7. Çalıştırma sözleşmesi

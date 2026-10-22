@@ -281,9 +281,14 @@ def main(argv):
     manifest, values_path, out_path = argv[2], argv[3], argv[4]
     forced = {}
     rest = argv[5:]
+    require = True
     while rest:
+        if rest[0] == "--no-required":     # salt okunur eylemler: zorunlu değişken eksikliği hata sayılmaz (verilenler yine doğrulanır)
+            require = False
+            rest = rest[1:]
+            continue
         if rest[0] != "--set" or len(rest) < 2 or "=" not in rest[1]:
-            print("--set ad=değer bekleniyordu", file=sys.stderr)
+            print("--set ad=değer ya da --no-required bekleniyordu", file=sys.stderr)
             return 2
         k, v = rest[1].split("=", 1)
         forced[k] = v
@@ -320,7 +325,7 @@ def main(argv):
         else:
             v = None
         if v is None or (spec.get("required") is True and v == []):
-            if spec.get("required") is True:
+            if spec.get("required") is True and require:
                 err("%s: zorunlu değişken eksik" % name)
             continue
         result[name] = v
