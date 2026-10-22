@@ -101,9 +101,14 @@ def read_text(path):
         return ""
 
 
+# DİZİN modunda (yazarın çalışma klasörü) gitignore'lu geliştirme klasörleri atlanır; ARŞİV modunda ATLANMAZ (yayın arşivinde bunlar olmamalı).
+DEV_DIRS = (".venv", "venv", ".tox", ".pytest_cache", ".mypy_cache", ".ruff_cache")
+skip_dev = []
+
+
 def walk_files(root):
     for d, dirs, files in os.walk(root):
-        dirs[:] = [x for x in dirs if x not in (".git", "node_modules", "__pycache__")]
+        dirs[:] = [x for x in dirs if x not in (".git", "node_modules", "__pycache__") and x not in skip_dev]
         for fn in files:
             yield os.path.join(d, fn)
 
@@ -314,6 +319,7 @@ def check_security(root):
             fail("Güvenlik", "özel anahtar bloğu bulundu: %s" % rel)
             bad = True
     for d, dirs, files in os.walk(root):
+        dirs[:] = [x for x in dirs if x not in skip_dev]
         for n in dirs:
             if os.path.islink(os.path.join(d, n)):
                 fail("Güvenlik", "sembolik bağ yasak: %s" % os.path.relpath(os.path.join(d, n), root))
@@ -372,6 +378,11 @@ def main(argv):
         print("kullanım: component_validate.py <paket-dizini | <id>-<sürüm>.tar.gz> [--strict] [--unsigned]", file=sys.stderr)
         return 2
     root, id_hint, ver_hint, tmp, archive = resolve_input(args[0])
+    if root is not None and archive is None:
+        skip_dev.extend(DEV_DIRS)
+        found = [x for x in DEV_DIRS if os.path.isdir(os.path.join(root, x))]
+        if found:
+            ok("Düzen", "geliştirme klasörleri atlandı (%s): dizin modu; yayın arşivinde bulunmamalı, arşiv modu atlamaz" % ", ".join(found))
     try:
         print("sshpocket --components validate %s\n" % args[0])
         if root is not None:
