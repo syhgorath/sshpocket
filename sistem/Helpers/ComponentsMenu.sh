@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ComponentsMenu.sh - Sunucu menüsünde "🛡️ Paketler": paket seç → eylem seç → comp_cli_run (Aşama 3, PR E1)
 # Eylemin kendisi comp_cli_run → comp_exec_action zincirinde çalışır (kapılar/onaylar orada); burada yalnızca seçim vardır.
-# Gerektirir: Components.sh, ComponentsInstall.sh, ComponentsManifest.sh, ComponentsRunCLI.sh, Servers.sh, UI.sh (isteğe bağlı: ui_pick_arrows)
+# Gerektirir: Components.sh, ComponentsInstall.sh, ComponentsManifest.sh, ComponentsGates.sh (comp_gate_warn_applies), ComponentsRunCLI.sh, Servers.sh, UI.sh (isteğe bağlı: ui_pick_arrows)
 
 # comp_menu_installed → kurulu paket kimlikleri (satır satır)
 comp_menu_installed() {
@@ -115,6 +115,12 @@ _comp_menu_status_lines() {
     done < <(comp_info_all "$info" action)
 }
 
+# _comp_menu_action_blocked <bilgi> <eylem> <eksik-değişkenler> → 0 ise eylem kapalı: zorunlu değişken eksik VE eylem değiştirici ya da
+# başka bir eylemin ön koşulu. Salt okunur durum eylemleri (rollback_status) zorunlu değişken olmadan da açıktır (CLI ile aynı kural).
+_comp_menu_action_blocked() {
+    [ -n "$3" ] && comp_gate_warn_applies "$1" "$2"
+}
+
 # comp_menu_actions <paket> <sunucu> → hazırlık durumu + (📝 Değişkenler | eylemler); seçileni çalıştırır; geri dönene kadar döngü
 comp_menu_actions() {
     local id="$1" server="$2" info name pick i act eff req missing m
@@ -134,7 +140,7 @@ comp_menu_actions() {
         echo "Hazırlık"
         if [ -n "$missing" ]; then
             while IFS= read -r m; do [ -n "$m" ] && echo "  ❌ $m  (zorunlu, henüz yazılmadı)"; done <<< "$missing"
-            echo "  Eylemler, zorunlu değişkenler tamamlanana kadar kapalıdır: önce 📝 Değişkenler."
+            echo "  Değiştiren eylemler ve ön koşul eylemleri (preview), zorunlu değişkenler tamamlanana kadar kapalıdır: önce 📝 Değişkenler. Salt okunur durum eylemleri açıktır."
         else
             echo "  ✅ Zorunlu değişkenler tamam"
         fi
@@ -145,7 +151,7 @@ comp_menu_actions() {
         local -a UI_PICK_DESCS=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır.")
         for name in "${names[@]}"; do
             req=$(comp_action_get "$info" "$name" requires)
-            labels+=("$name — $(_comp_menu_badge "$info" "$name")${req:+  (önce: $(_comp_menu_req_label "$id" "$server" "$COMP_MENU_VER" "$req"))}${missing:+  ⛔}")
+            labels+=("$name — $(_comp_menu_badge "$info" "$name")${req:+  (önce: $(_comp_menu_req_label "$id" "$server" "$COMP_MENU_VER" "$req"))}$(if _comp_menu_action_blocked "$info" "$name" "$missing"; then printf '  ⛔'; fi)")
             act=$(comp_info_all "$info" "action.$name.warning" | head -n 1)
             eff=$(comp_action_get "$info" "$name" confirm)
             UI_PICK_DESCS+=("${act:-Ek uyarı yok.} [onay: ${eff:-none}]")
@@ -164,7 +170,7 @@ comp_menu_actions() {
             comp_menu_history "$id" "$server" "$info" || return 0
             continue
         fi
-        if [ -n "$missing" ]; then
+        if _comp_menu_action_blocked "$info" "${names[$((pick - 2))]}" "$missing"; then
             echo ""
             echo "⛔ Önce zorunlu değişkenleri tamamlayın (📝 Değişkenler)."
             read -r -p "Devam için Enter..." _ || return 0

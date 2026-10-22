@@ -5,7 +5,7 @@ load test_helper
 setup() {
     load_helpers
     export SISTEM_PATH="$ROOT/sistem"
-    for f in Servers Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsVars ComponentsMenu; do source "$H/$f.sh"; done
+    for f in Servers Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsGates ComponentsVars ComponentsMenu; do source "$H/$f.sh"; done
     T="$BATS_TEST_TMPDIR"
     export SSHPOCKET_COMPONENTS_DIR="$T/comps" SSHPOCKET_SERVERS_DIR="$T/srv"
     D="$T/srv/web1"; mkdir -p "$D" "$T/comps/demo/1.0.0"
@@ -146,6 +146,30 @@ setup_net() {
     [[ "$output" == *"preview — 🔍 salt okunur  ⛔"* ]] || false
     [[ "$output" == *"Önce zorunlu değişkenleri tamamlayın"* ]] || false
     [ ! -e "$T/runs" ]
+}
+
+@test "hazırlık: zorunlu değişken eksikken SALT OKUNUR durum eylemi (status) AÇIK ve çalışır; preview/apply/audit ⛔" {
+    # yalnızca bu test için pakete ön koşul olmayan, salt okunur bir 'status' eylemi eklenir (ortak fikstür değişmez)
+    python3 - "$T/m.json" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+d["actions"]["status"]={"cmd":"ansible-playbook s.yml","effects":[]}
+json.dump(d,open(p,"w"),ensure_ascii=False)
+PY
+    INFO=$(comp_manifest_info "$T/m.json" demo 1.0.0)
+    rm -f "$D/demo.vars"
+    run comp_menu_actions demo web1 <<<$'0'
+    [[ "$output" == *"status — 🔍 salt okunur"* ]] || false
+    [[ "$output" != *"status — 🔍 salt okunur  ⛔"* ]] || false
+    [[ "$output" == *"preview — 🔍 salt okunur  ⛔"* ]] || false
+    [[ "$output" == *"apply — "*"⛔"* ]] || false
+    [[ "$output" == *"audit — "*"⛔"* ]] || false
+    [[ "$output" == *"Salt okunur durum eylemleri açıktır"* ]] || false
+    # eylem sırası: preview=2 apply=3 wipe=4 audit=5 status=6 (bildirim sırası); status seçilince çalışır, kapı çıkmaz
+    run comp_menu_actions demo web1 <<<$'6\n\n0'
+    [ "$status" -eq 0 ]
+    [ "$(cat "$T/runs")" = "demo status web1" ]
+    [[ "$output" != *"Önce zorunlu değişkenleri tamamlayın"* ]] || false
 }
 
 @test "hazırlık: zorunlu değişkenler tamamsa ✅ gösterilir ve eylem çalışır" {
