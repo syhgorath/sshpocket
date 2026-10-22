@@ -218,3 +218,31 @@ print(json.dumps(d))" > "$T/m.json"
     mf "{$BASE,\"actions\":{\"audit\":{\"cmd\":\"ansible-playbook playbooks/audit.yml\",\"effects\":[],\"warnings\":[\"${d500}a\"]}}}"
     invalid
 }
+
+
+# set: eylem düzeyi sabit değişkenler
+setj() {   # <eylem-set-json>  → bool, int(30-3600), enum, string, path, list değişkenleri olan bildirim
+    mf "{$BASE,\"actions\":{\"run\":{\"cmd\":\"ansible-playbook a.yml\",\"effects\":[],\"set\":$1,\"outputs\":{\"dir_var\":\"d\"}}},
+ \"vars\":[{\"name\":\"b\",\"type\":\"bool\"},{\"name\":\"n\",\"type\":\"int\",\"min\":30,\"max\":3600},{\"name\":\"e\",\"type\":\"enum\",\"values\":[\"x\",\"y\"]},
+  {\"name\":\"s\",\"type\":\"string\"},{\"name\":\"d\",\"type\":\"path\"},{\"name\":\"l\",\"type\":\"list[string]\"}]}"
+}
+
+@test "set: geçerli bool/int/enum/string değerleri kabul edilir ve action.<ad>.set satırları üretilir" {
+    setj '{"b":true,"n":60,"e":"y","s":"merhaba"}'
+    run comp_manifest_info "$T/m.json"
+    [ "$status" -eq 0 ]
+    [ "$(comp_info_all "$output" action.run.set | sort | tr '\n' ' ')" = "b=true e=y n=60 s=merhaba " ]
+    setj '{"b":false}'
+    run comp_manifest_info "$T/m.json"; [ "$status" -eq 0 ]
+    [ "$(comp_info_get "$output" action.run.set)" = "b=false" ]
+}
+
+@test "set: bilinmeyen değişken, yanlış tür, aralık dışı, geçersiz enum, liste, dir_var ve boş/çok büyük set reddedilir" {
+    local bad
+    for bad in '{"yok":true}' '{"b":"true"}' '{"b":1}' '{"n":5}' '{"n":99999}' '{"n":true}' '{"e":"z"}' '{"s":""}' '{"l":["a"]}' '{"d":"/tmp/x"}' '{}' '[]' '"x"' \
+        '{"b":true,"n":60,"e":"y","s":"a","d_":1,"x1":1,"x2":1,"x3":1,"x4":1}'; do
+        setj "$bad"
+        run comp_manifest_info "$T/m.json"
+        [ "$status" -ne 0 ] || { echo "KABUL EDİLDİ: $bad"; return 1; }
+    done
+}

@@ -167,6 +167,23 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
 }
 
+@test "set: eylem düzeyi sabit değişkenler kullanıcının değerinin ÜSTÜNE yazılır; set'siz eylem kullanıcı değerini korur" {
+    python3 - "$T/pkg/component.json" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+d["vars"].append({"name":"rb_timeout","type":"int","default":300,"min":30,"max":3600})
+d["actions"]["fast"]={"cmd":"ansible-playbook playbooks/f.yml","effects":[],"set":{"rb_timeout":60,"rb_enabled":True}}
+json.dump(d,open(p,"w"),ensure_ascii=False)
+PY
+    INFO=$(comp_manifest_info "$T/pkg/component.json" demo 1.0.0)
+    printf 'allow_from=10.1.10.0/24\nrb_timeout=900\nrb_enabled=false\n' > "$T/values"
+    run comp_exec_action "$INFO" demo 1.0.0 fast <<<"e"; [ "$status" -eq 0 ]
+    python3 -c "import json;d=json.load(open('$T/seen_vars'));assert d['rb_timeout']==60 and d['rb_enabled'] is True, d"
+    rm -f "$T/seen_vars" "$T/args"
+    run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 0 ]
+    python3 -c "import json;d=json.load(open('$T/seen_vars'));assert d['rb_timeout']==900 and d['rb_enabled'] is False, d"
+}
+
 @test "yürütme: apply, taze preview kaydından sonra çalışır" {
     comp_gate_record demo web1 1.0.0 preview ok
     run comp_exec_action "$INFO" demo 1.0.0 apply <<<"e"

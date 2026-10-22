@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Paket sözleşmesi: eylem düzeyi `set`** (docs/package-standard.md §5): bir eylem, bildirimde tanımlı bool/int/enum/string/path değişkenleri kullanıcı değerinin üstüne **sabitleyebilir**. Böylece aynı playbook'un önizleme ve gerçek koşu eylemleri (örn. Proxmox güvenlik duvarı için `pve_firewall_preview` → `hardening_pve_apply=false`, `pve_firewall_apply` → `true`) kullanıcının `.vars` ayarından bağımsız olur. Bildirim doğrulaması bilinmeyen/yanlış türlü/aralık dışı/liste değeri ve `outputs.dir_var` çakışmasını reddeder.
+
 ## [3.6.6] - 2026-10-22
 
 Yeni, henüz değişkenleri tanımlanmamış bir sunucuda salt okunur durum eylemleri (`rollback_status`) artık hem komut satırında hem Paketler menüsünde çalışır.

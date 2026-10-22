@@ -85,6 +85,7 @@ Alan tablosu (`*` zorunlu):
 | `confirm` | `none` \| `yes-no` \| `type-server-name` (yıkıcı/geri dönüşü zor işler için sunucu adı yazdırılır) |
 | `interactive` | Kullanıcıdan istem bekler; sshpocket gizli/sessiz çalıştırmaz, terminali devreder |
 | `outputs` | Çıktı sözleşmesi (§8) |
+| `set` | Eylem düzeyi **sabit değişkenler** (nesne, en çok 8): `{"hardening_pve_apply": true}`. Bu eylem çalışırken sshpocket bu değerleri kullanıcının `.vars` değerinin **üstüne yazar**. Yalnızca `vars`'ta tanımlı **bool, int (min/max içinde), enum, string, path** değişkenler ve türüne uygun değerler olabilir; liste olamaz ve `outputs.dir_var` değişkeni ezilemez. Amaç: aynı playbook'un güvenli ve gerçek koşu eylemleri kullanıcı ayarından bağımsız olsun (örn. `*_preview` eylemi `…_apply=false`'u, `*_apply` eylemi `true`'yu zorlar; aksi halde kullanıcının `.vars`'ındaki `true` yüzünden "önizleme" gerçek koşuya dönüşür). `warn_if` yine zorlanan değere uygulanır |
 | `warnings[]` | Menüde gösterilecek açık notlar (örn. "önizleme firewall değişikliğini göstermez") |
 
 Kurallar: `effects` boş olmayan eylem onaysız çalışmaz; `destructive` ve `changes-config` en az `yes-no`, geri alınamayanlar
