@@ -46,7 +46,7 @@ comp_exec_parse_result() {
 
 # _comp_exec_body <bilgi> <paket> <sürüm> <eylem> → alt kabukta çalışır; geçici dosyalar HER çıkışta (Ctrl-C/TERM dahil) silinir
 _comp_exec_body() {
-    local info="$1" id="$2" ver="$3" action="$4"
+    local info="$1" id="$2" ver="$3" action="$4" kv
     local server="$COMP_CTX_SERVER" pkg="$COMP_CTX_PKGDIR" bindir="$COMP_CTX_BINDIR" work sdir vf inv group dir_var outdir log w prog rc line
     local -a sets warn_names
     local refused="$COMP_EXEC_REFUSED"
@@ -80,6 +80,10 @@ _comp_exec_body() {
         if ! ( umask 077; mkdir -p "$outdir" ) || ! chmod 700 "$outdir"; then echo "Çıktı klasörü oluşturulamadı." >&2; return "$refused"; fi
         sets=(--set "$dir_var=$outdir")
     fi
+    # eylem düzeyi sabit değişkenler (manifest action.set): kullanıcının .vars değerinin ÜSTÜNE yazılır (örn. *_preview eylemi pve_apply=false'u zorlar)
+    while IFS= read -r kv; do
+        [ -n "$kv" ] && sets+=(--set "$kv")
+    done < <(comp_info_all "$info" "action.$action.set")
     warn_names=()
     # Salt okunur, başka eylemin ön koşulu olmayan eylemler (rollback_status vb.) zorunlu değişken istemez; değer verilmişse yine doğrulanır
     if ! comp_gate_warn_applies "$info" "$action"; then sets+=(--no-required); fi

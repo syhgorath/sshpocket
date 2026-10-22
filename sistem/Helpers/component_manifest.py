@@ -268,6 +268,7 @@ def main():
     # --- değişkenler ---
     var_lines = []
     seen_vars = set()
+    var_specs = {}
     vars_ = d.get("vars", [])
     if not isinstance(vars_, list):
         err("vars liste olmalı")
@@ -311,7 +312,41 @@ def main():
                 err("%s: bool default geçersiz" % n)
             if "warn_if" in v and not isinstance(v["warn_if"], bool):
                 err("%s: warn_if bool olmalı" % n)
+        var_specs[n] = (t, v)
         var_lines.append("var=%s:%s:%s:%s" % (n, t, "yes" if v.get("required") is True else "no", typed))
+
+    # --- eylem düzeyi sabit değişkenler (action.set): runner bunları kullanıcının değerinin ÜSTÜNE yazar ---
+    # Amaç: aynı playbook'un güvenli/gerçek koşu eylemleri (örn. *_preview: hardening_pve_apply=false, *_apply: true) kullanıcı değerinden bağımsız olsun.
+    for name, a in actions.items():
+        if not isinstance(a, dict) or "set" not in a:
+            continue
+        sv = a["set"]
+        if not isinstance(sv, dict) or not sv or len(sv) > 8:
+            err("%s: set boş olmayan (en çok 8) nesne olmalı" % name)
+            continue
+        dir_var = a.get("outputs", {}).get("dir_var") if isinstance(a.get("outputs"), dict) else None
+        for k in sorted(sv):
+            val = sv[k]
+            if k not in var_specs:
+                err("%s: set bilinmeyen değişken: %s" % (name, k))
+                continue
+            if k == dir_var:
+                err("%s: set, outputs.dir_var değişkenini (%s) ezemez" % (name, k))
+                continue
+            vt, vs = var_specs[k]
+            ok_val = False
+            if vt == "bool":
+                ok_val = isinstance(val, bool)
+            elif vt == "int":
+                ok_val = is_int(val) and not isinstance(val, bool) and (vs.get("min") is None or val >= vs["min"]) and (vs.get("max") is None or val <= vs["max"])
+            elif vt == "enum":
+                ok_val = is_str(val) and val in vs.get("values", [])
+            elif vt in ("string", "path"):
+                ok_val = is_str(val) and bool(val) and len(val) <= 200 and not RE_TEXT_BAD.search(val)
+            if not ok_val:
+                err("%s: set %s için geçersiz değer/tür (yalnızca bool, int, enum, string, path; liste yok)" % (name, k))
+                continue
+            act_lines.append("action.%s.set=%s=%s" % (name, k, ("true" if val else "false") if isinstance(val, bool) else val))
 
     # --- invoke.append ---
     inv_lines = []
