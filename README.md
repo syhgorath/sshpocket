@@ -91,7 +91,7 @@ passphrase'i **macOS Keychain**'e kaydeder.
   bir terminalde sorun çıkarırsa `numbers` yapın.
 - **`./start.sh --doctor`:** ön koşul denetimi (ssh araçları, Python aralığı, venv, disk, ağ); yalnızca okur, hiçbir şey kurmaz.
 - **Paketler (altyapı):** imzalı, kilitli (`components.lock`) paketlerin güvenli kurulumu: `./start.sh --components list|sync|check-new|prune`; kurulu paketin eylemi: `./start.sh --components run <paket> <eylem> <sunucu>` (sunucuya bağlanır; önizleme/onay kapıları vardır); eski sürüm klasörlerini temizleme: `./start.sh --components prune [--dry-run] [--yes]` (etkin, bir önceki ve kilitteki sürüm kalır); paket yazarları için sözleşme uyum denetimi: `./start.sh --components validate <paket|dizin|arşiv> [--strict]` (statik).
-  Kilitte `linux-hardening 0.4.0` vardır (sshpocket üzerinden Docker LAB'da tüm eylemler denendi; gerçek bir Ubuntu 26.04.1 VM'inde `audit` → `preview` → `apply` 0.4.0 ile, taze kurulumda denendi; 0.3.0 üzerine ikinci koşu denenmedi). Kullanım ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md); standart: [docs/package-standard.md](docs/package-standard.md).
+  Kilitte `linux-hardening 0.6.0` vardır (sshpocket üzerinden Docker LAB'da tüm eylemler denendi; gerçek bir Ubuntu 26.04.1 VM'inde `audit` → `preview` → `apply` 0.4.0 ile, taze kurulumda denendi; 0.3.0 üzerine ikinci koşu denenmedi). Kullanım ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md); standart: [docs/package-standard.md](docs/package-standard.md).
 - Otomatik testler (Bats, bash 5 ve macOS bash 3.2) + ShellCheck her PR'da CI'da çalışır.
 
 ## Key'i sunucuya gönderme
