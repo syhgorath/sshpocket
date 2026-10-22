@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.7] - 2026-10-23
+
+Paket sözleşmesine eylem düzeyi `set` (sabit değişkenler) eklendi: aynı playbook'un önizleme ve gerçek koşu eylemleri kullanıcı ayarından bağımsız olur (Proxmox güvenlik duvarı eylemleri için ön koşul).
+
 ### Eklendi
 - **Paket sözleşmesi: eylem düzeyi `set`** (docs/package-standard.md §5): bir eylem, bildirimde tanımlı bool/int/enum/string/path değişkenleri kullanıcı değerinin üstüne **sabitleyebilir**. Böylece aynı playbook'un önizleme ve gerçek koşu eylemleri (örn. Proxmox güvenlik duvarı için `pve_firewall_preview` → `hardening_pve_apply=false`, `pve_firewall_apply` → `true`) kullanıcının `.vars` ayarından bağımsız olur. Bildirim doğrulaması bilinmeyen/yanlış türlü/aralık dışı/liste değeri ve `outputs.dir_var` çakışmasını reddeder.
 
