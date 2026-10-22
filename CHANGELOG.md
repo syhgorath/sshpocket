@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- Paket çalıştırma: **zorunlu değişken** (örn. `hardening_ssh_allow_from`) denetimi artık yalnızca değiştiren eylemlerde ve başka bir eylemin ön koşulu olan eylemlerde (`preview`) yapılır. Salt okunur durum eylemleri (`rollback_status`) yeni, henüz değişkenleri tanımlanmamış bir sunucuda da çalışır. Verilmiş geçersiz değer ve pakette tanımsız ad yine reddedilir; yalnızca "eksik" hoşgörülür.
+
 ## [3.6.5] - 2026-10-22
 
 Paket sürümü güncellemesi: `linux-hardening` 0.6.0 kilitlendi (Raspberry Pi / Proxmox VE platform desteği); `validate` ve paket bildirimi düzeltmeleri.

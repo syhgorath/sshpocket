@@ -81,6 +81,8 @@ _comp_exec_body() {
         sets=(--set "$dir_var=$outdir")
     fi
     warn_names=()
+    # Salt okunur, başka eylemin ön koşulu olmayan eylemler (rollback_status vb.) zorunlu değişken istemez; değer verilmişse yine doğrulanır
+    if ! comp_gate_warn_applies "$info" "$action"; then sets+=(--no-required); fi
     if ! w=$(comp_run_vars "$pkg/component.json" "${COMP_CTX_VALUES:-/dev/null}" "$vf" ${sets[@]+"${sets[@]}"}); then
         echo "Değişkenler geçersiz; çalıştırılmadı." >&2; return "$refused"
     fi

@@ -148,6 +148,25 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     run comp_exec_action "$INFO" demo 1.0.0 preview <<<"h"; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
 }
 
+@test "zorunlu değişken: salt okunur durum eylemi (status) değişken dosyası OLMADAN çalışır; preview/audit/apply zorunlu değişkeni yine ister" {
+    rm -f "$T/values"
+    run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 0 ]; [ -e "$T/args" ]
+    rm -f "$T/args"
+    run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+    [[ "$output" == *"allow_from: zorunlu değişken eksik"* ]] || false
+    run comp_exec_action "$INFO" demo 1.0.0 audit <<<"e"; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+    [[ "$output" == *"zorunlu değişken eksik"* ]] || false
+    comp_gate_record demo web1 1.0.0 preview ok
+    run comp_exec_action "$INFO" demo 1.0.0 apply <<<"e"; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+}
+
+@test "zorunlu değişken: salt okunur eylemde bile VERİLMİŞ geçersiz değer reddedilir (yalnızca 'eksik' hoşgörülür)" {
+    printf 'allow_from=bu-bir-cidr-degil\n' > "$T/values"
+    run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+    printf 'bilinmeyen_degisken=1\n' > "$T/values"
+    run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+}
+
 @test "yürütme: apply, taze preview kaydından sonra çalışır" {
     comp_gate_record demo web1 1.0.0 preview ok
     run comp_exec_action "$INFO" demo 1.0.0 apply <<<"e"
