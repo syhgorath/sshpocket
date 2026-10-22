@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.5] - 2026-10-22
+
+Paket sürümü güncellemesi: `linux-hardening` 0.6.0 kilitlendi (Raspberry Pi / Proxmox VE platform desteği); `validate` ve paket bildirimi düzeltmeleri.
+
 ### Değişti
 - **`components.lock`: `linux-hardening` 0.4.0 → 0.6.0** (80 değişken: 43 bool, 15 int, 10 string, 8 list[string], list[cidr], list[int], 2 path; Raspberry Pi/Proxmox VE platform desteği: `hardening_platform`). Docker LAB'da 16 e2e testin tamamı geçti; ikinci koşu `changed=0`; eski `ubuntu` grubu ve `INJECT_FACTS` uyarıları kayboldu. 80 değişkenin tamamı için tür, 30 `warn_if` ve 30 min/max sınırı doğrulandı. **Gerçek VM'de 0.6.0 sshpocket üzerinden denenmedi** (0.4.0 denendi).
 - **Profil ve Proxmox:** paket 0.6.0 `debian-13`'ü destekler; Proxmox VE 9 ve Raspberry Pi OS de `debian-13` göründüğünden sshpocket'in profil kapısı artık Proxmox hostunu **geçirir**. Koruma paketin preflight'ındadır: Proxmox hostu `generic` platformla hiçbir bayrakla (`hardening_allow_unsupported` dahil) sertleştirilmez, `--check`'te de durur; gerçek değişiklik için `hardening_platform=proxmox-host` ve `hardening_pve_apply=true` gerekir. `docs/hardening-kullanim.md`'ye "Platformlar" bölümü eklendi.
