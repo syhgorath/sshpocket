@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **Ubuntu 26.04: parolalı sudo ile paket çalıştırma** artık takılmıyor. Varsayılan `sudo-rs`, Ansible'ın parolalı `become`'ında `Timeout (12s) waiting for privilege escalation prompt` ile düşüyordu (gerçek VM'de yeniden üretildi: `UNREACHABLE`). Ubuntu profillerinde sunucuda `/usr/bin/sudo.ws` (klasik sudo) çalıştırılabilirse, envantere `ansible_become_exe=/usr/bin/sudo.ws` yazılır (salt okunur, sabit bir ssh sorgusuyla tespit edilir; envantere yalnızca tam bu yol yazılabilir). NOPASSWD sudo etkilenmez, Ubuntu dışı profillerde sorgu yapılmaz. Sudo istemi zaman aşımında nedeni açıklayan bir ipucu da gösterilir.
+
 ## [3.6.8] - 2026-10-23
 
 Paket sürümü güncellemesi: `linux-hardening` 0.7.0 kilitlendi; Proxmox VE güvenlik duvarı için `pve_firewall_preview` ve `pve_firewall_apply` eylemleri.

@@ -274,3 +274,19 @@ BASE='"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profil
         [ "$status" -ne 0 ] || { echo "KABUL EDİLDİ: $o"; return 1; }
     done
 }
+
+@test "sudo-rs: COMP_CTX_BECOME_EXE envantere geçer; ayarlı değilse geçmez" {
+    run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 0 ]
+    run ! grep -q "ansible_become_exe" "$T/seen_inv"
+    COMP_CTX_BECOME_EXE=/usr/bin/sudo.ws run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 0 ]
+    grep -q "ansible_become_exe=/usr/bin/sudo.ws" "$T/seen_inv"
+}
+
+@test "sudo-rs: 'privilege escalation prompt' zaman aşımında anlaşılır ipucu gösterilir" {
+    FAKE_RC=4 FAKE_OUT='[ERROR]: Task failed: Timeout (12s) waiting for privilege escalation prompt:' run comp_exec_action "$INFO" demo 1.0.0 status </dev/null
+    [ "$status" -eq 4 ]
+    [[ "$output" == *"Sudo istemi beklenirken zaman aşımı"* ]] || false
+    [[ "$output" == *"sudo-rs"* ]] || false
+    FAKE_RC=4 FAKE_OUT='baska bir hata' run comp_exec_action "$INFO" demo 1.0.0 status </dev/null
+    [[ "$output" != *"Sudo istemi beklenirken"* ]] || false
+}

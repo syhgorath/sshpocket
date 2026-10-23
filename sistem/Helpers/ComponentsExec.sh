@@ -8,6 +8,7 @@
 #   COMP_CTX_PKGDIR   paket kökü (component.json, ansible.cfg)      COMP_CTX_BINDIR   venv bin (ansible-playbook burada)
 #   COMP_CTX_SERVER   sunucu adı   COMP_CTX_HOST   COMP_CTX_USER   COMP_CTX_PORT   COMP_CTX_KEY (mutlak yol)
 #   COMP_CTX_PREFIX   Keychain modül öneki   COMP_CTX_PROFILE   algılanan OS profili   COMP_CTX_VALUES   değerler dosyası (yoksa boş)
+#   COMP_CTX_BECOME_EXE   boş ya da /usr/bin/sudo.ws (Ubuntu'da sudo-rs + parolalı sudo için; envantere ansible_become_exe olarak yazılır)
 # shellcheck disable=SC2034  # COMP_EXEC_RESULT çağıran tarafından okunur
 
 COMP_EXEC_REFUSED=190
@@ -102,7 +103,7 @@ _comp_exec_body() {
 
     # ---- girdiler ----
     group=$(comp_info_get "$info" inventory_group); group="${group:-sshpocket}"
-    comp_run_write_inventory "$inv" "$group" "$server" "$COMP_CTX_HOST" "$COMP_CTX_USER" "$COMP_CTX_PORT" "$COMP_CTX_KEY" || return "$refused"
+    comp_run_write_inventory "$inv" "$group" "$server" "$COMP_CTX_HOST" "$COMP_CTX_USER" "$COMP_CTX_PORT" "$COMP_CTX_KEY" "${COMP_CTX_BECOME_EXE:-}" || return "$refused"
     comp_run_build_argv "$info" "$action" "$inv" "$server" "$vf" || return "$refused"
     prog="${COMP_RUN_ARGV[0]}"
     if [[ "$prog" == */* ]] || [ ! -x "$bindir/$prog" ]; then echo "Çalıştırılacak program bulunamadı: $prog" >&2; return "$refused"; fi
@@ -127,6 +128,12 @@ _comp_exec_body() {
         cd "$pkg" && env ANSIBLE_CONFIG="$pkg/ansible.cfg" ANSIBLE_HOST_KEY_CHECKING=True PATH="$bindir:$PATH" "${COMP_RUN_ARGV[@]}"
     } 2>&1 | tee -a "$log"
     rc="${PIPESTATUS[0]}"
+    if [ "$rc" -ne 0 ] && grep -q "waiting for privilege escalation prompt" "$log" 2>/dev/null; then
+        {
+            echo "  ↳ Sudo istemi beklenirken zaman aşımı: sudo parolası yanlış olabilir ya da sunucudaki sudo Ansible ile uyumsuz olabilir"
+            echo "    (Ubuntu 26.04'te varsayılan sudo-rs parolalı kullanımda takılır). Parolayı kontrol edin; sudo'yu elle deneyin (ssh ile: sudo -v)."
+        } >&2
+    fi
     return "$rc"
 }
 

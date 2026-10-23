@@ -34,6 +34,7 @@ JSON
 #!/bin/bash
 echo "\$*" >> "$T/ssh_calls"
 [ "\${FAKE_SSH_FAIL:-0}" = 1 ] && { [ -n "\${FAKE_SSH_ERR:-}" ] && printf '%s\\n' "\$FAKE_SSH_ERR" >&2; exit 255; }
+case "\$*" in *sudo.ws*) [ "\${FAKE_SUDOWS:-1}" = 1 ] && { echo SSHPOCKET_SUDO_WS=yes; exit 0; } || exit 1 ;; esac
 printf '%s\n' "\${FAKE_OSREL:-NAME=\"Ubuntu\"
 ID=ubuntu
 VERSION_ID=\"26.04\"}"
@@ -42,7 +43,7 @@ STUB
     cat > "$T/venv/bin/ansible-playbook" <<STUB
 #!/bin/bash
 echo "\$*" > "$T/ansible_args"
-while [ \$# -gt 0 ]; do case "\$1" in -e) cp "\${2#@}" "$T/seen_vars";; esac; shift; done
+while [ \$# -gt 0 ]; do case "\$1" in -e) cp "\${2#@}" "$T/seen_vars";; -i) cp "\$2" "$T/seen_inv";; esac; shift; done
 exit \${FAKE_RC:-0}
 STUB
     chmod +x "$T/venv/bin/ansible-playbook"
@@ -55,11 +56,12 @@ modeof() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
     run comp_cli_run demo preview web1 </dev/null
     [ "$status" -eq 0 ]
     [[ "$output" == *"Profil: ubuntu-26.04"* ]] || false
-    [ "$(wc -l < "$T/ssh_calls" | tr -d ' ')" = "1" ]
+    [ "$(wc -l < "$T/ssh_calls" | tr -d ' ')" = "2" ]      # profil algılama + sudo.ws sorgusu (ikisi de salt okunur)
     grep -q -- "-o BatchMode=yes" "$T/ssh_calls"
     grep -q -- "-o StrictHostKeyChecking=yes" "$T/ssh_calls"
     # uzak komut SABİT: satırın tamamı birebir eşleşmeli (ek komut sızdırılamaz)
-    [ "$(cat "$T/ssh_calls")" = "-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o PreferredAuthentications=publickey -o PasswordAuthentication=no -p 22 -i $T/servers/web1/id_ed25519_web1 ziya@10.1.10.193 cat /etc/os-release" ]
+    [ "$(head -n 1 "$T/ssh_calls")" = "-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o PreferredAuthentications=publickey -o PasswordAuthentication=no -p 22 -i $T/servers/web1/id_ed25519_web1 ziya@10.1.10.193 cat /etc/os-release" ]
+    [ "$(sed -n 2p "$T/ssh_calls" | grep -c 'test -x /usr/bin/sudo.ws')" = "1" ]      # ikinci çağrı: salt okunur sudo.ws sorgusu
     grep -q -- "--limit web1" "$T/ansible_args"
     grep -q '"allow_from"' "$T/seen_vars"                 # servers/web1/demo.vars kullanıldı
     grep -q '|1.0.0|preview|ok$' "$T/state/demo/web1/results"
@@ -234,4 +236,24 @@ CASES
     FAKE_SSH_FAIL=1 FAKE_SSH_ERR='$(touch '"$T"'/PWNED); `touch '"$T"'/PWNED2`' run comp_cli_run demo preview web1 </dev/null
     [ ! -e "$T/PWNED" ]
     [ ! -e "$T/PWNED2" ]
+}
+
+@test "sudo-rs: Ubuntu'da /usr/bin/sudo.ws varsa envantere ansible_become_exe yazılır ve kullanıcı bilgilendirilir" {
+    run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"sudo-rs yerine klasik sudo (/usr/bin/sudo.ws)"* ]] || false
+    grep -q "ansible_become_exe=/usr/bin/sudo.ws" "$T/seen_inv"
+    grep -q "test -x /usr/bin/sudo.ws" "$T/ssh_calls"
+}
+
+@test "sudo-rs: sunucuda sudo.ws yoksa ya da Ubuntu dışı profilde envantere become_exe YAZILMAZ" {
+    FAKE_SUDOWS=0 run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"sudo.ws"* ]] || false
+    run ! grep -q "ansible_become_exe" "$T/seen_inv"
+    rm -f "$T/seen_inv" "$T/ssh_calls"
+    FAKE_OSREL=$'ID=debian\nVERSION_ID="13"' run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -ne 0 ]                                        # demo paketi yalnızca ubuntu-26.04 destekler: profil kapısı reddeder
+    [ "$(wc -l < "$T/ssh_calls" | tr -d ' ')" = "1" ]          # Ubuntu dışı profilde sudo.ws sorgusu bile yapılmaz
+    [ ! -e "$T/seen_inv" ]
 }
