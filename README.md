@@ -24,11 +24,12 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 | Ortam | Durum |
 |---|---|
 | **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Geliştirildi ve elle denendi |
-| **Apple Silicon (arm64, Apple M5 Pro), macOS 27.0.1, bash 3.2.57, OpenSSH 10.3p1** | ✅ Elle denendi: `--doctor`, Keychain'deki passphrase ile `ssh-add`, `--components sync` ve `run` (Ubuntu 26.04.1 VM'inde `rollback_status` → `preview` → `apply`). ⚠️ Elle denenmedi: Terminal penceresi açma, `start.command` çift tıklama, yeni `🛡️ Paketler` menüsünün ok tuşlu/fzf görünümü, gerçek sunucuda knock |
+| **Apple Silicon (arm64, Apple M5 Pro), macOS 27.0.1, bash 3.2.57, OpenSSH 10.3p1** | ✅ Elle denendi: `--doctor`, Keychain'deki passphrase ile `ssh-add`, `--components sync` ve `run` (Ubuntu 26.04.1 VM'inde `audit` → `preview` → `apply` → ikinci `preview`; parolalı sudo-rs dahil; Proxmox VE 9.2.21 VM'inde `apply` ve `audit`). ⚠️ Elle denenmedi: Terminal penceresi açma, `start.command` çift tıklama, yeni `🛡️ Paketler` menüsünün ok tuşlu/fzf görünümü, gerçek sunucuda knock |
 | **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Otomatik testler** (Bats + ShellCheck, her PR'da). ⚠️ Elle/gerçek denenmedi: Keychain izin penceresi, Terminal açma, `start.command` çift tıklama |
 | Ubuntu 24.04 (yalnızca CI: ShellCheck + Bats testleri) | ✅ otomatik |
 | Linux üzerinde kullanım (Keychain/`osascript`/`diskutil` yok) | ❌ Desteklenmiyor |
-| Hedef sunucu: Ubuntu 26.04.1 (linux-hardening, tek test VM'i) | ✅ sınırlı; rpi/Proxmox profilleri denenmedi |
+| Hedef sunucu: Ubuntu 26.04.1 (linux-hardening) | ✅ gerçek VM'de taze kurulum: Lynis 58 → 76, ikinci koşu `changed=0`, parolalı sudo-rs |
+| Hedef sunucu: Proxmox VE 9 (Debian 13, bir VM içinde; linux-hardening `proxmox-host` platformu) | ✅ `apply` ve `audit` (Lynis 82), web arayüzü ve CT oluşturma sorunsuz. ⚠️ `pve_firewall_*` eylemleri, kümeli Proxmox, gerçek donanım denenmedi; Raspberry Pi denenmedi |
 
 Apple Silicon'da veya yeni macOS'ta bir sorun görürseniz lütfen issue açın (macOS sürümü, `uname -m` ve `bash --version` çıktısıyla).
 
@@ -91,7 +92,7 @@ passphrase'i **macOS Keychain**'e kaydeder.
   bir terminalde sorun çıkarırsa `numbers` yapın.
 - **`./start.sh --doctor`:** ön koşul denetimi (ssh araçları, Python aralığı, venv, disk, ağ); yalnızca okur, hiçbir şey kurmaz.
 - **Paketler (altyapı):** imzalı, kilitli (`components.lock`) paketlerin güvenli kurulumu: `./start.sh --components list|sync|check-new|prune`; kurulu paketin eylemi: `./start.sh --components run <paket> <eylem> <sunucu>` (sunucuya bağlanır; önizleme/onay kapıları vardır); eski sürüm klasörlerini temizleme: `./start.sh --components prune [--dry-run] [--yes]` (etkin, bir önceki ve kilitteki sürüm kalır); paket yazarları için sözleşme uyum denetimi: `./start.sh --components validate <paket|dizin|arşiv> [--strict]` (statik).
-  Kilitte `linux-hardening 0.7.0` vardır (sshpocket üzerinden Docker LAB'da tüm eylemler denendi; gerçek bir Ubuntu 26.04.1 VM'inde `audit` → `preview` → `apply` 0.4.0 ile, taze kurulumda denendi; 0.3.0 üzerine ikinci koşu denenmedi). Kullanım ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md); standart: [docs/package-standard.md](docs/package-standard.md).
+  Kilitte `linux-hardening 0.7.0` vardır (sshpocket üzerinden Docker LAB'da tüm eylemler denendi; gerçek bir Ubuntu 26.04.1 VM'inde `audit` → `preview` → `apply` → ikinci `preview` (`changed=0`) 0.7.0 ile taze kurulumda denendi; Proxmox VE 9 VM'inde 0.6.0 ile `apply` ve `audit`; Proxmox güvenlik duvarı eylemleri `pve_firewall_preview`/`pve_firewall_apply` gerçek Proxmox'ta henüz denenmedi). Kullanım ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md); standart: [docs/package-standard.md](docs/package-standard.md).
 - Otomatik testler (Bats, bash 5 ve macOS bash 3.2) + ShellCheck her PR'da CI'da çalışır.
 
 ## Key'i sunucuya gönderme
