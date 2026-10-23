@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **`components.lock`: `linux-hardening` 0.6.0 → 0.7.0** (82 değişken; yeni: `hardening_auditd_cis_l2` (varsayılan KAPALI, `warn_if`), `hardening_motd_disable_scripts`). Yeni eylemler: **`pve_firewall_preview`** (salt okunur) ve **`pve_firewall_apply`** (`type-server-name`, önce önizleme şart): Proxmox VE (tek düğüm) datacenter güvenlik duvarını yönetir; Proxmox olmayan hostta hiçbir şey yapmadan nedenini söyleyip durur (LAB e2e ile doğrulandı). `pve_firewall_apply` yazma onayını playbook içinden (`pve-firewall-uygula.yml`) taşır; sshpocket'in `set` özelliğine gerek duymadı. 82 değişkenin tamamı için tür, 31 `warn_if` ve 30 min/max sınırı doğrulandı. **Gerçek Proxmox VM'inde `pve_firewall_*` henüz denenmedi.**
+
 ## [3.6.7] - 2026-10-23
 
 Paket sözleşmesine eylem düzeyi `set` (sabit değişkenler) eklendi: aynı playbook'un önizleme ve gerçek koşu eylemleri kullanıcı ayarından bağımsız olur (Proxmox güvenlik duvarı eylemleri için ön koşul).

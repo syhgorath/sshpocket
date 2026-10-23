@@ -83,7 +83,11 @@ Docker LAB'ı** vardır: `./test/e2e/lab/up.sh && bats test/e2e/components.bats`
 - **Platform denetimi (paket):** asıl koruma paketin preflight'ındadır. Proxmox VE hostu (`/etc/pve` ya da `pveversion`) **`generic` platformla ASLA sertleştirilmez**; hiçbir bayrak (`hardening_allow_unsupported` dahil)
   bunu atlatmaz ve `--check` (preview) içinde de çalışır. Proxmox hostunda gerçek değişiklik için `hardening_platform=proxmox-host` **ve** `hardening_pve_apply=true` gerekir; yanlış platform seçimi (ör. Ubuntu'da `proxmox-host`) da durur.
 - **Platformu ayarlamak:** `hardening_platform` (`generic` | `proxmox-host` | `raspberry-pi`) sunucu başına bir paket değişkenidir: 📝 Değişkenler ekranından ya da `servers/<ad>/linux-hardening.vars` dosyasından (`hardening_platform=proxmox-host`). Serbest metin olarak gösterilir; yanlış değerde paket durur.
-- Proxmox üstündeki **sıradan Ubuntu VM'leri** etkilenmez: `generic` platformla normal şekilde sertleştirilir. Proxmox hostunun **güvenlik duvarı** `playbooks/pve-firewall.yml` ile ayrıdır ve sshpocket'te henüz bir eylem olarak sunulmaz.
+- Proxmox üstündeki **sıradan Ubuntu VM'leri** etkilenmez: `generic` platformla normal şekilde sertleştirilir. Proxmox hostunun **güvenlik duvarı** `harden.yml`'den ayrı yönetilir (proxmox-host modunda `ufw` atlanır; yalnızca `harden.yml` ile ağ güvenlik duvarı sertleştirilmez, Lynis `FIRE-4512`). Paket 0.7.0 ile iki eylem sunar:
+  - **`pve_firewall_preview`** (salt okunur): yazılacak `cluster.fw` içeriğini gösterir. Kümede, boş/geçersiz `hardening_ssh_allow_from`'da, kontrol makinesini kapsamayan listede ve kullanıcının kendi `cluster.fw` dosyası varsa nedenini söyleyerek durur.
+  - **`pve_firewall_apply`** (`type-server-name` onayı, önce `pve_firewall_preview` şart): datacenter güvenlik duvarını GERÇEKTEN yazar ve etkinleştirir (gelen trafik varsayılan DROP; SSH, web arayüzü 8006 ve ping yalnızca `hardening_ssh_allow_from` ağlarından). Önce `enable: 0` yazılır, `pve-firewall compile` ile doğrulanır, zamanlı geri alma ağı kurulur, yeni SSH + 8006 doğrulanamazsa önceki hâle dönülür.
+  - Proxmox OLMAYAN hostta ikisi de listelenir ama hiçbir şey yapmadan "yalnızca Proxmox VE hostları içindir" diyerek durur.
+  - **`hardening_ssh_allow_from`'a bağlanabileceğin TÜM ağları yaz** (LAN + VPN + ofis). Yanlış liste web arayüzünü ve SSH'ı keser; önce VM/host snapshot'ı al.
 - Önce snapshot (Proxmox için host disk imajı); önce `preview`.
 
 ## Bilinen küçük pürüzler

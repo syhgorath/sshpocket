@@ -233,6 +233,20 @@ hardened() { in_lab 'test -e /etc/ssh/sshd_config.d/00-hardening.conf && ufw sta
     grep -q '|rollback_disarm|ok$' "$STATE/userdata/linux-hardening/lab/results"
 }
 
+@test "pve_firewall_preview, Proxmox OLMAYAN host'ta nedenini söyleyerek durur; sunucuda hiçbir şey değişmez" {
+    local before after
+    before=$(in_lab 'ufw status | head -1; ls /etc/pve 2>&1 | head -1; ls /etc/ssh/sshd_config.d | wc -l')
+    lab_run pve_firewall_preview
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"yalnızca Proxmox VE hostları içindir"* ]] || false
+    [[ "$output" == *"changed=0"* ]] || false
+    after=$(in_lab 'ufw status | head -1; ls /etc/pve 2>&1 | head -1; ls /etc/ssh/sshd_config.d | wc -l')
+    [ "$before" = "$after" ]
+    run in_lab 'test -e /etc/pve'
+    [ "$status" -ne 0 ]
+    grep -q '|pve_firewall_preview|fail$' "$STATE/userdata/linux-hardening/lab/results"
+}
+
 # ---------- hata yolları: sunucuya dokunulmaz, temiz ret ----------
 @test "sunucu erişilemezse (konteyner duraklatıldı): 'algılanamadı' ile durur, Ansible başlamaz" {
     docker pause sshpocket-lab >/dev/null

@@ -9,6 +9,6 @@
 
 [linux-hardening]
 repo = syhgorath/linux-hardening
-version = 0.6.0
-sha256 = 052d8d9d3379dd36a5ff4ae6234b3992b96936c9ff9d8ff0a12f3fd06576d43b
+version = 0.7.0
+sha256 = 5d4f6912e4870f93f19389b5b64440401d41b3e436e0d30a64730f0cf50c4b7b
 signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
