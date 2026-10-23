@@ -231,3 +231,17 @@ CASES
     [ "${COMP_RUN_ARGV[1]}" = "playbooks/harden.yml" ]
     [ "${COMP_RUN_ARGV[*]: -1}" = "--ask-become-pass" ]
 }
+
+@test "inventory: become-exe yalnızca tam /usr/bin/sudo.ws kabul edilir; boşsa envantere hiçbir şey eklenmez" {
+    comp_run_write_inventory "$T/inv1" g web1 h u 22 /k
+    run ! grep -q "become" "$T/inv1"
+    comp_run_write_inventory "$T/inv2" g web1 h u 22 /k /usr/bin/sudo.ws
+    grep -q "^web1 ansible_host=h ansible_user=u ansible_port=22 ansible_private_key_file='/k' ansible_become_exe=/usr/bin/sudo.ws$" "$T/inv2"
+    local bad
+    for bad in /bin/sh /usr/bin/sudo /usr/bin/sudo.ws.evil "/usr/bin/sudo.ws -S" $'/usr/bin/sudo.ws\nansible_become=yes' sudo.ws; do
+        rm -f "$T/inv3"
+        run comp_run_write_inventory "$T/inv3" g web1 h u 22 /k "$bad"
+        [ "$status" -ne 0 ] || { echo "KABUL EDİLDİ: $bad"; return 1; }
+        [ ! -e "$T/inv3" ]
+    done
+}

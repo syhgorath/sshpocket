@@ -19,6 +19,16 @@ comp_detect_profile() {
     printf '%s-%s' "$id" "$ver"
 }
 
+# comp_detect_sudo_ws <host> <port> <kullanıcı> <anahtar> → 0 ise sunucuda /usr/bin/sudo.ws çalıştırılabilir (Ubuntu'da klasik sudo; sudo-rs yanında).
+# Uzak komut SABİT ve salt okunurdur; host key kapatılmaz, parola sorulmaz. Çıktı yalnızca tam satır eşleşmesiyle değerlendirilir.
+comp_detect_sudo_ws() {
+    local host="$1" port="$2" user="$3" key="$4" out
+    out=$(ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+              -o PreferredAuthentications=publickey -o PasswordAuthentication=no \
+              -p "$port" -i "$key" "$user@$host" 'test -x /usr/bin/sudo.ws && echo SSHPOCKET_SUDO_WS=yes' 2>/dev/null) || return 1
+    printf '%s\n' "$out" | grep -qx 'SSHPOCKET_SUDO_WS=yes'
+}
+
 # comp_ssh_hint <ssh-hata-dosyası> → bilinen ssh hatalarını açıklar ve ne yapılacağını söyler (stdout; boşsa hiçbir şey yazmaz).
 # Hata metni sunucudan gelebilir (banner vb.) → denetim karakterleri temizlenir, kesilir; kabuğa/eval'e HİÇ verilmez.
 comp_ssh_hint() {
@@ -105,6 +115,15 @@ comp_cli_run() {
     fi
     [ "$derr" = /dev/null ] || rm -f -- "$derr"
     echo "Sunucu: $server ($user@$ip:$port)  Profil: $profile  Paket: $id $ver" >&2
+    # Ubuntu'da varsayılan sudo-rs, Ansible'ın parolalı sudo'sunda takılır: klasik sudo (sudo.ws) varsa onu kullan
+    COMP_CTX_BECOME_EXE=""
+    case "$profile" in
+        ubuntu-*)
+            if comp_detect_sudo_ws "$ip" "$port" "$user" "$key"; then
+                COMP_CTX_BECOME_EXE="/usr/bin/sudo.ws"
+                echo "  ℹ️  Ubuntu: Ansible sudo-rs yerine klasik sudo (/usr/bin/sudo.ws) ile yetki yükseltir." >&2
+            fi ;;
+    esac
 
     values="$dir/$id.vars"
     [ -f "$values" ] || values=""

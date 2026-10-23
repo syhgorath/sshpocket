@@ -25,10 +25,17 @@ _comp_run_inv_safe() {
     return 0
 }
 
-# comp_run_write_inventory <dosya> <grup> <takma-ad> <host> <kullanıcı> <port> <anahtar-yolu>
+# comp_run_write_inventory <dosya> <grup> <takma-ad> <host> <kullanıcı> <port> <anahtar-yolu> [become-exe]
 # Geçici Ansible inventory (INI) yazar; izin 600, yeni dosya (üzerine yazmaz).
+# become-exe (isteğe bağlı): YALNIZCA tam olarak /usr/bin/sudo.ws kabul edilir (Ubuntu'da sudo-rs + parolalı sudo ile Ansible uyumsuzluğunun çözümü);
+# başka bir değer reddedilir (envantere keyfi komut yazılamaz).
 comp_run_write_inventory() {
-    local file="$1" group="$2" alias_="$3" host="$4" user="$5" port="$6" key="$7"
+    local file="$1" group="$2" alias_="$3" host="$4" user="$5" port="$6" key="$7" become_exe="${8:-}" extra=""
+    case "$become_exe" in
+        "") ;;
+        /usr/bin/sudo.ws) extra=" ansible_become_exe=/usr/bin/sudo.ws" ;;
+        *) echo "geçersiz become-exe (yalnızca /usr/bin/sudo.ws)" >&2; return 1 ;;
+    esac
     [[ "$group" =~ ^[A-Za-z][A-Za-z0-9_]{0,63}$ ]] || { echo "geçersiz inventory grubu" >&2; return 1; }
     [[ "$alias_" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ ]] || { echo "geçersiz sunucu adı" >&2; return 1; }
     [[ "$host" =~ ^[A-Za-z0-9][A-Za-z0-9.:_-]{0,252}$ ]] || { echo "geçersiz host/IP" >&2; return 1; }
@@ -38,8 +45,8 @@ comp_run_write_inventory() {
     [ ! -e "$file" ] || { echo "inventory dosyası zaten var" >&2; return 1; }
     ( umask 077
       set -C
-      printf '[%s]\n%s ansible_host=%s ansible_user=%s ansible_port=%s ansible_private_key_file=%s\n' \
-          "$group" "$alias_" "$host" "$user" "$port" "'$key'" > "$file" ) || { echo "inventory yazılamadı" >&2; return 1; }
+      printf '[%s]\n%s ansible_host=%s ansible_user=%s ansible_port=%s ansible_private_key_file=%s%s\n' \
+          "$group" "$alias_" "$host" "$user" "$port" "'$key'" "$extra" > "$file" ) || { echo "inventory yazılamadı" >&2; return 1; }
 }
 
 # comp_run_build_argv <bilgi> <eylem> <inventory> <takma-ad> <değişken-dosyası>
