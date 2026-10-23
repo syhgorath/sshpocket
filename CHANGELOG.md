@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.9] - 2026-10-23
+
+Ubuntu 26.04'te parolalı sudo ile paket çalıştırma düzeltildi (sudo-rs); README gerçek VM doğrulamalarını yansıtıyor.
+
+### Doğrulandı (belge)
+- `linux-hardening 0.7.0`, sshpocket 3.6.8 ile USB'den **taze Ubuntu 26.04.1 VM'inde**: `audit` (Lynis **58**) → `preview` (`changed=34`) → `apply` (`ok=168 changed=43 failed=0`; güvenlik ağı, ufw, ssh, yeni bağlantı doğrulaması, `/tmp` `noexec`) → bağımsız kontrol → **ikinci `preview` `changed=0`** (idempotent) → `audit` (Lynis **76**, öneri 46 → 23). Parolalı sudo-rs sorunu yeniden üretildi ve düzeltildi (aşağıda). Proxmox VE 9.2.21 VM'inde (0.6.0, `proxmox-host`): `apply` `ok=133 failed=0`, Lynis **82**, web arayüzü ve CT oluşturma çalışıyor. **Denenmedi:** gerçek Proxmox'ta `pve_firewall_preview`/`pve_firewall_apply`, Ubuntu'da `rollback_now`/`rollback_disarm` (yalnızca LAB), kümeli Proxmox ve gerçek donanım.
+
 ### Düzeltildi
 - **Ubuntu 26.04: parolalı sudo ile paket çalıştırma** artık takılmıyor. Varsayılan `sudo-rs`, Ansible'ın parolalı `become`'ında `Timeout (12s) waiting for privilege escalation prompt` ile düşüyordu (gerçek VM'de yeniden üretildi: `UNREACHABLE`). Ubuntu profillerinde sunucuda `/usr/bin/sudo.ws` (klasik sudo) çalıştırılabilirse, envantere `ansible_become_exe=/usr/bin/sudo.ws` yazılır (salt okunur, sabit bir ssh sorgusuyla tespit edilir; envantere yalnızca tam bu yol yazılabilir). NOPASSWD sudo etkilenmez, Ubuntu dışı profillerde sorgu yapılmaz. Sudo istemi zaman aşımında nedeni açıklayan bir ipucu da gösterilir.
 

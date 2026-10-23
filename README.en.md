@@ -24,11 +24,12 @@ Every server is a *module*: drop a module folder in and it shows up in the menu 
 | Environment | Status |
 |---|---|
 | **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Developed and manually tried |
-| **Apple Silicon (arm64, Apple M5 Pro), macOS 27.0.1, bash 3.2.57, OpenSSH 10.3p1** | ✅ Manually tried: `--doctor`, `ssh-add` with the passphrase from the Keychain, `--components sync` and `run` (`rollback_status` → `preview` → `apply` on an Ubuntu 26.04.1 VM). ⚠️ Not tried by hand: opening a Terminal window, double-clicking `start.command`, the arrow-key/fzf look of the new `🛡️ Packages` menu, knocking against a real server |
+| **Apple Silicon (arm64, Apple M5 Pro), macOS 27.0.1, bash 3.2.57, OpenSSH 10.3p1** | ✅ Manually tried: `--doctor`, `ssh-add` with the passphrase from the Keychain, `--components sync` and `run` (`audit` → `preview` → `apply` → second `preview` on an Ubuntu 26.04.1 VM, including password sudo with sudo-rs; `apply` and `audit` on a Proxmox VE 9.2.21 VM). ⚠️ Not tried by hand: opening a Terminal window, double-clicking `start.command`, the arrow-key/fzf look of the new `🛡️ Packages` menu, knocking against a real server |
 | **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Automated tests** (Bats + ShellCheck, on every PR). ⚠️ Not tried by hand: the Keychain permission dialog, opening Terminal, double-clicking `start.command` |
 | Ubuntu 24.04 (CI only: ShellCheck + Bats tests) | ✅ automated |
 | Running on Linux (no Keychain/`osascript`/`diskutil`) | ❌ Not supported |
-| Target server: Ubuntu 26.04.1 (linux-hardening, a single test VM) | ✅ limited; rpi/Proxmox profiles not tried |
+| Target server: Ubuntu 26.04.1 (linux-hardening) | ✅ fresh install on a real VM: Lynis 58 → 76, second run `changed=0`, password sudo-rs |
+| Target server: Proxmox VE 9 (Debian 13, inside a VM; linux-hardening `proxmox-host` platform) | ✅ `apply` and `audit` (Lynis 82), web UI and container creation fine. ⚠️ `pve_firewall_*` actions, clustered Proxmox and real hardware not tried; Raspberry Pi not tried |
 
 If you hit a problem on Apple Silicon or a newer macOS, please open an issue (with the macOS version, `uname -m` and `bash --version`).
 
@@ -93,7 +94,7 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
   use `numbers` if a terminal misbehaves.
 - **`./start.sh --doctor`:** prerequisite check (ssh tools, Python range, venv, disk, network); read-only, installs nothing.
 - **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new|prune`; clean up old version folders with `./start.sh --components prune [--dry-run] [--yes]` (the active, the previous and the locked version are kept); run an installed package's action: `./start.sh --components run <package> <action> <server>` (connects to the server; preview/confirmation gates apply).
-  `linux-hardening 0.7.0` is in the lock (every action tried through sshpocket on the Docker LAB; `audit` → `preview` → `apply` tried on a real Ubuntu 26.04.1 VM with 0.4.0 on a fresh install; a second run on top of an existing 0.3.0 install was not tried). Usage and the **access-network trap**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish); standard: [docs/package-standard.md](docs/package-standard.md).
+  `linux-hardening 0.7.0` is in the lock (every action tried through sshpocket on the Docker LAB; `audit` → `preview` → `apply` → second `preview` (`changed=0`) tried on a real Ubuntu 26.04.1 VM with 0.7.0 on a fresh install; `apply` and `audit` with 0.6.0 on a Proxmox VE 9 VM; the Proxmox firewall actions `pve_firewall_preview`/`pve_firewall_apply` have not been tried on a real Proxmox yet). Usage and the **access-network trap**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish); standard: [docs/package-standard.md](docs/package-standard.md).
 - Automated tests (Bats, bash 5 and macOS bash 3.2) + ShellCheck run in CI on every PR.
 
 ## Sending the key to the server
