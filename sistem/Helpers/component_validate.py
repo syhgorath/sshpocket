@@ -27,6 +27,8 @@ SECRET_NAME = re.compile(r"(pass(word|wd)?|secret|token|credential|private_?key|
 SECRET_FILE = re.compile(r"(^|/)(\.env|id_(ed25519|rsa|ecdsa|dsa)[^/]*|[^/]*\.pem|[^/]*\.secrets)$")
 PRIVATE_KEY = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 ROLLBACK_WORDS = re.compile(r"(geri al|rollback|restore|kurtar|recovery|undo)", re.I)
+# kurtarma eylemleri kontrol kaybından sonra da çalışmalı: ön koşul (preview) beklenmez
+RECOVERY_NAME = re.compile(r"^(rollback|recover|restore|undo)", re.I)
 
 
 def ok(sec, msg):
@@ -267,7 +269,9 @@ def check_actions(root, info):
             if nwarn == 0:
                 issues.append("hiç warning yok (neyi değiştirdiğini/önizlemenin göstermediklerini yazın)")
             readonly = [r for r in requires if not first(info, "action.%s.effects" % r)]
-            if not readonly:
+            # yalnızca araç kuran eylem (örn. denetim tarayıcısı) yapılandırmayı değiştirmez; kurtarma eylemleri bilerek ön koşulsuzdur
+            config_changing = bool(set(effects.split(",")) - {"installs-package"})
+            if not readonly and config_changing and not RECOVERY_NAME.match(a):
                 issues.append("salt okunur bir 'preview' ön koşulu yok (geri alma/kurtarma eylemleri bilerek ön koşulsuz olabilir)")
             mutating_without_docs = True
         if first(info, "action.%s.outputs.format" % a):
