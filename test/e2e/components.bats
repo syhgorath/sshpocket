@@ -247,6 +247,36 @@ hardened() { in_lab 'test -e /etc/ssh/sshd_config.d/00-hardening.conf && ufw sta
     grep -q '|pve_firewall_preview|fail$' "$STATE/userdata/linux-hardening/lab/results"
 }
 
+# Proxmox benzeri LAB: /etc/pve + pveversion işaretleri ve sunucu değişkenlerinde hardening_pve_apply=true (ana `apply` için gerekir).
+# 0.7.0'da bu durumda pve_firewall_preview cluster.fw'yi GERÇEKTEN yazıyordu; 0.8.0'da önizleme yazma kapısını daima kapalı tutar.
+pve_lab_cleanup() {
+    in_lab 'rm -rf /etc/pve /usr/bin/pveversion' 2>/dev/null || true
+    [ -f "$STATE/servers/lab/linux-hardening.vars" ] && sed -i.bak '/^hardening_pve_apply=/d' "$STATE/servers/lab/linux-hardening.vars" && rm -f "$STATE/servers/lab/linux-hardening.vars.bak"
+    return 0
+}
+teardown() { [ -f "$STATE/kh" ] && pve_lab_cleanup; return 0; }
+
+@test "pve_firewall_preview (Proxmox benzeri LAB + hardening_pve_apply=true): hiçbir şey yazılmaz, restart çalışmaz, güvenlik ağı arm edilmez" {
+    local ver cmd
+    ver=$(cat "$ROOT/components/linux-hardening/current")
+    cmd=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['actions']['pve_firewall_preview']['cmd'])" "$ROOT/components/linux-hardening/$ver/component.json")
+    [[ "$cmd" == *"--check"* ]] || false
+    [[ "$cmd" != *" -e "* && "$cmd" != *" -i "* && "$cmd" != *"--limit"* ]] || false
+    in_lab 'mkdir -p /etc/pve/firewall && printf "#!/bin/sh\necho pve-manager/9.0.0\n" > /usr/bin/pveversion && chmod +x /usr/bin/pveversion'
+    printf 'hardening_pve_apply=true\n' >> "$STATE/servers/lab/linux-hardening.vars"
+    local armed_before
+    armed_before=$(in_lab 'systemctl is-active hardening-rollback.timer 2>&1; ls /etc/pve/firewall | wc -l')
+    E2E_RISKY=e lab_run pve_firewall_preview
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ÖNİZLEME (yazılmadı)"* ]] || false
+    [[ "$output" != *"Apply now"*"changed:"* ]] || false
+    [[ "$output" != *"Write the file ENABLED"*"changed:"* ]] || false
+    run in_lab 'test -e /etc/pve/firewall/cluster.fw'
+    [ "$status" -ne 0 ]
+    [ "$armed_before" = "$(in_lab 'systemctl is-active hardening-rollback.timer 2>&1; ls /etc/pve/firewall | wc -l')" ]
+    grep -q '|pve_firewall_preview|ok$' "$STATE/userdata/linux-hardening/lab/results"
+}
+
 # ---------- hata yolları: sunucuya dokunulmaz, temiz ret ----------
 @test "sunucu erişilemezse (konteyner duraklatıldı): 'algılanamadı' ile durur, Ansible başlamaz" {
     docker pause sshpocket-lab >/dev/null

@@ -4,6 +4,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **`components.lock`: `linux-hardening` 0.7.0 → 0.8.0** (100 değişken, 8 eylem). **`pve_firewall_preview` düzeltmesi:** 0.7.0'da bu eylem, sunucu değişkenlerinde `hardening_pve_apply=true` iken Proxmox'ta `cluster.fw`'yi GERÇEKTEN yazıyordu (gerçek Proxmox VM'inde görüldü); 0.8.0'da komut `pve-firewall-onizleme.yml --check` olur ve yazma kapısı değişkenle açılamaz. Yeni menü değişkenleri (18): varsayılan AÇIK `hardening_debsums` (+`_cron_check`), `hardening_apt_show_versions`, `hardening_process_accounting`, `hardening_fail2ban_jail_local`, `hardening_ufw_log_martians`; varsayılan KAPALI (çoğu `warn_if`) `hardening_apt_upgrade`, `hardening_kernel_modules_disabled`, `hardening_auditd_conf_cis`, `hardening_auditd_disk_full_halt`, `hardening_auditd_backlog_limit`, `hardening_auditd_immutable`, `hardening_aide_audit_tools`, `hardening_ssh_max_sessions`, `hardening_ufw_outgoing_deny`, `hardening_restrict_compilers`, `hardening_apparmor_enforce`, `hardening_malware_scanner`. Kapatınca GERİ ALINMAYANLAR: auditd.conf değerleri, GRUB satırı, derleyici izinleri, AppArmor kipi, ufw "ALLOW OUT" kuralları; `-e 2` ve `kernel_modules_disabled` yeniden başlatmaya kadar sürer.
+
+### Eklendi
+- Docker LAB e2e: **Proxmox benzeri LAB** testi (`/etc/pve` + `pveversion` işaretleri, `hardening_pve_apply=true`): `pve_firewall_preview` hiçbir şey yazmaz, `pve-firewall restart` çalışmaz, güvenlik ağı arm edilmez, eylem komutunda `--check` var ve `-e/-i/--limit` yok. 0.7.0 kilidiyle elle denendi: kural dosyasını yazıyor (test bunu yakalar). `drive.exp` riskli değer sorusunu `E2E_RISKY` ile cevaplayabilir.
+
 ## [3.6.9] - 2026-10-23
 
 Ubuntu 26.04'te parolalı sudo ile paket çalıştırma düzeltildi (sudo-rs); README gerçek VM doğrulamalarını yansıtıyor.
