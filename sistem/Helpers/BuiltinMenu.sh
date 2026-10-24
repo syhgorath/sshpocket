@@ -22,7 +22,10 @@ ReloadModules() {
     # shellcheck disable=SC2034
     MODULE_COUNT=0
     RegisterServers
-    Autoload "$SISTEM_PATH/Modules" >/dev/null
+    # Eski Modules/ klasörü yeni kurulumlarda yoktur; yokluğu uyarı gerektirmez (Main.sh de aynı korumayı yapar)
+    if [ -d "$SISTEM_PATH/Modules" ]; then
+        Autoload "$SISTEM_PATH/Modules" >/dev/null
+    fi
     RegisterBuiltinMenu
 }
 
