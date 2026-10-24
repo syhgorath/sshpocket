@@ -4,17 +4,22 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.10] - 2026-10-24
+
+`linux-hardening` 0.8.0 kilitlendi (`pve_firewall_preview` artık hiçbir şey yazmaz); passphrase istemi açıklaması; sunucu silme sonrası gereksiz uyarı giderildi.
+
 ### Değişti
 - Passphrase Keychain'e kaydedilirken (yeni sunucu, Keychain menüsü, yanlış passphrase düzeltme) macOS'un "password data for new item:" istemi öncesinde açıklanır: bu, SSH anahtarının PASSPHRASE'idir (sudo parolası değil), yazarken görünmez ve doğrulama için bir kez daha sorulabilir.
+- **`components.lock`: `linux-hardening` 0.7.0 → 0.8.0** (100 değişken, 8 eylem). **`pve_firewall_preview` düzeltmesi:** 0.7.0'da bu eylem, sunucu değişkenlerinde `hardening_pve_apply=true` iken Proxmox'ta `cluster.fw`'yi GERÇEKTEN yazıyordu (gerçek Proxmox VM'inde görüldü); 0.8.0'da komut `pve-firewall-onizleme.yml --check` olur ve yazma kapısı değişkenle açılamaz. Yeni menü değişkenleri (18): varsayılan AÇIK `hardening_debsums` (+`_cron_check`), `hardening_apt_show_versions`, `hardening_process_accounting`, `hardening_fail2ban_jail_local`, `hardening_ufw_log_martians`; varsayılan KAPALI (çoğu `warn_if`) `hardening_apt_upgrade`, `hardening_kernel_modules_disabled`, `hardening_auditd_conf_cis`, `hardening_auditd_disk_full_halt`, `hardening_auditd_backlog_limit`, `hardening_auditd_immutable`, `hardening_aide_audit_tools`, `hardening_ssh_max_sessions`, `hardening_ufw_outgoing_deny`, `hardening_restrict_compilers`, `hardening_apparmor_enforce`, `hardening_malware_scanner`. Kapatınca GERİ ALINMAYANLAR: auditd.conf değerleri, GRUB satırı, derleyici izinleri, AppArmor kipi, ufw "ALLOW OUT" kuralları; `-e 2` ve `kernel_modules_disabled` yeniden başlatmaya kadar sürer.
 
 ### Düzeltildi
 - Sunucu silme/ekleme sonrası menü yeniden yüklenirken, eski `sistem/Modules` klasörü olmayan kurulumlarda ekrana `Warning: Autoload path does not exist` yazılıyordu; klasör yoksa artık sessiz (`Main.sh` ile aynı koruma).
 
-### Değişti
-- **`components.lock`: `linux-hardening` 0.7.0 → 0.8.0** (100 değişken, 8 eylem). **`pve_firewall_preview` düzeltmesi:** 0.7.0'da bu eylem, sunucu değişkenlerinde `hardening_pve_apply=true` iken Proxmox'ta `cluster.fw`'yi GERÇEKTEN yazıyordu (gerçek Proxmox VM'inde görüldü); 0.8.0'da komut `pve-firewall-onizleme.yml --check` olur ve yazma kapısı değişkenle açılamaz. Yeni menü değişkenleri (18): varsayılan AÇIK `hardening_debsums` (+`_cron_check`), `hardening_apt_show_versions`, `hardening_process_accounting`, `hardening_fail2ban_jail_local`, `hardening_ufw_log_martians`; varsayılan KAPALI (çoğu `warn_if`) `hardening_apt_upgrade`, `hardening_kernel_modules_disabled`, `hardening_auditd_conf_cis`, `hardening_auditd_disk_full_halt`, `hardening_auditd_backlog_limit`, `hardening_auditd_immutable`, `hardening_aide_audit_tools`, `hardening_ssh_max_sessions`, `hardening_ufw_outgoing_deny`, `hardening_restrict_compilers`, `hardening_apparmor_enforce`, `hardening_malware_scanner`. Kapatınca GERİ ALINMAYANLAR: auditd.conf değerleri, GRUB satırı, derleyici izinleri, AppArmor kipi, ufw "ALLOW OUT" kuralları; `-e 2` ve `kernel_modules_disabled` yeniden başlatmaya kadar sürer.
-
 ### Eklendi
 - Docker LAB e2e: **Proxmox benzeri LAB** testi (`/etc/pve` + `pveversion` işaretleri, `hardening_pve_apply=true`): `pve_firewall_preview` hiçbir şey yazmaz, `pve-firewall restart` çalışmaz, güvenlik ağı arm edilmez, eylem komutunda `--check` var ve `-e/-i/--limit` yok. 0.7.0 kilidiyle elle denendi: kural dosyasını yazıyor (test bunu yakalar). `drive.exp` riskli değer sorusunu `E2E_RISKY` ile cevaplayabilir.
+
+### Bilinen sorun
+- ssh-agent'ında 3'ten fazla anahtar varsa, sertleştirme sonrası paketin "yeni SSH bağlantısı" doğrulaması `Too many authentication failures` ile düşer (sertleştirme `MaxAuthTries 3` yapar, doğrulayan `ssh` agent'taki tüm anahtarları dener). Güvenlik ağı sshd/ufw'yi geri alır ama paketler, sysctl, auditd, fail2ban ve AIDE kalır. Geçici çözüm: `ssh-add -D` (sshpocket gereken anahtarı yeniden ekler). Gerçek Ubuntu VM'inde 5 anahtarla görüldü.
 
 ## [3.6.9] - 2026-10-23
 
