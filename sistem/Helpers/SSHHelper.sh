@@ -11,6 +11,14 @@ ssh_keychain_account() {
     echo "USBMonitor_${1}_Passphrase"
 }
 
+# Keychain'e kaydetmeden hemen önce ne istendiğini açıklar: macOS'un kendi istemi yalnızca
+# "password data for new item:" der ve bunun SSH anahtarının passphrase'i olduğunu söylemez.
+ssh_keychain_prompt_note() {
+    echo "🔐 macOS şimdi SSH anahtarınızın PASSPHRASE'ini (anahtarı oluştururken verdiğiniz) Keychain'e kaydetmek için soracak."
+    echo "   İstem 'password data for new item:' diye görünür; yazarken ekranda bir şey görünmez."
+    echo "   Aynı passphrase'i yazın; macOS doğrulama için bir kez daha sorabilir. Sunucunun sudo parolası DEĞİLDİR."
+}
+
 # Passphrase Keychain'de kayıtlı mı?
 # Parametre: $1 - modül öneki
 ssh_has_passphrase() {
@@ -65,6 +73,7 @@ ssh_agent_add_retry() {
         read -r -p "Kayıtlı passphrase yanlış olabilir. Yeniden girip Keychain'e kaydedeyim mi? [e/H]: " answer || return 1
         case "$answer" in e|E|evet|Evet) ;; *) return 1 ;; esac
         # -w son argüman: passphrase komut satırında görünmez, güvenli sorulur
+        ssh_keychain_prompt_note
         security add-generic-password -U -a "$(ssh_keychain_account "$prefix")" \
             -s "$SSH_KEYCHAIN_SERVICE" -w || return 1
         attempt=$((attempt + 1))

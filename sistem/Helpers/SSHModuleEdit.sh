@@ -112,6 +112,7 @@ ssh_keychain_manage() {
     case "${choice:-0}" in
         1)
             # -w son argüman: passphrase komut satırında görünmez, güvenli sorulur
+            ssh_keychain_prompt_note
             if security add-generic-password -U -a "$account" -s "$SSH_KEYCHAIN_SERVICE" -w; then
                 echo "✅ Keychain'e kaydedildi"
                 if [ -f "$ssh_key" ]; then

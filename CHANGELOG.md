@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- Passphrase Keychain'e kaydedilirken (yeni sunucu, Keychain menüsü, yanlış passphrase düzeltme) macOS'un "password data for new item:" istemi öncesinde açıklanır: bu, SSH anahtarının PASSPHRASE'idir (sudo parolası değil), yazarken görünmez ve doğrulama için bir kez daha sorulabilir.
+
 ### Düzeltildi
 - Sunucu silme/ekleme sonrası menü yeniden yüklenirken, eski `sistem/Modules` klasörü olmayan kurulumlarda ekrana `Warning: Autoload path does not exist` yazılıyordu; klasör yoksa artık sessiz (`Main.sh` ile aynı koruma).
 
