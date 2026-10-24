@@ -14,6 +14,8 @@ source "$SCRIPT_DIR/Helpers/Validate.sh"
 source "$SCRIPT_DIR/Helpers/ModuleFiles.sh"
 # shellcheck source=Helpers/Servers.sh
 source "$SCRIPT_DIR/Helpers/Servers.sh"
+# shellcheck source=Helpers/SSHHelper.sh
+source "$SCRIPT_DIR/Helpers/SSHHelper.sh"
 SERVERS_DIR="$(servers_dir)"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -61,6 +63,7 @@ if [ "$create_key" = "y" ] || [ "$create_key" = "Y" ]; then
     read -r -p "Passphrase Keychain'e kaydedilsin mi? (y/n) " save_kc
     if [ "$save_kc" = "y" ] || [ "$save_kc" = "Y" ]; then
         # -w son argüman: passphrase komut satırında görünmez, güvenli sorulur
+        ssh_keychain_prompt_note
         security add-generic-password -U -a "USBMonitor_${upper}_Passphrase" -s "USBMonitor" -w \
             && echo -e "${GREEN}✅ Keychain'e kaydedildi${NC}" \
             || echo -e "${RED}❌ Keychain kaydı başarısız${NC}"

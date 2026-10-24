@@ -110,6 +110,16 @@ STUB
     [[ "$output" == *"Keychain'e kaydedildi"* ]]
     grep -qxF 'add-generic-password -U -a USBMonitor_WEB1_Passphrase -s USBMonitor -w' "$LOG"
 }
+
+@test "keychain: kaydetmeden önce macOS'un 'password data for new item' istemi açıklanır (passphrase, sudo parolası değil)" {
+    run ssh_keychain_manage WEB1 "$MD/yok_key" <<< "1"
+    [[ "$output" == *"PASSPHRASE"* ]]
+    [[ "$output" == *"password data for new item"* ]]
+    [[ "$output" == *"sudo parolası DEĞİLDİR"* ]]
+    # açıklama, "kaydedildi" satırından ÖNCE gelir
+    local before="${output%%Keychain\'e kaydedildi*}"
+    [[ "$before" == *"PASSPHRASE"* ]]
+}
 @test "keychain: sil -> delete-generic-password" {
     run ssh_keychain_manage WEB1 "$MD/yok_key" <<< "2"
     grep -q 'delete-generic-password -a USBMonitor_WEB1_Passphrase -s USBMonitor' "$LOG"
