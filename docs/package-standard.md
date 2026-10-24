@@ -191,7 +191,7 @@ Her iki runner için ortak kurallar:
 | `requirements.txt` var, hepsi `==` sabit ve `--hash=sha256:` içerir; URL/VCS/`-e`/`-r` yok | ❌ hata |
 | Her eylemin `cmd`'si `ansible-playbook <var olan, paket içi, göreli playbook>` | ❌ hata |
 | Paket içinde sembolik bağ, özel anahtar bloğu, `.env`/`id_*`/`.pem` yok | ❌ hata |
-| Değiştiren eylemin salt okunur ön koşulu (`preview`), `warnings`'i ve `requires_sudo`'su var | ⚠️ uyarı (geri alma/kurtarma eylemleri bilerek ön koşulsuz olabilir) |
+| Yapılandırma değiştiren eylemin salt okunur ön koşulu (`preview`), `warnings`'i ve `requires_sudo`'su var | ⚠️ uyarı. Ön koşul beklenmeyenler: adı `rollback`/`recover`/`restore`/`undo` ile başlayan kurtarma eylemleri (kontrol kaybından sonra da çalışmalı) ve yalnızca `installs-package` etkisi olan eylemler (örn. denetim tarayıcısı kuran `audit`) |
 | `outputs.format` varsa playbook'ta `SSHPOCKET_RESULT <id>.<eylem>` çıktısı var | ⚠️ uyarı (dinamik üretilen metin yanlış alarm verebilir) |
 | Değişken adı parola/token/anahtar izlenimi vermiyor (bool/int değişkenler hariç); her değişken kullanılıyor; üst veri (tür) var | ⚠️ uyarı |
 | Değiştiren eylem için belgede geri alma/kurtarma anlatılmış (anahtar sözcük) | ⚠️ uyarı |

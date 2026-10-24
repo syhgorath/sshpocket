@@ -133,6 +133,15 @@ val() { run python3 -I "$VAL" "$@"; }
     [[ "$output" == *"Sonuç: ✅ uyumlu (3 uyarı"* ]] || false
 }
 
+@test "uyarı yok: kurtarma eylemi (rollback_*) ve yalnızca araç kuran eylem preview ön koşulu istemez; yapılandırma değiştiren hâlâ ister" {
+    jedit "$P/component.json" 'a=d["actions"]; a["rollback_now"]=dict(a["apply"]); a["rollback_now"].pop("requires",None); a["rollback_now"]["effects"]=["changes-config"]; a["scan"]=dict(a["apply"]); a["scan"].pop("requires",None); a["scan"]["effects"]=["installs-package"]; a["apply"].pop("requires")'
+    val "$P"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"rollback_now: salt okunur bir 'preview'"* ]] || false
+    [[ "$output" != *"scan: salt okunur bir 'preview'"* ]] || false
+    [[ "$output" == *"apply: salt okunur bir 'preview' ön koşulu yok"* ]] || false
+}
+
 @test "uyarı: parola/token gibi değişken adı, kullanılmayan değişken, eski biçim (yalnızca ad)" {
     jedit "$P/component.json" 'd["vars"]=d["vars"]+[{"name":"demo_api_token","type":"string"}, {"name":"demo_kullanilmaz","type":"string"}, "demo_eski_bicim"]'
     val "$P"

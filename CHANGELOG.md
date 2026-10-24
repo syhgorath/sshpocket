@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **`components.lock`: `linux-hardening` 0.8.0 → 0.8.1.** `hardening_kernel_modules_disabled` artık `/etc/modules-load.d/60-hardening-preload.conf` yazar (yüklü modüller + netfilter + `binfmt_misc`); 0.8.0'da yeniden başlatmada `ufw` açılmıyor, güvenlik duvarı sessizce kapalı kalıyordu. `verify_access` için `ssh-agent`'ta çok anahtar ipucu; `hardening_ssh_max_sessions` (1-10) ve `hardening_auditd_backlog_limit` (min 0) sınır taşır; `rollback_disarm` armed değilken `changed=0`.
+- `validate`: "salt okunur preview ön koşulu yok" uyarısı artık yalnızca yapılandırma değiştiren eylemler için; kurtarma eylemleri (`rollback_*`, `recover*`, `restore*`, `undo*`) ve yalnızca `installs-package` etkisi olanlar (örn. `audit`) muaf. `linux-hardening` artık `--strict` altında temiz geçer.
+
 ## [3.6.10] - 2026-10-24
 
 `linux-hardening` 0.8.0 kilitlendi (`pve_firewall_preview` artık hiçbir şey yazmaz); passphrase istemi açıklaması; sunucu silme sonrası gereksiz uyarı giderildi.
