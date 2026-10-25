@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- `--components run`: sunucu saati yerelden 60 sn'den fazla farklıysa (örn. snapshot geri alındıktan sonra) engellemeden uyarır; apt "Not live until" hatasına karşı `sudo chronyc makestep` önerir. Salt okunur sabit `date +%s` sorgusu; okunamazsa sessiz geçer.
+
 ## [3.6.11] - 2026-10-25
 
 `linux-hardening` 0.8.1 kilitlendi (`kernel_modules_disabled` için modül ön yükleme düzeltmesi paket tarafında yapıldı; gerçek VM doğrulaması bu sürümden sonra); `validate` kurtarma ve araç kuran eylemlerde ön koşul uyarısı vermez.
