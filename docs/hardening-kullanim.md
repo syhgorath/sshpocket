@@ -97,3 +97,6 @@ Docker LAB'ı** vardır: `./test/e2e/lab/up.sh && bats test/e2e/components.bats`
 ## Parolalı sudo ve Ubuntu 26.04 (sudo-rs)
 Ubuntu 26.04'ün varsayılan `sudo`'su `sudo-rs`'tir ve Ansible'ın parolalı `become`'ı onunla `Timeout (12s) waiting for privilege escalation prompt` ile takılır. sshpocket, Ubuntu sunucularda klasik sudo (`/usr/bin/sudo.ws`) varsa Ansible'a onu kullandırır (envantere `ansible_become_exe`), çalıştırma sırasında bunu bir satırla bildirir. NOPASSWD sudo'da fark yoktur. Parolayı yine yalnızca Ansible'ın `BECOME password:` isteminde girersiniz.
 Sertleştirme sonrası `passwd` kuralları sıkılaşır (`minlen 14`, `minclass 3`, `dictcheck`, `maxrepeat 3`): parola ≥14 karakter, dört sınıftan (küçük/büyük/rakam/sembol) en az üçü, sözlük kelimesi içermemeli.
+
+## Sunucu saati (snapshot sonrası)
+`--components run` başlarken sunucunun saatini salt okunur `date +%s` ile yerel saatle karşılaştırır; fark 60 sn'den büyükse uyarır (engellemez). VM snapshot'tan döndürüldüğünde saat geride kalır ve apt `Not live until` hatası verir, `audit`/`apply` düşebilir. Sunucuda `sudo chronyc makestep`; olmazsa `sudo systemctl restart chrony; sleep 8; sudo chronyc makestep`.

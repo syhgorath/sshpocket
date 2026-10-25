@@ -29,6 +29,29 @@ comp_detect_sudo_ws() {
     printf '%s\n' "$out" | grep -qx 'SSHPOCKET_SUDO_WS=yes'
 }
 
+# comp_warn_clock_skew <host> <port> <kullanıcı> <anahtar> → sunucu saati yerel saatten 60 sn'den fazla farklıysa uyarır (stderr); ENGELLEMEZ, hep 0 döner.
+# Snapshot geri alınınca VM saati geride kalır ve apt "Not live until" ile düşer. Uzak komut SABİT ve salt okunurdur; okunamazsa sessiz geçer.
+comp_warn_clock_skew() {
+    local host="$1" port="$2" user="$3" key="$4" out remote local_now diff min dir
+    out=$(ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+              -o PreferredAuthentications=publickey -o PasswordAuthentication=no \
+              -p "$port" -i "$key" "$user@$host" 'date +%s' 2>/dev/null) || return 0
+    remote=$(printf '%s\n' "$out" | head -n 1)
+    [[ "$remote" =~ ^[0-9]{1,12}$ ]] || return 0
+    local_now=$(date +%s)
+    diff=$(( 10#$remote - local_now ))
+    if [ "$diff" -lt 0 ]; then dir="geride"; diff=$(( -diff )); else dir="ileride"; fi
+    [ "$diff" -gt 60 ] || return 0
+    min=$(( (diff + 30) / 60 ))
+    {
+        echo "  ⚠️  Sunucu saati yaklaşık $min dakika $dir (snapshot geri alındıysa olağandır)."
+        echo "      apt \"Not live until\" hatası verebilir; audit/apply başarısız olabilir."
+        echo "      Düzeltme (sunucuda): sudo chronyc makestep"
+        echo "      Olmazsa: sudo systemctl restart chrony; sleep 8; sudo chronyc makestep"
+    } >&2
+    return 0
+}
+
 # comp_ssh_hint <ssh-hata-dosyası> → bilinen ssh hatalarını açıklar ve ne yapılacağını söyler (stdout; boşsa hiçbir şey yazmaz).
 # Hata metni sunucudan gelebilir (banner vb.) → denetim karakterleri temizlenir, kesilir; kabuğa/eval'e HİÇ verilmez.
 comp_ssh_hint() {
@@ -115,6 +138,7 @@ comp_cli_run() {
     fi
     [ "$derr" = /dev/null ] || rm -f -- "$derr"
     echo "Sunucu: $server ($user@$ip:$port)  Profil: $profile  Paket: $id $ver" >&2
+    comp_warn_clock_skew "$ip" "$port" "$user" "$key"
     # Ubuntu'da varsayılan sudo-rs, Ansible'ın parolalı sudo'sunda takılır: klasik sudo (sudo.ws) varsa onu kullan
     COMP_CTX_BECOME_EXE=""
     case "$profile" in

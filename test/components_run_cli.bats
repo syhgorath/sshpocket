@@ -34,6 +34,7 @@ JSON
 #!/bin/bash
 echo "\$*" >> "$T/ssh_calls"
 [ "\${FAKE_SSH_FAIL:-0}" = 1 ] && { [ -n "\${FAKE_SSH_ERR:-}" ] && printf '%s\\n' "\$FAKE_SSH_ERR" >&2; exit 255; }
+case "\$*" in *"date +%s") if [ -n "\${FAKE_DATE_OUT+x}" ]; then printf '%s\\n' "\$FAKE_DATE_OUT"; else echo \$(( \$(date +%s) + \${FAKE_SKEW:-0} )); fi; exit 0 ;; esac
 case "\$*" in *sudo.ws*) [ "\${FAKE_SUDOWS:-1}" = 1 ] && { echo SSHPOCKET_SUDO_WS=yes; exit 0; } || exit 1 ;; esac
 printf '%s\n' "\${FAKE_OSREL:-NAME=\"Ubuntu\"
 ID=ubuntu
@@ -56,12 +57,13 @@ modeof() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
     run comp_cli_run demo preview web1 </dev/null
     [ "$status" -eq 0 ]
     [[ "$output" == *"Profil: ubuntu-26.04"* ]] || false
-    [ "$(wc -l < "$T/ssh_calls" | tr -d ' ')" = "2" ]      # profil algılama + sudo.ws sorgusu (ikisi de salt okunur)
+    [ "$(wc -l < "$T/ssh_calls" | tr -d ' ')" = "3" ]      # profil algılama + saat sorgusu + sudo.ws sorgusu (hepsi salt okunur)
     grep -q -- "-o BatchMode=yes" "$T/ssh_calls"
     grep -q -- "-o StrictHostKeyChecking=yes" "$T/ssh_calls"
     # uzak komut SABİT: satırın tamamı birebir eşleşmeli (ek komut sızdırılamaz)
     [ "$(head -n 1 "$T/ssh_calls")" = "-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o PreferredAuthentications=publickey -o PasswordAuthentication=no -p 22 -i $T/servers/web1/id_ed25519_web1 ziya@10.1.10.193 cat /etc/os-release" ]
-    [ "$(sed -n 2p "$T/ssh_calls" | grep -c 'test -x /usr/bin/sudo.ws')" = "1" ]      # ikinci çağrı: salt okunur sudo.ws sorgusu
+    [ "$(sed -n 3p "$T/ssh_calls" | grep -c 'test -x /usr/bin/sudo.ws')" = "1" ]      # üçüncü çağrı: salt okunur sudo.ws sorgusu
+    [ "$(sed -n 2p "$T/ssh_calls" | grep -c ' date +%s$')" = "1" ]                  # ikinci çağrı: sabit saat sorgusu
     grep -q -- "--limit web1" "$T/ansible_args"
     grep -q '"allow_from"' "$T/seen_vars"                 # servers/web1/demo.vars kullanıldı
     grep -q '|1.0.0|preview|ok$' "$T/state/demo/web1/results"
@@ -254,6 +256,38 @@ CASES
     rm -f "$T/seen_inv" "$T/ssh_calls"
     FAKE_OSREL=$'ID=debian\nVERSION_ID="13"' run comp_cli_run demo preview web1 </dev/null
     [ "$status" -ne 0 ]                                        # demo paketi yalnızca ubuntu-26.04 destekler: profil kapısı reddeder
-    [ "$(wc -l < "$T/ssh_calls" | tr -d ' ')" = "1" ]          # Ubuntu dışı profilde sudo.ws sorgusu bile yapılmaz
+    [ "$(wc -l < "$T/ssh_calls" | tr -d ' ')" = "2" ]          # profil + saat sorgusu; Ubuntu dışı profilde sudo.ws sorgusu bile yapılmaz
+    run ! grep -q "sudo.ws" "$T/ssh_calls"
     [ ! -e "$T/seen_inv" ]
+}
+
+@test "saat: küçük fark (60 sn altı) uyarı vermez" {
+    FAKE_SKEW=-30 run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Sunucu saati"* ]] || false
+}
+
+@test "saat: sunucu geride ise dakika, 'geride' ve chronyc düzeltmesiyle uyarır; engellemez" {
+    FAKE_SKEW=-1800 run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Sunucu saati yaklaşık 30 dakika geride"* ]] || false
+    [[ "$output" == *"Not live until"* ]] || false
+    [[ "$output" == *"sudo chronyc makestep"* ]] || false
+    [[ "$output" == *"sudo systemctl restart chrony; sleep 8; sudo chronyc makestep"* ]] || false
+    [ -e "$T/ansible_args" ]
+}
+
+@test "saat: sunucu ileride ise 'ileride' der" {
+    FAKE_SKEW=7200 run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"yaklaşık 120 dakika ileride"* ]] || false
+}
+
+@test "saat: okunamayan çıktıda sessiz geçer" {
+    FAKE_DATE_OUT='bozuk çıktı' run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Sunucu saati"* ]] || false
+    FAKE_DATE_OUT='' run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Sunucu saati"* ]] || false
 }
