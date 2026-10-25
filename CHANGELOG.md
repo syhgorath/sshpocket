@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.12] - 2026-10-25
+
+`linux-hardening` 0.8.2 kilitlendi (yalnızca Proxmox: `kernel_modules_disabled` reddi, yeni `fail2ban_pve_web` ve `pve_pveproxy_allow_from`; gerçek Proxmox VM doğrulaması bu sürümden sonra); paket öncesi sunucu saati farkı uyarısı.
+
 ### Değişti
 - **`components.lock`: `linux-hardening` 0.8.1 → 0.8.2** (102 değişken, 8 eylem; yalnızca Proxmox tarafı değişti). `hardening_kernel_modules_disabled` Proxmox VE hostunda artık reddedilir (veth/KVM/bridge/softdog yüklenemediği için LXC ve HA bozuluyordu; gerçek VM'de görüldü). Yeni: `hardening_fail2ban_pve_web` (varsayılan KAPALI, `warn_if`: web arayüzü 8006 için fail2ban jail'i) ve `hardening_pve_pveproxy_allow_from` (liste; 8006'yı yalnızca verilen CIDR'lere açar). Gerçek Proxmox VM doğrulaması bu satırdan sonra yapılır.
 
