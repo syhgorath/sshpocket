@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.13] - 2026-10-26
+
+`linux-hardening` 0.8.3 kilitlendi (7 yeni menü değişkeni; gerçek VM doğrulaması bu sürümden sonra).
+
 ### Değişti
 - **`components.lock`: `linux-hardening` 0.8.2 → 0.8.3** (109 değişken, 8 eylem). Yeni (7): `hardening_postfix_banner` (varsayılan AÇIK, Proxmox'ta postfix banner'ı), `hardening_proc_hidepid` (`warn_if`) ve `hardening_proc_hidepid_users`, `hardening_apt_upgrade_phased` (`warn_if`), `hardening_apt_listbugs`, `hardening_pve_web_allow_from` ve `hardening_pve_web_exclusive` (`warn_if`). `hardening_pve_pveproxy_allow_from=[]` blok tek başınaysa artık dosyayı siler. Gerçek VM doğrulaması bu satırdan sonra yapılır.
 
