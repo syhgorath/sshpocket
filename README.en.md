@@ -191,6 +191,10 @@ bats test
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute and [ROADMAP.md](ROADMAP.md) for what is planned.
 
+## Support
+
+sshpocket stays free and MIT-licensed. If you find it useful you can support it via [GitHub Sponsors](https://github.com/sponsors/syhgorath); stars, bug reports and contributions are just as welcome.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

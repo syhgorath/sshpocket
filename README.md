@@ -192,6 +192,10 @@ bats test
 
 Katkı için [CONTRIBUTING.md](CONTRIBUTING.md), planlananlar için [ROADMAP.md](ROADMAP.md).
 
+## Destek
+
+sshpocket ücretsiz ve MIT lisanslı kalacak. Faydalı bulduysan [GitHub Sponsors](https://github.com/sponsors/syhgorath) üzerinden destek olabilirsin; yıldız, hata bildirimi ve katkı da en az onun kadar değerli.
+
 ## Lisans
 
 MIT, bkz. [LICENSE](LICENSE).
