@@ -94,6 +94,23 @@ Docker LAB'ı** vardır: `./test/e2e/lab/up.sh && bats test/e2e/components.bats`
 - Paket **0.3.0+** ile giderildi: `Could not match supplied host pattern ... ubuntu` uyarısı ve `INJECT_FACTS_AS_VARS` kullanımdan kaldırma uyarıları (linux-hardening#35, #36). 0.6.0 koşusunda ikisi de görünmüyor, ikinci `apply` `changed=0` (LAB).
 
 
+## Yeni seçenekler (0.8.x) ve gerçek VM notları
+Aşağıdakiler gerçek VM'lerde (Ubuntu 26.04 ve tek düğümlü Proxmox VE 9, boş sunucular) sınandı; **misafir VM/CT'li Proxmox, Docker'lı VM, Raspberry Pi ve HA kümesinde denenmedi**.
+
+| Seçenek | Platform | Not |
+|---|---|---|
+| `hardening_kernel_modules_disabled` | Ubuntu | Paket kendi `/etc/modules-load.d/60-hardening-preload.conf` dosyasını yazar (netfilter ve `binfmt_misc` dahil), yeniden başlatma sonrası `ufw` açılır. Kapatınca dosya silinir; canlı kilit yeniden başlatmaya kadar sürer. |
+| `hardening_kernel_modules_disabled` | **Proxmox VE** | **Reddedilir** (`apply` ve `preview` hiçbir şey yazmaz): LXC (`veth`), KVM, `bridge`, `softdog` (HA) kilitten sonra yüklenemez. |
+| `hardening_postfix_banner` (varsayılan açık) | postfix kuruluysa (Proxmox) | SMTP selamlamasından yazılım adını kaldırır, Lynis `MAIL-8818` kalkar. |
+| `hardening_proc_hidepid` | Proxmox ve Ubuntu | `/proc` `hidepid=2` + `proc` grubu; yeniden başlatmadan sonra kalıcı. Root dışı kullanıcı yalnızca kendi süreçlerini görür. |
+| `hardening_apt_listbugs` | yalnızca Debian ailesi | Proxmox'ta kurulur; `bugs.debian.org` erişilemese de `apt` bloklanmaz (hata satırları gürültülüdür). Ubuntu'da atlanır, hiçbir şey yazmaz. |
+| `hardening_fail2ban_pve_web` | Proxmox | 8006 için jail; yanlış parola sonrası IP banlanır, kapatınca iki dosya silinir. |
+| `hardening_pve_pveproxy_allow_from` | Proxmox | `/etc/default/pveproxy` bloğu; kontrol makinesinin adresi listede değilse yazmaz, `[]` blok tek başınaysa dosyayı siler. Kontrol makinesi VPN/LAN arasında değişirse **ikisini de** listeye yazın. |
+| `hardening_pve_web_allow_from` | Proxmox | Yalnızca `pve_firewall_*` eylemleriyle `cluster.fw`'ye `[IPSET web]` yazar (ana `apply` ile değil). |
+| `hardening_pve_web_exclusive` | Proxmox | ⚠️ **Beklendiği gibi çalışmıyor:** 8006, aynı alt ağdaki (örn. `10.1.10.0/24`) listede olmayan bir istemciden **kapanmadı** ve kurallarda olmayan SPICE portu (3128) da açık kaldı. Nedeni bilinmiyor (Proxmox yerleşik kuralları şüpheli). Güvenliğiniz bu seçeneğe bağlı olmasın. |
+
+**Proxmox'ta yeniden başlatma:** `pvebanner.service` her açılışta `/etc/issue` dosyasını yeniden yazar; yasal uyarı bandı (Lynis `BANN-7126`) kaybolur, `/etc/issue.net` korunur.
+
 ## Parolalı sudo ve Ubuntu 26.04 (sudo-rs)
 Ubuntu 26.04'ün varsayılan `sudo`'su `sudo-rs`'tir ve Ansible'ın parolalı `become`'ı onunla `Timeout (12s) waiting for privilege escalation prompt` ile takılır. sshpocket, Ubuntu sunucularda klasik sudo (`/usr/bin/sudo.ws`) varsa Ansible'a onu kullandırır (envantere `ansible_become_exe`), çalıştırma sırasında bunu bir satırla bildirir. NOPASSWD sudo'da fark yoktur. Parolayı yine yalnızca Ansible'ın `BECOME password:` isteminde girersiniz.
 Sertleştirme sonrası `passwd` kuralları sıkılaşır (`minlen 14`, `minclass 3`, `dictcheck`, `maxrepeat 3`): parola ≥14 karakter, dört sınıftan (küçük/büyük/rakam/sembol) en az üçü, sözlük kelimesi içermemeli.
