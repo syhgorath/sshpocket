@@ -274,6 +274,7 @@ CASES
     [[ "$output" == *"Not live until"* ]] || false
     [[ "$output" == *"sudo chronyc makestep"* ]] || false
     [[ "$output" == *"sudo systemctl restart chrony; sleep 8; sudo chronyc makestep"* ]] || false
+    [[ "$output" == *"hardening_time_makestep=true"* ]] || false
     [ -e "$T/ansible_args" ]
 }
 
