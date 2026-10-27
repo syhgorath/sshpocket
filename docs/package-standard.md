@@ -138,6 +138,21 @@ Her iki runner için ortak kurallar:
 - **Makine-okunur sonuç satırı** (log'dan bağımsız, Ansible çıktı biçimine bağlı olmayan tek satır):
   `SSHPOCKET_RESULT <id>.<eylem> key=value key=value …` — anahtarlar bildirimde `outputs.keys` ile **bildirilir**.
 - `outputs.summary`: eylemin yazdığı özet dosyası (JSON); sshpocket okuyup gösterir.
+
+### Denetim özeti (`summary.json`) ve menüdeki puan
+Bir denetim eylemi (Lynis, OpenSCAP, …) çıktı klasöründe `summary.json` yazarsa, sunucu menüsünde (🛡️ Paketler › paket) **araç başına son puan ve bir öncekiyle fark** gösterilir: `📊 Lynis: 83 (2 gün önce) · önceki 61 (+22)`. Gösterim araca özgü değildir; ortak biçim:
+
+```json
+{"tool": "OpenSCAP", "date": "2026-10-25T08:44:34Z", "score": 91.5}
+```
+
+| Alan | Kural |
+|---|---|
+| `score` | sayı, 0..1000 (yüzde ya da 0-100 ölçeği); sayı olmayan/sınır dışı kayıt yok sayılır |
+| `tool` | `[A-Za-z0-9 ._-]{1,20}`; yoksa `hardening_index` varsa "Lynis", aksi halde "denetim". Araçlar birbirinin "önceki"si sayılmaz |
+| `date` | UTC `YYYY-MM-DDTHH:MM:SSZ`; yoksa dosyanın değişiklik zamanı |
+
+Geriye dönük uyum: `score` yoksa `hardening_index` okunur (linux-hardening). Dosyalar `~/.local/share/sshpocket/<paket>/<sunucu>/` altında aranır (derinlik ≤ 5); sunucudan gelen veriye güvenilmez, bozuk dosyalar sessizce atlanır. Başka bir araç eklemek için sshpocket'te kod değişikliği gerekmez, yalnızca bu biçimde `summary.json` yazmak yeter.
 - Her uygulamanın kaydı (tarih, sunucu, paket+sürüm, sonuç) `servers/<ad>/` altında, **gizli bilgi içermeden** tutulur.
 
 ## 9. Güvenlik kapıları (paketten bağımsız, sshpocket zorunlu tutar)
