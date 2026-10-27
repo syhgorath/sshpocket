@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Sunucu menüsünde denetim puanı:** 🛡️ Paketler › paket ekranında araç başına son denetim puanı ve bir öncekiyle fark gösterilir (`📊 Lynis: 83 (2 gün önce) · önceki 61 (+22)`). Yalnızca puan. Ortak `summary.json` biçimi (`tool`, `date`, `score`; eski `hardening_index` desteklenir) `docs/package-standard.md`'de tanımlandı; OpenSCAP gibi yeni bir araç eklemek sshpocket'te kod değişikliği istemez.
+
 ### Değişti
 - `--components run`: Ansible bağlantı/`become` bekleme süresi 10 sn'den **30 sn**'ye çıkarıldı (`ANSIBLE_TIMEOUT`, kullanıcının kendi değeri korunur). Gerçek Proxmox VM'inde zaman zaman görülen "Timeout (12s) waiting for privilege escalation prompt" için.
 - **"Riskli değer" (`warn_if`) sorusu yalnızca yapılandırmayı değiştiren eylemlerde sorulur** (`apply` vb.). `preview`, durum eylemleri ve yalnızca araç kuran eylemler (`audit`) artık sormaz; eskiden `preview` ve `audit` her çalıştırmada, ardından `apply` yine sorduğu için aynı soru 2-3 kez çıkıyordu. Zorunlu değişken kuralı (`preview` dahil) aynı kaldı.
