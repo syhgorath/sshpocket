@@ -112,6 +112,7 @@ Kurallar: `effects` boş olmayan eylem onaysız çalışmaz; `destructive` ve `c
 - **Platforma göre süzme ve gruplama (isteğe bağlı, geriye uyumlu):** büyük bir paket (örn. 100+ değişken) her sunucuda yalnızca ilgili değişkenleri göstersin diye:
   - Bildirim üst düzeyinde `"platform_var": "hardening_platform"`: platformu seçen değişkenin adı (tanımlı bir `string`/`enum` değişken; değeri sunucunun değişken dosyasından, yoksa bildirilen `default`'tan okunur).
   - Değişkende `"platforms": ["proxmox-host"]`: değişken yalnızca bu platformlarda görünür (1-10 küçük harfli kimlik). Alan yoksa her platformda görünür. Platform belirlenemezse süzme yapılmaz.
+  - Eylemde `"platforms": ["proxmox-host"]`: eylem yalnızca bu platformlarda menüde görünür ve `--components run` ile çalışır; diğerlerinde menüden gizlenir, CLI "bu platformda kullanılamaz" diyerek ssh'a hiç gitmeden çıkar (kod 2). Aynı kimlik kuralları (1-10 benzersiz, küçük harfli). Platformlu bir eylemin `requires` ön koşulu, onun platformlarının hepsinde görünmelidir (aksi halde manifest reddedilir). Eski sshpocket alanı yok sayar: eylem her platformda görünür.
   - Değişkende `"group": "Proxmox"` (1-40 karakter): ekranda `[Proxmox]` etiketiyle gösterilir, aynı gruplar yan yana toplanır, grupsuz değişkenler önce gelir.
   - **Gizlenen değişken silinmez:** dosyada yazılı değeri yine çalıştırmaya iletilir; `required` kuralı da gizli değişkenler için geçerlidir. Ekran, kaç değişkenin gizlendiğini yazar. Eski sshpocket sürümleri bu alanları yok sayar.
 

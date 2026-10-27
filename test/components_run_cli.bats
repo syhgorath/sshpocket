@@ -5,7 +5,7 @@ load test_helper
 setup() {
     export SISTEM_PATH="$ROOT/sistem"
     for f in Validate ModuleFiles SSHModule SSHHelper SSHModuleEdit Servers Components ComponentsInstall ComponentsManifest ComponentsVenv \
-             ComponentsRun ComponentsGates ComponentsExec ComponentsRunCLI ComponentsCLI; do source "$H/$f.sh"; done
+             ComponentsRun ComponentsVars ComponentsGates ComponentsExec ComponentsRunCLI ComponentsCLI; do source "$H/$f.sh"; done
     T="$BATS_TEST_TMPDIR"
     export SSHPOCKET_SERVERS_DIR="$T/servers" SSHPOCKET_COMPONENTS_DIR="$T/comps" SSHPOCKET_STATE_DIR="$T/state" TMPDIR="$T/tmp"
     mkdir -p "$T/tmp" "$T/bin" "$T/venv/bin" "$T/servers/web1" "$T/comps/demo/1.0.0"
@@ -120,6 +120,27 @@ modeof() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
     rm "$T/servers/web1/id_ed25519_web1"
     run comp_cli_run demo preview web1 </dev/null;       [ "$status" -eq 190 ]
     [ ! -e "$T/ssh_calls" ]
+}
+
+@test "run: platforma uymayan eylem ssh'a gitmeden reddedilir (2); platform uyunca çalışır" {
+    python3 - "$T/comps/demo/1.0.0/component.json" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+d["platform_var"]="plat"
+d["vars"]=[{"name":"allow_from","type":"list[cidr]","required":True},
+           {"name":"plat","type":"enum","values":["generic","proxmox-host"],"default":"generic"}]
+d["actions"]["pve_check"]={"cmd":"ansible-playbook playbooks/pve.yml --check","effects":[],"platforms":["proxmox-host"]}
+json.dump(d,open(p,"w"))
+PY
+    INFO=$(comp_manifest_info "$T/comps/demo/1.0.0/component.json" demo 1.0.0)
+    run comp_cli_run demo pve_check web1 </dev/null
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"platformunda (generic) kullanılamaz; yalnızca: proxmox-host"* ]] || false
+    [ ! -e "$T/ssh_calls" ]
+    printf 'allow_from=10.1.10.0/24\nplat=proxmox-host\n' > "$T/servers/web1/demo.vars"
+    touch "$T/venv_ok"
+    run comp_cli_run demo pve_check web1 </dev/null
+    [ -e "$T/ssh_calls" ]
 }
 
 @test "run: server.env'de geçersiz IP/kullanıcı reddedilir" {

@@ -269,3 +269,39 @@ JSON
     printf '%s,"vars":[{"name":"x","type":"bool","group":""}]}' "$base" > "$T/d.json"
     run comp_manifest_info "$T/d.json" demo 1.0.0; [ "$status" -ne 0 ]; [[ "$output" == *"group"* ]] || false
 }
+
+# ---------- eylem platforms ----------
+@test "manifest: eylem platforms kabul edilir ve action.<ad>.platforms olarak yazılır; yoksa satır çıkmaz" {
+    cat > "$T/ap.json" <<'JSON'
+{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible",
+ "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "actions":{"preview":{"cmd":"ansible-playbook a.yml --check","effects":[]},
+            "pve_preview":{"cmd":"ansible-playbook p.yml --check","effects":[],"platforms":["proxmox-host"]},
+            "pve_apply":{"cmd":"ansible-playbook p.yml","effects":["changes-config"],"requires":["pve_preview"],"platforms":["proxmox-host"]}}}
+JSON
+    run comp_manifest_info "$T/ap.json" demo 1.0.0; [ "$status" -eq 0 ]
+    [[ "$output" == *"action.pve_preview.platforms=proxmox-host"* ]] || false
+    [[ "$output" != *"action.preview.platforms"* ]] || false
+}
+
+@test "manifest: geçersiz eylem platforms reddedilir" {
+    base='{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profiles":[{"id":"ubuntu-26.04","status":"supported"}]'
+    for bad in '"proxmox-host"' '[]' '["Proxmox Host"]' '["a","a"]' '[1]'; do
+        printf '%s,"actions":{"preview":{"cmd":"ansible-playbook a.yml --check","effects":[],"platforms":%s}}}' "$base" "$bad" > "$T/b.json"
+        run comp_manifest_info "$T/b.json" demo 1.0.0
+        [ "$status" -ne 0 ] || { echo "KABUL EDİLDİ: $bad"; return 1; }
+        [[ "$output" == *"platforms"* ]] || { echo "$bad: $output"; return 1; }
+    done
+}
+
+@test "manifest: platformlu eylemin ön koşulu, onun platformlarının hepsinde görünmüyorsa reddedilir" {
+    base='{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profiles":[{"id":"ubuntu-26.04","status":"supported"}]'
+    printf '%s,"actions":{"a":{"cmd":"x a","effects":[],"platforms":["p1"]},"b":{"cmd":"x b","effects":["changes-config"],"requires":["a"]}}}' "$base" > "$T/r1.json"
+    run comp_manifest_info "$T/r1.json" demo 1.0.0; [ "$status" -ne 0 ]; [[ "$output" == *"requires a"* ]] || false
+    printf '%s,"actions":{"a":{"cmd":"x a","effects":[],"platforms":["p1"]},"b":{"cmd":"x b","effects":["changes-config"],"requires":["a"],"platforms":["p1","p2"]}}}' "$base" > "$T/r2.json"
+    run comp_manifest_info "$T/r2.json" demo 1.0.0; [ "$status" -ne 0 ]
+    printf '%s,"actions":{"a":{"cmd":"x a","effects":[],"platforms":["p1","p2"]},"b":{"cmd":"x b","effects":["changes-config"],"requires":["a"],"platforms":["p1"]}}}' "$base" > "$T/r3.json"
+    run comp_manifest_info "$T/r3.json" demo 1.0.0; [ "$status" -eq 0 ]
+    printf '%s,"actions":{"a":{"cmd":"x a","effects":[]},"b":{"cmd":"x b","effects":["changes-config"],"requires":["a"],"platforms":["p1"]}}}' "$base" > "$T/r4.json"
+    run comp_manifest_info "$T/r4.json" demo 1.0.0; [ "$status" -eq 0 ]
+}
