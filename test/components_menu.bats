@@ -48,6 +48,18 @@ JSON
     run comp_menu_available "$D"; [ "$status" -ne 0 ]
 }
 
+# ---------- denetim puanı satırı ----------
+@test "başlık: pakete ait denetim özeti varsa 'Hazırlık' bölümünde puan ve fark gösterilir; yoksa satır çıkmaz" {
+    export SSHPOCKET_STATE_DIR="$T/state"
+    run comp_menu_actions demo web1 <<<"0"
+    [[ "$output" != *"📊"* ]] || false
+    mkdir -p "$T/state/demo/web1/out/web1/a" "$T/state/demo/web1/out/web1/b"
+    printf '{"date":"2026-01-01T00:00:00Z","hardening_index":61}' > "$T/state/demo/web1/out/web1/a/summary.json"
+    printf '{"date":"2026-01-02T00:00:00Z","hardening_index":83}' > "$T/state/demo/web1/out/web1/b/summary.json"
+    run comp_menu_actions demo web1 <<<"0"
+    [[ "$output" == *"📊 Lynis: 83 ("*") · önceki 61 (+22)"* ]] || false
+}
+
 # ---------- eylem listesi ----------
 @test "eylemler: etki rozeti, ön koşul ve ilk uyarı gösterilir; geri hiçbir şey çalıştırmaz" {
     run comp_menu_actions demo web1 <<<"0"
@@ -224,6 +236,28 @@ PY
     run comp_menu_actions demo web1 <<<$'1\n4\n'
     [ "$status" -eq 0 ]
     run vget rb_timeout; [ "$status" -ne 0 ]
+}
+
+@test "değişkenler: platforma uymayan değişkenler gizlenir, gruplar etiketle gösterilir, gizlenen sayısı yazılır" {
+    python3 - "$T/comps/demo/1.0.0/component.json" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+d["platform_var"]="plat"
+d["vars"]=[{"name":"allow_from","type":"list[cidr]","required":True},
+           {"name":"plat","type":"enum","values":["generic","proxmox-host"],"default":"generic"},
+           {"name":"genel_a","type":"bool","default":True},
+           {"name":"pve_x","type":"bool","default":False,"platforms":["proxmox-host"],"group":"Proxmox"},
+           {"name":"ag_z","type":"bool","default":False,"group":"Ağ"}]
+json.dump(d,open(p,"w"))
+PY
+    run comp_menu_actions demo web1 <<<$'1\n0\n0'
+    [[ "$output" == *"genel_a"* && "$output" == *"[Ağ] ag_z"* ]] || false
+    [[ "$output" != *"pve_x"* ]] || false
+    [[ "$output" == *"1 değişken bu sunucunun platformuna uygun olmadığı için gizlendi"* ]] || false
+    printf 'allow_from=10.99.0.0/24\nplat=proxmox-host\n' > "$D/demo.vars"
+    run comp_menu_actions demo web1 <<<$'1\n0\n0'
+    [[ "$output" == *"[Proxmox] pve_x"* ]] || false
+    [[ "$output" != *"gizlendi"* ]] || false
 }
 
 # ---------- CIDR editörü ----------

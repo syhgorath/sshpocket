@@ -246,3 +246,26 @@ setj() {   # <eylem-set-json>  → bool, int(30-3600), enum, string, path, list 
         [ "$status" -ne 0 ] || { echo "KABUL EDİLDİ: $bad"; return 1; }
     done
 }
+
+# ---------- platform_var / platforms / group ----------
+@test "manifest: geçerli platform_var, platforms ve group kabul edilir" {
+    cat > "$T/pf.json" <<'JSON'
+{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","platform_var":"plat",
+ "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "actions":{"preview":{"cmd":"ansible-playbook a.yml --check","effects":[]}},
+ "vars":[{"name":"plat","type":"string","default":"generic"},{"name":"x","type":"bool","platforms":["proxmox-host","raspberry-pi"],"group":"Proxmox"}]}
+JSON
+    run comp_manifest_info "$T/pf.json" demo 1.0.0; [ "$status" -eq 0 ]
+}
+
+@test "manifest: geçersiz platform_var, platforms ve group reddedilir" {
+    base='{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profiles":[{"id":"ubuntu-26.04","status":"supported"}],"actions":{"preview":{"cmd":"ansible-playbook a.yml --check","effects":[]}}'
+    printf '%s,"platform_var":"yok","vars":[{"name":"plat","type":"string"}]}' "$base" > "$T/a.json"
+    run comp_manifest_info "$T/a.json" demo 1.0.0; [ "$status" -ne 0 ]; [[ "$output" == *"platform_var"* ]] || false
+    printf '%s,"vars":[{"name":"x","type":"bool","platforms":"proxmox-host"}]}' "$base" > "$T/b.json"
+    run comp_manifest_info "$T/b.json" demo 1.0.0; [ "$status" -ne 0 ]; [[ "$output" == *"platforms"* ]] || false
+    printf '%s,"vars":[{"name":"x","type":"bool","platforms":["Proxmox Host"]}]}' "$base" > "$T/c.json"
+    run comp_manifest_info "$T/c.json" demo 1.0.0; [ "$status" -ne 0 ]
+    printf '%s,"vars":[{"name":"x","type":"bool","group":""}]}' "$base" > "$T/d.json"
+    run comp_manifest_info "$T/d.json" demo 1.0.0; [ "$status" -ne 0 ]; [[ "$output" == *"group"* ]] || false
+}

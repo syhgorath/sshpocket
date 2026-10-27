@@ -109,6 +109,11 @@ Kurallar: `effects` boş olmayan eylem onaysız çalışmaz; `destructive` ve `c
 - `warn_if`: değer buna eşitse arayüz uyarı gösterir ve onay ister. Onay **yalnızca yapılandırmayı değiştiren** eylemlerde (`effects`'te `installs-package` dışında bir şey olan, örn. `apply`) sorulur; salt okunur eylemler (`preview`, durum/rapor) ve yalnızca araç kuran eylemler (`audit`) sormaz, risk onayı asıl değişikliğin yapıldığı eylemde alınır. **Varsayılanı `warn_if`'e eşit olan değişken her çalıştırmada uyarı tetikler**: varsayılandan sapmayı yakalamak için `warn_if`'i varsayılanın TERSİ yapın.
 - `required: true`: değişken zorunludur; eksikse **değiştiren eylemler ve başka bir eylemin ön koşulu olan eylemler** (örn. `preview`) çalışmaz. Salt okunur durum eylemleri (örn. `rollback_status`) zorunlu değişken olmadan da çalışır (verilen değerler yine doğrulanır). Bir değişkeni zorunlu yapan paket, bu eylemlerin onu kullandığından emin olmalıdır.
 - Değerler kullanıcı klasöründe geçici, izni 600 olan bir değişken dosyasıyla verilir, iş bitince silinir.
+- **Platforma göre süzme ve gruplama (isteğe bağlı, geriye uyumlu):** büyük bir paket (örn. 100+ değişken) her sunucuda yalnızca ilgili değişkenleri göstersin diye:
+  - Bildirim üst düzeyinde `"platform_var": "hardening_platform"`: platformu seçen değişkenin adı (tanımlı bir `string`/`enum` değişken; değeri sunucunun değişken dosyasından, yoksa bildirilen `default`'tan okunur).
+  - Değişkende `"platforms": ["proxmox-host"]`: değişken yalnızca bu platformlarda görünür (1-10 küçük harfli kimlik). Alan yoksa her platformda görünür. Platform belirlenemezse süzme yapılmaz.
+  - Değişkende `"group": "Proxmox"` (1-40 karakter): ekranda `[Proxmox]` etiketiyle gösterilir, aynı gruplar yan yana toplanır, grupsuz değişkenler önce gelir.
+  - **Gizlenen değişken silinmez:** dosyada yazılı değeri yine çalıştırmaya iletilir; `required` kuralı da gizli değişkenler için geçerlidir. Ekran, kaç değişkenin gizlendiğini yazar. Eski sshpocket sürümleri bu alanları yok sayar.
 
 ## 7. Çalıştırma sözleşmesi
 
@@ -133,6 +138,21 @@ Her iki runner için ortak kurallar:
 - **Makine-okunur sonuç satırı** (log'dan bağımsız, Ansible çıktı biçimine bağlı olmayan tek satır):
   `SSHPOCKET_RESULT <id>.<eylem> key=value key=value …` — anahtarlar bildirimde `outputs.keys` ile **bildirilir**.
 - `outputs.summary`: eylemin yazdığı özet dosyası (JSON); sshpocket okuyup gösterir.
+
+### Denetim özeti (`summary.json`) ve menüdeki puan
+Bir denetim eylemi (Lynis, OpenSCAP, …) çıktı klasöründe `summary.json` yazarsa, sunucu menüsünde (🛡️ Paketler › paket) **araç başına son puan ve bir öncekiyle fark** gösterilir: `📊 Lynis: 83 (2 gün önce) · önceki 61 (+22)`. Gösterim araca özgü değildir; ortak biçim:
+
+```json
+{"tool": "OpenSCAP", "date": "2026-10-25T08:44:34Z", "score": 91.5}
+```
+
+| Alan | Kural |
+|---|---|
+| `score` | sayı, 0..1000 (yüzde ya da 0-100 ölçeği); sayı olmayan/sınır dışı kayıt yok sayılır |
+| `tool` | `[A-Za-z0-9 ._-]{1,20}`; yoksa `hardening_index` varsa "Lynis", aksi halde "denetim". Araçlar birbirinin "önceki"si sayılmaz |
+| `date` | UTC `YYYY-MM-DDTHH:MM:SSZ`; yoksa dosyanın değişiklik zamanı |
+
+Geriye dönük uyum: `score` yoksa `hardening_index` okunur (linux-hardening). Dosyalar `~/.local/share/sshpocket/<paket>/<sunucu>/` altında aranır (derinlik ≤ 5); sunucudan gelen veriye güvenilmez, bozuk dosyalar sessizce atlanır. Başka bir araç eklemek için sshpocket'te kod değişikliği gerekmez, yalnızca bu biçimde `summary.json` yazmak yeter.
 - Her uygulamanın kaydı (tarih, sunucu, paket+sürüm, sonuç) `servers/<ad>/` altında, **gizli bilgi içermeden** tutulur.
 
 ## 9. Güvenlik kapıları (paketten bağımsız, sshpocket zorunlu tutar)

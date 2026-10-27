@@ -291,6 +291,14 @@ def main():
             continue
         if "required" in v and not isinstance(v["required"], bool):
             err("%s: required bool olmalı" % n)
+        if "group" in v:
+            g = v["group"]
+            if not is_str(g) or not g.strip() or len(g) > 40 or RE_TEXT_BAD.search(g):
+                err("%s: group 1-40 karakterlik düz metin olmalı" % n)
+        if "platforms" in v:
+            pl = v["platforms"]
+            if not isinstance(pl, list) or not pl or len(pl) > 10 or any(not is_str(x) or not re.match(r"^[a-z0-9][a-z0-9._-]{0,29}$", x) for x in pl):
+                err("%s: platforms 1-10 küçük harfli kimlikten oluşan liste olmalı" % n)
         if "description" in v:
             text_ok(v["description"], "%s: description" % n, maxlen=VAR_DESC_MAX)
         if t == "enum":
@@ -314,6 +322,12 @@ def main():
                 err("%s: warn_if bool olmalı" % n)
         var_specs[n] = (t, v)
         var_lines.append("var=%s:%s:%s:%s" % (n, t, "yes" if v.get("required") is True else "no", typed))
+
+    # --- platform_var: değişkenleri platforma göre süzmek için platformu seçen değişkenin adı (isteğe bağlı) ---
+    if "platform_var" in d:
+        pv = d["platform_var"]
+        if not is_str(pv) or pv not in var_specs or var_specs[pv][0] not in ("string", "enum"):
+            err("platform_var tanımlı bir string/enum değişkenin adı olmalı")
 
     # --- eylem düzeyi sabit değişkenler (action.set): runner bunları kullanıcının değerinin ÜSTÜNE yazar ---
     # Amaç: aynı playbook'un güvenli/gerçek koşu eylemleri (örn. *_preview: hardening_pve_apply=false, *_apply: true) kullanıcı değerinden bağımsız olsun.
