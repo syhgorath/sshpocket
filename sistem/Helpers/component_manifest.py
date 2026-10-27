@@ -20,6 +20,7 @@ VAR_SCALARS = ("string", "bool", "int", "path", "cidr", "enum")
 RE_ID = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
 RE_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 RE_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+RE_PLATFORM = re.compile(r"^[a-z0-9][a-z0-9._-]{0,29}$")
 RE_PROFILE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 RE_GROUP = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
 RE_CMD_BAD = re.compile(r"[;&|`$<>(){}\\\"'\n\r\t\x00]")
@@ -169,6 +170,10 @@ def main():
         for k in ("requires_sudo", "interactive"):
             if k in a and not isinstance(a[k], bool):
                 err("%s: %s bool olmalı" % (name, k))
+        if "platforms" in a:
+            pl = a["platforms"]
+            if not isinstance(pl, list) or not pl or len(pl) > 10 or any(not is_str(x) or not RE_PLATFORM.match(x) for x in pl) or len(set(pl)) != len(pl):
+                err("%s: platforms 1-10 benzersiz, küçük harfli kimlikten oluşan liste olmalı" % name)
         confirm = a.get("confirm", "none")
         if confirm not in CONFIRMS:
             err("%s: confirm geçersiz (%s)" % (name, "|".join(CONFIRMS)))
@@ -195,6 +200,8 @@ def main():
         act_lines.append("action.%s.confirm=%s" % (name, effective))
         act_lines.append("action.%s.confirm_raised=%s" % (name, "yes" if effective != confirm else "no"))
         act_lines.append("action.%s.warnings=%d" % (name, len(warns)))
+        if isinstance(a.get("platforms"), list) and a["platforms"] and all(is_str(x) for x in a["platforms"]):
+            act_lines.append("action.%s.platforms=%s" % (name, ",".join(a["platforms"])))
         for w in warns:
             if is_str(w):
                 act_lines.append("action.%s.warning=%s" % (name, w))
@@ -249,6 +256,12 @@ def main():
             if r == name:
                 err("%s: requires kendini gösteremez" % name)
         graph[name] = [r for r in req if r in actions]
+        # ön koşul eylem, bu eylemin göründüğü her platformda da görünmeli (aksi halde eylem hiç çalıştırılamaz)
+        mine = a.get("platforms")
+        for r in graph[name]:
+            theirs = actions[r].get("platforms") if isinstance(actions[r], dict) else None
+            if isinstance(theirs, list) and (not isinstance(mine, list) or any(x not in theirs for x in mine)):
+                err("%s: requires %s, ama %s bu eylemin platformlarının hepsinde yok" % (name, r, r))
         act_lines.append("action.%s.requires=%s" % (name, ",".join(graph[name])))
 
     def has_cycle():
@@ -297,7 +310,7 @@ def main():
                 err("%s: group 1-40 karakterlik düz metin olmalı" % n)
         if "platforms" in v:
             pl = v["platforms"]
-            if not isinstance(pl, list) or not pl or len(pl) > 10 or any(not is_str(x) or not re.match(r"^[a-z0-9][a-z0-9._-]{0,29}$", x) for x in pl):
+            if not isinstance(pl, list) or not pl or len(pl) > 10 or any(not is_str(x) or not RE_PLATFORM.match(x) for x in pl):
                 err("%s: platforms 1-10 küçük harfli kimlikten oluşan liste olmalı" % n)
         if "description" in v:
             text_ok(v["description"], "%s: description" % n, maxlen=VAR_DESC_MAX)

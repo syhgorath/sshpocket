@@ -23,9 +23,18 @@ comp_info_all() {
     printf '%s\n' "$1" | awk -v k="$2" 'index($0, k "=") == 1 { print substr($0, length(k) + 2) }'
 }
 
-# comp_action_get <bilgi> <eylem> <alan>  (alan: cmd effects sudo interactive confirm confirm_raised warnings requires)
+# comp_action_get <bilgi> <eylem> <alan>  (alan: cmd effects sudo interactive confirm confirm_raised warnings requires platforms)
 comp_action_get() {
     comp_info_get "$1" "action.$2.$3"
+}
+
+# comp_action_on_platform <bilgi> <eylem> <platform> → 0 ise eylem bu platformda geçerli (platforms yoksa ya da platform bilinmiyorsa her zaman 0)
+comp_action_on_platform() {
+    local pl
+    pl=$(comp_action_get "$1" "$2" platforms)
+    { [ -z "$pl" ] || [ -z "$3" ]; } && return 0
+    case ",$pl," in *",$3,"*) return 0 ;; esac
+    return 1
 }
 
 # comp_prepare <id> → kurulu etkin sürümü bütünlükle doğrular, bildirimi doğrular, bilgi satırlarını yazar

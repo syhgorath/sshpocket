@@ -15,6 +15,9 @@ comp_vars_file() { printf '%s/%s.vars' "$1" "$2"; }
 # comp_vars_describe <component.json> [<vars-dosyası>] → (vars-dosyası verilirse platforma göre süzülmüş) değişken başına TSV: ad, tür, zorunlu, varsayılan, min, max, warn_if, açıklama
 comp_vars_describe() { _comp_vars_py describe "$1" ${2:+"$2"}; }
 
+# comp_vars_platform <component.json> [<vars-dosyası>] → platform_var'ın geçerli değeri (belirlenemezse boş)
+comp_vars_platform() { _comp_vars_py platform "$1" ${2:+"$2"}; }
+
 # comp_vars_check <component.json> <ad> <değer> → 0 geçerli ("warn=<ad>" yazılabilir) · 1 geçersiz (neden stderr'de)
 comp_vars_check() { _comp_vars_py check "$1" "$2" "$3"; }
 

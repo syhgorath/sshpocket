@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **Eylemlerde `platforms` (isteğe bağlı):** manifestte bir eyleme `"platforms": ["proxmox-host"]` yazılırsa eylem yalnızca o platformda listelenir; diğer sunucularda menüden gizlenir ("N eylem … gizlendi" notu) ve CLI'dan çalıştırılması ssh'a gitmeden reddedilir. Ön koşul tutarlılığı manifest doğrulamasında denetlenir. Eski sürümler alanı yok sayar. Örnek: Ubuntu sunucuda `pve_firewall_*` görünmez.
 - **`scripts/release-publish.sh`:** sürüm yayınını tek komuta indirir. Ön kontroller (main, temiz, güncel, CHANGELOG başlığı, imza anahtarı, Release yok, `main` CI'ı bu commit için yeşil) → etiket → `release.sh` → `gh release create` (notlar CHANGELOG'dan) → yüklenen dosyaların SHA-256 doğrulaması. `--dry-run` yalnızca planı gösterir. Elle yol `RELEASING.md`'de yedek olarak durur.
 
 ## [3.6.14] - 2026-10-27

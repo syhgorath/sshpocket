@@ -91,7 +91,7 @@ _comp_run_cli_usage() {
 # comp_cli_run <paket> <eylem> <sunucu>
 comp_cli_run() {
     if [ $# -ne 3 ]; then _comp_run_cli_usage; return 2; fi
-    local id="$1" action="$2" server="$3" ver info pkg dir prefix ip user port key values range venv profile ans rc refused="$COMP_EXEC_REFUSED"
+    local id="$1" action="$2" server="$3" plat ver info pkg dir prefix ip user port key values range venv profile ans rc refused="$COMP_EXEC_REFUSED"
     comp_id_valid "$id" || { echo "Geçersiz paket kimliği." >&2; return 2; }
     [[ "$action" =~ ^[a-z][a-z0-9_]{0,63}$ ]] || { echo "Geçersiz eylem adı." >&2; return 2; }
     module_name_valid "$server" || { echo "Geçersiz sunucu adı." >&2; return 2; }
@@ -103,6 +103,11 @@ comp_cli_run() {
 
     dir="$(servers_dir)/$server"
     [ -d "$dir" ] || { echo "Sunucu bulunamadı: $server" >&2; return 2; }
+    plat=$(comp_vars_platform "$pkg/component.json" "$dir/$id.vars" 2>/dev/null) || plat=""
+    if ! comp_action_on_platform "$info" "$action" "$plat"; then
+        echo "'$action' eylemi bu sunucunun platformunda ($plat) kullanılamaz; yalnızca: $(comp_action_get "$info" "$action" platforms | sed 's/,/, /g')." >&2
+        return 2
+    fi
     prefix=$(module_prefix "$server")
     ip=$(srv_get "$dir" "$prefix" IP); user=$(srv_get "$dir" "$prefix" USER); port=$(srv_get "$dir" "$prefix" PORT); port="${port:-22}"
     key=$(srv_get "$dir" "$prefix" KEY)

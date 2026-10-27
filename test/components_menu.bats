@@ -260,6 +260,27 @@ PY
     [[ "$output" != *"gizlendi"* ]] || false
 }
 
+@test "eylemler: platforma uymayan eylemler menüde gizlenir, sayısı yazılır; platform uyunca görünür" {
+    python3 - "$T/comps/demo/1.0.0/component.json" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+d["platform_var"]="plat"
+d["vars"]=[{"name":"allow_from","type":"list[cidr]","required":True},
+           {"name":"plat","type":"enum","values":["generic","proxmox-host"],"default":"generic"},
+           {"name":"scan_dir","type":"path"}]
+d["actions"]["pve_check"]={"cmd":"ansible-playbook p.yml --check","effects":[],"platforms":["proxmox-host"]}
+json.dump(d,open(p,"w"))
+PY
+    INFO=$(comp_manifest_info "$T/comps/demo/1.0.0/component.json" demo 1.0.0)
+    run comp_menu_actions demo web1 <<<"0"
+    [[ "$output" != *"pve_check"* ]] || false
+    [[ "$output" == *"1 eylem bu sunucunun platformuna uygun olmadığı için gizlendi"* ]] || false
+    printf 'allow_from=10.99.0.0/24\nplat=proxmox-host\n' > "$D/demo.vars"
+    run comp_menu_actions demo web1 <<<"0"
+    [[ "$output" == *"pve_check"* ]] || false
+    [[ "$output" != *"gizlendi"* ]] || false
+}
+
 # ---------- CIDR editörü ----------
 @test "cidr: öneri eklenir; listede tek ağ varsa uyarı çıkar ve 'H' ile o haliyle kaydedilir" {
     setup_net; rm -f "$D/demo.vars"

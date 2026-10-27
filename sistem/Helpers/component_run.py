@@ -184,6 +184,20 @@ def current_platform(manifest, decl, vars_path):
     return val or ""
 
 
+def cmd_platform(argv):
+    # platform <component.json> [<vars-dosyası>]: platform_var'ın geçerli değeri (belirlenemezse boş satır)
+    if len(argv) not in (3, 4):
+        print("kullanım: component_run.py platform <component.json> [<vars-dosyası>]", file=sys.stderr)
+        return 2
+    decl, _ = declared_vars(argv[2])
+    if errors:
+        for m in errors:
+            print("HATA: %s" % m, file=sys.stderr)
+        return 1
+    print(clean(current_platform(argv[2], decl, argv[3] if len(argv) == 4 else "")))
+    return 0
+
+
 def cmd_describe(argv):
     # describe <component.json> [<vars-dosyası>]: vars-dosyası verilirse platform_var'a göre platforms dışındaki değişkenler çıkarılır
     if len(argv) not in (3, 4):
@@ -315,6 +329,8 @@ def main(argv):
         return cmd_net_add(argv)
     if len(argv) >= 2 and argv[1] in ("net-prefix", "net-suggest", "net-valid"):
         return cmd_net(argv)
+    if len(argv) >= 2 and argv[1] == "platform":
+        return cmd_platform(argv)
     if len(argv) >= 2 and argv[1] == "describe":
         return cmd_describe(argv)
     if len(argv) >= 2 and argv[1] == "check":

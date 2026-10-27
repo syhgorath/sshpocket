@@ -147,13 +147,16 @@ _comp_menu_action_blocked() {
 
 # comp_menu_actions <paket> <sunucu> → hazırlık durumu + (📝 Değişkenler | eylemler); seçileni çalıştırır; geri dönene kadar döngü
 comp_menu_actions() {
-    local id="$1" server="$2" info name pick i act eff req missing m
+    local id="$1" server="$2" info name pick i act eff req missing m plat hidden
     local -a names labels
     info=$(comp_prepare "$id") || { echo "Paket doğrulanamadı: $id (./start.sh --components list)" >&2; return 1; }
     _comp_menu_ctx "$id" "$server" "$info"
     names=()
+    hidden=0
+    plat=$(comp_vars_platform "$COMP_MENU_MF" "$COMP_MENU_VARS" 2>/dev/null) || plat=""
     while IFS= read -r name; do
-        [ -n "$name" ] && names+=("$name")
+        [ -n "$name" ] || continue
+        if comp_action_on_platform "$info" "$name" "$plat"; then names+=("$name"); else hidden=$((hidden + 1)); fi
     done < <(comp_info_all "$info" action)
     [ "${#names[@]}" -gt 0 ] || { echo "Pakette eylem yok." >&2; return 1; }
     while true; do
@@ -170,6 +173,7 @@ comp_menu_actions() {
         fi
         _comp_menu_status_lines "$id" "$server" "$info"
         _comp_menu_score_lines "$id" "$server"
+        [ "$hidden" -eq 0 ] || echo "  ℹ️  $hidden eylem bu sunucunun platformuna uygun olmadığı için gizlendi."
         echo ""
         labels=("📝 Değişkenler${missing:+  ← önce burası}")
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
@@ -229,6 +233,7 @@ comp_menu_history() {
     a=0
     while IFS= read -r name; do
         [ -n "$name" ] || continue
+        comp_action_on_platform "$info" "$name" "$(comp_vars_platform "$COMP_MENU_MF" "$COMP_MENU_VARS" 2>/dev/null)" || continue
         req=$(comp_action_get "$info" "$name" requires)
         [ -n "$req" ] || continue
         a=1
