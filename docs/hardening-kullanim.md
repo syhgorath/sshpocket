@@ -120,3 +120,5 @@ Sertleştirme sonrası `passwd` kuralları sıkılaşır (`minlen 14`, `minclass
 
 ## Sunucu saati (snapshot sonrası)
 `--components run` başlarken sunucunun saatini salt okunur `date +%s` ile yerel saatle karşılaştırır; fark 60 sn'den büyükse uyarır (engellemez). VM snapshot'tan döndürüldüğünde saat geride kalır ve apt `Not live until` hatası verir, `audit`/`apply` düşebilir. Sunucuda `sudo chronyc makestep`; olmazsa `sudo systemctl restart chrony; sleep 8; sudo chronyc makestep`.
+
+`linux-hardening` saati kendisi de düzeltebilir: `hardening_time_makestep=true` (varsayılan kapalı) büyük bir kaymada `chronyc makestep` çalıştırır; kaynak seçili değilse `chrony`'yi yeniden başlatır. Saati **sıçratır** (sertifika geçerliliği, `cron` sırası, günlük zaman damgaları etkilenebilir), NTP kaynakları erişilebilir olmalıdır ve `preview`'da (`--check`) çalışmaz.

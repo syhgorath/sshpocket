@@ -48,6 +48,7 @@ comp_warn_clock_skew() {
         echo "      apt \"Not live until\" hatası verebilir; audit/apply başarısız olabilir."
         echo "      Düzeltme (sunucuda): sudo chronyc makestep"
         echo "      Olmazsa: sudo systemctl restart chrony; sleep 8; sudo chronyc makestep"
+        echo "      Ya da paket seçeneği: linux-hardening için hardening_time_makestep=true (apply saati düzeltir; saati sıçratır, varsayılan kapalı)."
     } >&2
     return 0
 }
