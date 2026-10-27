@@ -87,7 +87,7 @@ _comp_exec_body() {
     done < <(comp_info_all "$info" "action.$action.set")
     warn_names=()
     # Salt okunur, başka eylemin ön koşulu olmayan eylemler (rollback_status vb.) zorunlu değişken istemez; değer verilmişse yine doğrulanır
-    if ! comp_gate_warn_applies "$info" "$action"; then sets+=(--no-required); fi
+    if ! comp_gate_required_applies "$info" "$action"; then sets+=(--no-required); fi
     if ! w=$(comp_run_vars "$pkg/component.json" "${COMP_CTX_VALUES:-/dev/null}" "$vf" ${sets[@]+"${sets[@]}"}); then
         echo "Değişkenler geçersiz; çalıştırılmadı." >&2; return "$refused"
     fi
@@ -125,7 +125,7 @@ _comp_exec_body() {
     log="$sdir/last-run.log"
     ( umask 077; : > "$log" ) || return "$refused"
     {
-        cd "$pkg" && env ANSIBLE_CONFIG="$pkg/ansible.cfg" ANSIBLE_HOST_KEY_CHECKING=True PATH="$bindir:$PATH" "${COMP_RUN_ARGV[@]}"
+        cd "$pkg" && env ANSIBLE_CONFIG="$pkg/ansible.cfg" ANSIBLE_HOST_KEY_CHECKING=True ANSIBLE_TIMEOUT="${ANSIBLE_TIMEOUT:-30}" PATH="$bindir:$PATH" "${COMP_RUN_ARGV[@]}"
     } 2>&1 | tee -a "$log"
     rc="${PIPESTATUS[0]}"
     if [ "$rc" -ne 0 ] && grep -q "waiting for privilege escalation prompt" "$log" 2>/dev/null; then

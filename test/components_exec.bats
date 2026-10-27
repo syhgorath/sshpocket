@@ -38,7 +38,7 @@ JSON
 #!/bin/bash
 echo "\$*" > "$T/args"
 echo "\$PWD" > "$T/pwd"
-echo "\$ANSIBLE_CONFIG|\$ANSIBLE_HOST_KEY_CHECKING" > "$T/envseen"
+echo "\$ANSIBLE_CONFIG|\$ANSIBLE_HOST_KEY_CHECKING|\${ANSIBLE_TIMEOUT:-yok}" > "$T/envseen"
 # -i ve -e @ dosyalarının İÇERİĞİNİ çalışma sırasında kaydet
 while [ \$# -gt 0 ]; do case "\$1" in -i) cp "\$2" "$T/seen_inv"; stat -c %a "\$2" >/dev/null 2>&1 && stat -c %a "\$2" > "$T/inv_mode" || stat -f %Lp "\$2" > "$T/inv_mode"; echo "\$2" > "$T/inv_path";; -e) f="\${2#@}"; cp "\$f" "$T/seen_vars"; echo "\$f" > "$T/vars_path";; esac; shift; done
 [ -n "\${FAKE_OUT:-}" ] && printf '%s\n' "\$FAKE_OUT"
@@ -64,7 +64,7 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     read -r a < "$T/args"
     [[ "$a" == "playbooks/harden.yml --check -i "*" --limit web1 -e @"*" --ask-become-pass" ]] || false
     [ "$(cat "$T/pwd")" = "$(cd "$T/pkg" && pwd -P)" ] || [ "$(cat "$T/pwd")" = "$T/pkg" ]
-    [ "$(cat "$T/envseen")" = "$T/pkg/ansible.cfg|True" ]
+    [ "$(cat "$T/envseen")" = "$T/pkg/ansible.cfg|True|30" ]
     grep -q "^\[hardening\]" "$T/seen_inv"
     grep -q "web1 ansible_host=10.1.10.193 ansible_user=ziya ansible_port=22 ansible_private_key_file='/Volumes/test/k'" "$T/seen_inv"
     [ "$(cat "$T/inv_mode")" = "600" ]
@@ -92,7 +92,7 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
 @test "yürütme: ortamdan ANSIBLE_HOST_KEY_CHECKING=False gelse bile True zorlanır" {
     ANSIBLE_HOST_KEY_CHECKING=False run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
     [ "$status" -eq 0 ]
-    [ "$(cat "$T/envseen")" = "$T/pkg/ansible.cfg|True" ]
+    [ "$(cat "$T/envseen")" = "$T/pkg/ansible.cfg|True|30" ]
 }
 
 @test "yürütme: playbook başarısızsa kodu döner, 'fail' kaydedilir, geçici dosyalar silinir" {
@@ -134,18 +134,29 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     run comp_exec_action "$INFO" demo 1.0.0 audit <<<"e"; [ "$status" -eq 0 ]; [ -e "$T/args" ]
 }
 
-@test "yürütme: warn_if eşleşirse ayrıca onay istenir" {
+@test "yürütme: warn_if eşleşirse DEĞİŞTİREN eylemde (apply) ayrıca onay istenir" {
     printf 'allow_from=10.1.10.0/24\nrb_enabled=false\n' > "$T/values"
-    run comp_exec_action "$INFO" demo 1.0.0 preview <<<"h"; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
-    run comp_exec_action "$INFO" demo 1.0.0 preview <<<"e"; [ "$status" -eq 0 ]
+    comp_gate_record demo web1 1.0.0 preview ok
+    run comp_exec_action "$INFO" demo 1.0.0 apply <<<"h"; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+    run comp_exec_action "$INFO" demo 1.0.0 apply <<<$'e\ne'; [ "$status" -eq 0 ]; [ -e "$T/args" ]
 }
 
-@test "yürütme: warn_if onayı salt okunur durum eylemlerinde SORULMAZ; değiştirici (audit) ve ön koşul (preview) eylemlerinde sorulur" {
+@test "yürütme: warn_if (riskli değer) sorusu salt okunur eylemlerde (preview, durum) ve yalnızca araç kuran eylemde (audit) SORULMAZ" {
     printf 'allow_from=10.1.10.0/24\nrb_enabled=false\n' > "$T/values"
     run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 0 ]; [ -e "$T/args" ]
     rm -f "$T/args"
-    run comp_exec_action "$INFO" demo 1.0.0 audit <<<$'e\nh'; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
-    run comp_exec_action "$INFO" demo 1.0.0 preview <<<"h"; [ "$status" -eq 190 ]; [ ! -e "$T/args" ]
+    run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null; [ "$status" -eq 0 ]; [ -e "$T/args" ]
+    [[ "$output" != *"riskli"* ]] || false
+    rm -f "$T/args"
+    # audit yalnızca kendi 'yes-no' onayını sorar: tek 'e' yeter (riskli değer sorusu olsaydı bu 'e' onu tüketir, onay EOF olurdu)
+    run comp_exec_action "$INFO" demo 1.0.0 audit <<<"e"; [ "$status" -eq 0 ]; [ -e "$T/args" ]
+}
+
+@test "ortam: ANSIBLE_TIMEOUT varsayılan 30 sn (become istemi için); kullanıcının kendi değeri korunur" {
+    run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 0 ]
+    [[ "$(cat "$T/envseen")" == *"|True|30" ]] || false
+    ANSIBLE_TIMEOUT=45 run comp_exec_action "$INFO" demo 1.0.0 status </dev/null; [ "$status" -eq 0 ]
+    [[ "$(cat "$T/envseen")" == *"|True|45" ]] || false
 }
 
 @test "zorunlu değişken: salt okunur durum eylemi (status) değişken dosyası OLMADAN çalışır; preview/audit/apply zorunlu değişkeni yine ister" {
