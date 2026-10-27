@@ -29,6 +29,23 @@ anahtara sahip bir sürüm kurduktan sonra, sonraki güncellemeleri yalnızca bu
 
 ## 2) Her sürüm
 
+### Önerilen: tek komut (`scripts/release-publish.sh`)
+Sürüm PR'ı **birleştikten** ve `main`'in CI'ı yeşil olduktan sonra:
+
+```bash
+git checkout main && git pull --ff-only
+SSHPOCKET_SIGNING_KEY=~/.ssh/sshpocket_release scripts/release-publish.sh --dry-run   # ne yapacağını gösterir, HİÇBİR ŞEY yapmaz
+SSHPOCKET_SIGNING_KEY=~/.ssh/sshpocket_release scripts/release-publish.sh              # onay ister (y/N), sonra yayınlar
+```
+
+Betik sırayla: `main` dalında, çalışma alanı temiz, `HEAD == origin/main`, `CHANGELOG`'da sürüm başlığı var, imza anahtarı var, Release henüz yok, mevcut etiket başka commit'i göstermiyor, `main` CI'ı **bu commit için** yeşil mi diye denetler (herhangi biri tutmazsa **hiçbir şey yapmadan** durur, etiket bile itilmez). Sonra etiketi atıp iter, `release.sh` ile imzalı paketi üretir (passphrase sorulur), `gh release create` ile Release'i **CHANGELOG notlarıyla** açıp iki dosyayı yükler ve yüklenenlerin SHA-256 özetini yerel dosyalarla karşılaştırır. USB güncellemesi bu betiğin işi değildir: menüden **Güncelle**.
+
+- Yarıda kalırsa (örn. ağ koptu) aynı komutu tekrar çalıştırın: etiket zaten bu commit'teyse yeniden etiketlemez.
+- `--yes` onayı atlar, `--no-ci-check` CI denetimini atlar (önerilmez).
+- Gerekenler: `gh` (oturum açılmış) ve `ssh-keygen`.
+
+### Elle (yedek yol)
+
 1. `VERSION`'ı artırın, `CHANGELOG.md`'de `[Unreleased]` içeriğini yeni sürüm başlığına taşıyın.
 2. `bats test` ve ShellCheck temiz olsun; commit'leyin ve `git push` yapın, CI'ın yeşil olmasını bekleyin.
 3. Etiket:
