@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.14] - 2026-10-27
+
+Sunucu menüsünde denetim puanı; değişkenler ekranı platforma göre süzülür ve gruplanır (isteğe bağlı); USB çıkarılırken anahtarlar `ssh-agent`'tan çıkarılır; eski paket sürümleri için temizleme sorusu ve Ayarlar menüsü; Ansible `become` bekleme süresi 30 sn; `warn_if` sorusu yalnızca değiştiren eylemlerde.
+
 ### Eklendi
 - **Sunucu menüsünde denetim puanı:** 🛡️ Paketler › paket ekranında araç başına son denetim puanı ve bir öncekiyle fark gösterilir (`📊 Lynis: 83 (2 gün önce) · önceki 61 (+22)`). Yalnızca puan. Ortak `summary.json` biçimi (`tool`, `date`, `score`; eski `hardening_index` desteklenir) `docs/package-standard.md`'de tanımlandı; OpenSCAP gibi yeni bir araç eklemek sshpocket'te kod değişikliği istemez.
 - **Değişkenler ekranı platforma göre süzülür ve gruplanır (isteğe bağlı manifest alanları):** üst düzey `platform_var`, değişkende `platforms` ve `group`. Ubuntu sunucuda Proxmox'a özgü değişkenler gizlenir, kaç değişkenin gizlendiği yazılır; gruplar `[Proxmox]` etiketiyle yan yana gelir. Gizlenen değişkenin yazılı değeri ve `required` kuralı etkilenmez; alanları olmayan paketler (bugünkü linux-hardening) eskisi gibi görünür. Paketin bu alanları kullanması ayrı bir iş (`docs/package-standard.md` §6).
