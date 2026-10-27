@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **`scripts/release-publish.sh`:** sürüm yayınını tek komuta indirir. Ön kontroller (main, temiz, güncel, CHANGELOG başlığı, imza anahtarı, Release yok, `main` CI'ı bu commit için yeşil) → etiket → `release.sh` → `gh release create` (notlar CHANGELOG'dan) → yüklenen dosyaların SHA-256 doğrulaması. `--dry-run` yalnızca planı gösterir. Elle yol `RELEASING.md`'de yedek olarak durur.
+
 ## [3.6.14] - 2026-10-27
 
 Sunucu menüsünde denetim puanı; değişkenler ekranı platforma göre süzülür ve gruplanır (isteğe bağlı); USB çıkarılırken anahtarlar `ssh-agent`'tan çıkarılır; eski paket sürümleri için temizleme sorusu ve Ayarlar menüsü; Ansible `become` bekleme süresi 30 sn; `warn_if` sorusu yalnızca değiştiren eylemlerde.
