@@ -126,6 +126,16 @@ _settings_note() {
 }
 
 # Menü eylemi: ⚙️ Ayarlar
+# Eski paket sürümlerini listeler ve silinmesini sorar (güncelleme sonrası soru çıkmadıysa ya da silinemediyse buradan yapılır)
+_settings_prune_packages() {
+    clear
+    echo "🧹 Eski paket sürümleri"
+    echo ""
+    bash "$SISTEM_PATH/Main.sh" --components prune || true
+    echo ""
+    read -r -p "Devam için Enter..." _ || true
+}
+
 SettingsAction() {
     local choice cur new
     while true; do
@@ -138,19 +148,22 @@ SettingsAction() {
                 "Menüde sunucuların yanında 🟢 açık / 🔴 erişilemiyor / 🔒 knock gerekir / ⚪ ayar yok işaretini gösterir. Enter: aç/kapat."
                 "Durum kontrolünün bir sunucu için en çok kaç saniye bekleyeceği (1-5). Enter: değiştir."
                 "Menü stili: auto (fzf varsa fzf, yoksa ok tuşları) · fzf · arrows (ok tuşları) · numbers (numaralı). Enter: sıradakine geç."
+                "Güncellemelerde yan yana biriken eski paket sürümlerini listeler ve silinmesini sorar (etkin + önceki + kilitteki sürüm kalır)."
             )
             # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
             local UI_PICK_BACK_DESC="Ana menüye döner."
             choice=$(ui_pick_arrows 1 "Geri" \
                 "$(printf '%-28s %s%s' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)")" \
                 "$(printf '%-28s %s%s' "$(_settings_label STATUS_TIMEOUT)" "$(settings_get STATUS_TIMEOUT)" "$(_settings_note STATUS_TIMEOUT)")" \
-                "$(printf '%-28s %s%s' "$(_settings_label UI)" "$(settings_get UI)" "$(_settings_note UI)")")
+                "$(printf '%-28s %s%s' "$(_settings_label UI)" "$(settings_get UI)" "$(_settings_note UI)")" \
+                "Eski paket sürümlerini temizle")
         else
             echo "=== ⚙️  Ayarlar ==="
             echo ""
             printf '  1) %-28s %s%s\n' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)"
             printf '  2) %-28s %s%s\n' "$(_settings_label STATUS_TIMEOUT)" "$(settings_get STATUS_TIMEOUT)" "$(_settings_note STATUS_TIMEOUT)"
             printf '  3) %-28s %s%s\n' "$(_settings_label UI)" "$(settings_get UI)" "$(_settings_note UI)"
+            echo "  4) Eski paket sürümlerini temizle"
             echo "  0) Geri (q)"
             echo ""
             if ! read -r -p "Değiştirilecek ayar [0]: " choice; then ui_no_pause; return 0; fi
@@ -171,6 +184,7 @@ SettingsAction() {
                 esac
                 settings_set UI "$new" || read -r -p "Enter..." _ || true
                 ;;
+            4) _settings_prune_packages ;;
             2)
                 if ! read -r -p "Süre 1-5 sn [$(settings_get STATUS_TIMEOUT)]: " new; then return 0; fi
                 if [ -n "$new" ]; then
