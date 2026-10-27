@@ -11,6 +11,13 @@ EjectUSB() {
         return 1
     fi
 
+    # USB'deki anahtarlar çıkarmadan ÖNCE ajandan silinir (çıkarılınca .pub dosyaları okunamaz); anahtar bilgisayarda kalmasın
+    if declare -F ssh_agent_remove_usb_keys >/dev/null; then
+        local removed
+        removed=$(ssh_agent_remove_usb_keys "$usb_path")
+        if [ "${removed:-0}" -gt 0 ] 2>/dev/null; then echo "🔑 $removed anahtar ssh-agent'tan çıkarıldı"; fi
+    fi
+
     echo ""
     echo "📤 USB çıkarılıyor: $(basename "$usb_path")"
     # Script USB üzerinde çalışıyor olabilir; çalışma dizinini taşı

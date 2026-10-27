@@ -19,6 +19,22 @@ ssh_keychain_prompt_note() {
     echo "   Aynı passphrase'i yazın; macOS doğrulama için bir kez daha sorabilir. Sunucunun sudo parolası DEĞİLDİR."
 }
 
+# USB'deki anahtarları ssh-agent'tan çıkarır (USB çıkarılmadan ÖNCE çağrılır; çıkarılınca .pub dosyalarına erişilemez).
+# Yalnızca USB'deki servers/*/*.pub dosyalarına karşılık gelen anahtarlar silinir; ajandaki başka anahtarlara (GitHub vb.) dokunulmaz.
+# ".pub" kullanılır: özel anahtara parola sorulmaz. Ajan yoksa ya da anahtar zaten ajanda değilse sessizce geçer.
+# Parametre: $1 - USB mount yolu → çıkarılan anahtar sayısı stdout'a yazılır
+ssh_agent_remove_usb_keys() {
+    local usb="$1" pub n=0
+    [ -n "$usb" ] && [ -d "$usb/servers" ] || { echo 0; return 0; }
+    command -v ssh-add >/dev/null 2>&1 || { echo 0; return 0; }
+    for pub in "$usb"/servers/*/*.pub; do
+        [ -f "$pub" ] || continue
+        if ssh-add -d "$pub" >/dev/null 2>&1; then n=$((n + 1)); fi
+    done
+    echo "$n"
+    return 0
+}
+
 # Passphrase Keychain'de kayıtlı mı?
 # Parametre: $1 - modül öneki
 ssh_has_passphrase() {
