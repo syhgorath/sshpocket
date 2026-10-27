@@ -105,6 +105,11 @@ UpdateAction() {
     if [ -n "$after" ] && [ "$after" != "$SCRIPT_VERSION" ]; then
         echo ""
         bash "$SISTEM_PATH/Main.sh" --components sync
+        # Eski paket sürümleri güncellemelerde yan yana birikir: listeyi gösterir ve silinmesini sorar (varsayılan: silme)
+        echo ""
+        echo "🧹 Eski paket sürümleri"
+        bash "$SISTEM_PATH/Main.sh" --components prune || true
+        echo ""
         read -r -p "Yeni sürümle yeniden başlatmak için Enter..." _ || true
         exec bash "$SISTEM_PATH/Main.sh"
     fi
