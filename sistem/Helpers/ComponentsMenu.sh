@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ComponentsMenu.sh - Sunucu menüsünde "🛡️ Paketler": paket seç → eylem seç → comp_cli_run (Aşama 3, PR E1)
 # Eylemin kendisi comp_cli_run → comp_exec_action zincirinde çalışır (kapılar/onaylar orada); burada yalnızca seçim vardır.
-# Gerektirir: Components.sh, ComponentsInstall.sh, ComponentsManifest.sh, ComponentsGates.sh (comp_gate_warn_applies), ComponentsRunCLI.sh, Servers.sh, UI.sh (isteğe bağlı: ui_pick_arrows)
+# Gerektirir: Components.sh, ComponentsInstall.sh, ComponentsManifest.sh, ComponentsGates.sh (comp_gate_required_applies), ComponentsRunCLI.sh, Servers.sh, UI.sh (isteğe bağlı: ui_pick_arrows)
 
 # comp_menu_installed → kurulu paket kimlikleri (satır satır)
 comp_menu_installed() {
@@ -118,7 +118,7 @@ _comp_menu_status_lines() {
 # _comp_menu_action_blocked <bilgi> <eylem> <eksik-değişkenler> → 0 ise eylem kapalı: zorunlu değişken eksik VE eylem değiştirici ya da
 # başka bir eylemin ön koşulu. Salt okunur durum eylemleri (rollback_status) zorunlu değişken olmadan da açıktır (CLI ile aynı kural).
 _comp_menu_action_blocked() {
-    [ -n "$3" ] && comp_gate_warn_applies "$1" "$2"
+    [ -n "$3" ] && comp_gate_required_applies "$1" "$2"
 }
 
 # comp_menu_actions <paket> <sunucu> → hazırlık durumu + (📝 Değişkenler | eylemler); seçileni çalıştırır; geri dönene kadar döngü

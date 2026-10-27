@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- `--components run`: Ansible bağlantı/`become` bekleme süresi 10 sn'den **30 sn**'ye çıkarıldı (`ANSIBLE_TIMEOUT`, kullanıcının kendi değeri korunur). Gerçek Proxmox VM'inde zaman zaman görülen "Timeout (12s) waiting for privilege escalation prompt" için.
+- **"Riskli değer" (`warn_if`) sorusu yalnızca yapılandırmayı değiştiren eylemlerde sorulur** (`apply` vb.). `preview`, durum eylemleri ve yalnızca araç kuran eylemler (`audit`) artık sormaz; eskiden `preview` ve `audit` her çalıştırmada, ardından `apply` yine sorduğu için aynı soru 2-3 kez çıkıyordu. Zorunlu değişken kuralı (`preview` dahil) aynı kaldı.
+
 ### Doğrulandı (belge)
 - `linux-hardening 0.8.3`, gerçek VM'lerde (Ubuntu 26.04 ve tek düğümlü Proxmox VE 9, boş sunucular): varsayılanlarla Lynis Ubuntu 61→83, Proxmox 62→83 (84 `hidepid` ile); `kernel_modules_disabled` Ubuntu'da yeniden başlatma sonrası `ufw` açık, Proxmox'ta reddedilir; `fail2ban_pve_web`, `pveproxy_allow_from`, `postfix_banner`, `proc_hidepid`, `apt_listbugs` çalıştı. **Bilinen sorunlar:** `hardening_pve_web_exclusive` aynı alt ağdan 8006'yı kapatmıyor; Proxmox yeniden başlatmada `pvebanner.service` `/etc/issue` bandını eziyor; Proxmox'ta hidepid sonrası iki kez geçici "Timeout (12s) waiting for privilege escalation prompt". Denenmedi: misafir VM/CT'li Proxmox, Docker'lı VM, Raspberry Pi, HA kümesi.
 - `docs/hardening-kullanim.md`: "Yeni seçenekler (0.8.x) ve gerçek VM notları" bölümü; README (TR/EN) kilit paragrafı güncellendi.

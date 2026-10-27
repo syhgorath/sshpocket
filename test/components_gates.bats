@@ -82,7 +82,7 @@ teardown() {
     run comp_gate_profile "$INFO" "";           [ "$status" -ne 0 ]
 }
 
-@test "warn_applies: değiştirici ya da başka eylemin ön koşulu ise evet; salt okunur durum eylemi hayır" {
+@test "required_applies: değiştirici ya da başka eylemin ön koşulu ise evet; salt okunur durum eylemi hayır" {
     cat > "$T/w.json" <<'JSON'
 {"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profiles":[{"id":"ubuntu-26.04","status":"supported"}],
  "actions":{
@@ -91,8 +91,24 @@ teardown() {
   "apply":{"cmd":"ansible-playbook c.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no"}}}
 JSON
     local W; W=$(comp_manifest_info "$T/w.json" demo 1.0.0)
+    run comp_gate_required_applies "$W" apply;   [ "$status" -eq 0 ]
+    run comp_gate_required_applies "$W" preview; [ "$status" -eq 0 ]
+    run comp_gate_required_applies "$W" status;  [ "$status" -ne 0 ]
+}
+
+@test "warn_applies: YALNIZCA yapılandırmayı değiştiren eylemde evet; preview, durum ve yalnızca araç kuran eylem (audit) hayır" {
+    cat > "$T/w.json" <<'JSON'
+{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "actions":{
+  "preview":{"cmd":"ansible-playbook a.yml --check","effects":[]},
+  "status":{"cmd":"ansible-playbook s.yml","effects":[]},
+  "audit":{"cmd":"ansible-playbook au.yml","effects":["installs-package"]},
+  "apply":{"cmd":"ansible-playbook c.yml","effects":["installs-package","changes-config"],"requires":["preview"],"confirm":"yes-no"}}}
+JSON
+    local W; W=$(comp_manifest_info "$T/w.json" demo 1.0.0)
     run comp_gate_warn_applies "$W" apply;   [ "$status" -eq 0 ]
-    run comp_gate_warn_applies "$W" preview; [ "$status" -eq 0 ]
+    run comp_gate_warn_applies "$W" preview; [ "$status" -ne 0 ]
+    run comp_gate_warn_applies "$W" audit;   [ "$status" -ne 0 ]
     run comp_gate_warn_applies "$W" status;  [ "$status" -ne 0 ]
 }
 

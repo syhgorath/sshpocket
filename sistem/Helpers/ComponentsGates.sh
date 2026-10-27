@@ -155,9 +155,9 @@ comp_gate_confirm() {
     esac
 }
 
-# comp_gate_warn_applies <bilgi> <eylem> → 0 ise warn_if onayı bu eylemde sorulur: eylem değiştiriciyse YA DA başka bir eylemin
-# ön koşuluysa (preview: riskli ayarı apply'dan önce göstermek için). Salt okunur durum/rapor eylemleri (rollback_status vb.) sormaz.
-comp_gate_warn_applies() {
+# comp_gate_required_applies <bilgi> <eylem> → 0 ise zorunlu değişken eksikliği bu eylemi engeller: eylem değiştiriciyse YA DA başka bir
+# eylemin ön koşuluysa (preview). Salt okunur durum/rapor eylemleri (rollback_status vb.) zorunlu değişken olmadan da çalışır.
+comp_gate_required_applies() {
     local info="$1" action="$2" a r
     comp_gate_mutating "$info" "$action" && return 0
     while IFS= read -r a; do
@@ -166,6 +166,19 @@ comp_gate_warn_applies() {
             [ "$r" = "$action" ] && return 0
         done
     done <<< "$(comp_info_all "$info" action)"
+    return 1
+}
+
+# comp_gate_warn_applies <bilgi> <eylem> → 0 ise warn_if ("riskli değer") onayı bu eylemde sorulur: YALNIZCA yapılandırmayı değiştiren
+# eylemlerde. Salt okunur eylemler (preview, durum) ve yalnızca araç kuran eylemler (effects yalnız installs-package, örn. audit) sormaz;
+# risk onayı asıl değişikliğin yapıldığı eylemde (apply) alınır.
+comp_gate_warn_applies() {
+    local eff e
+    eff=$(comp_action_get "$1" "$2" effects)
+    [ -n "$eff" ] || return 1
+    for e in $(printf '%s' "$eff" | tr ',' ' '); do
+        [ "$e" = "installs-package" ] || return 0
+    done
     return 1
 }
 
