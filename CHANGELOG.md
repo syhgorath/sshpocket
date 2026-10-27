@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Değişkenler ekranı platforma göre süzülür ve gruplanır (isteğe bağlı manifest alanları):** üst düzey `platform_var`, değişkende `platforms` ve `group`. Ubuntu sunucuda Proxmox'a özgü değişkenler gizlenir, kaç değişkenin gizlendiği yazılır; gruplar `[Proxmox]` etiketiyle yan yana gelir. Gizlenen değişkenin yazılı değeri ve `required` kuralı etkilenmez; alanları olmayan paketler (bugünkü linux-hardening) eskisi gibi görünür. Paketin bu alanları kullanması ayrı bir iş (`docs/package-standard.md` §6).
+
 ### Değişti
 - Sunucu saati farkı uyarısına paket seçeneği ipucu eklendi: `linux-hardening` için `hardening_time_makestep=true` (apply saati düzeltir, varsayılan kapalı). `docs/hardening-kullanim.md` ilgili bölüm genişletildi.
 - `--components run`: Ansible bağlantı/`become` bekleme süresi 10 sn'den **30 sn**'ye çıkarıldı (`ANSIBLE_TIMEOUT`, kullanıcının kendi değeri korunur). Gerçek Proxmox VM'inde zaman zaman görülen "Timeout (12s) waiting for privilege escalation prompt" için.

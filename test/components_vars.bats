@@ -25,14 +25,14 @@ JSON
 filemode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
 
 # ---------- describe / check ----------
-@test "describe: değişken başına TSV (ad, tür, zorunlu, varsayılan, min, max, warn_if, açıklama); sekme açıklamada temizlenir" {
+@test "describe: değişken başına TSV (ad, tür, zorunlu, varsayılan, min, max, warn_if, açıklama, grup); sekme açıklamada temizlenir" {
     run comp_vars_describe "$T/m.json"
     [ "$status" -eq 0 ]
     [ "${#lines[@]}" -eq 5 ]
-    [ "${lines[0]}" = $'allow_from\tlist[cidr]\tyes\t\t\t\t\tSSH\'a izin verilen ağlar' ]
-    [ "${lines[1]}" = $'scan_dir\tpath\tno\t\t\t\t\tÇıktı klasörü' ]
-    [ "${lines[2]}" = $'rb_enabled\tbool\tno\ttrue\t\t\tfalse\tgeri alma' ]
-    [ "${lines[3]}" = $'rb_timeout\tint\tno\t300\t30\t3600\t\t' ]
+    [ "${lines[0]}" = $'allow_from\tlist[cidr]\tyes\t\t\t\t\tSSH\'a izin verilen ağlar\t' ]
+    [ "${lines[1]}" = $'scan_dir\tpath\tno\t\t\t\t\tÇıktı klasörü\t' ]
+    [ "${lines[2]}" = $'rb_enabled\tbool\tno\ttrue\t\t\tfalse\tgeri alma\t' ]
+    [ "${lines[3]}" = $'rb_timeout\tint\tno\t300\t30\t3600\t\t\t' ]
 }
 
 @test "check: geçerli değerler geçer; tür/aralık/enum/cidr hataları, tanımsız ad ve boş değer reddedilir" {
@@ -218,4 +218,47 @@ STUB
     done
     run comp_net_add "kotu,10.0.0.0/24" "10.1.0.0/24"
     [ "$status" -ne 0 ]
+}
+
+# ---------- platform süzmesi ve gruplama (isteğe bağlı manifest alanları: platform_var, platforms, group) ----------
+mkplat() {
+    cat > "$T/p.json" <<'JSON'
+{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","platform_var":"plat",
+ "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "actions":{"preview":{"cmd":"ansible-playbook a.yml --check","effects":[]}},
+ "vars":[{"name":"plat","type":"enum","values":["generic","proxmox-host"],"default":"generic"},
+         {"name":"genel_a","type":"bool","default":true},
+         {"name":"pve_x","type":"bool","default":false,"platforms":["proxmox-host"],"group":"Proxmox"},
+         {"name":"genel_b","type":"bool","default":false},
+         {"name":"pve_y","type":"bool","default":false,"platforms":["proxmox-host"],"group":"Proxmox"},
+         {"name":"ag_z","type":"bool","default":false,"group":"Ağ"}]}
+JSON
+}
+
+@test "describe + vars dosyası: platforms dışındaki değişkenler gizlenir (varsayılan platform); vars dosyası verilmezse hepsi listelenir" {
+    mkplat; : > "$T/vals"
+    run comp_vars_describe "$T/p.json" "$T/vals"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"pve_x"* && "$output" != *"pve_y"* ]] || false
+    [[ "$output" == *"genel_a"* && "$output" == *"genel_b"* && "$output" == *"ag_z"* ]] || false
+    run comp_vars_describe "$T/p.json"
+    [[ "$output" == *"pve_x"* && "$output" == *"pve_y"* ]] || false
+}
+
+@test "describe: vars dosyasında platform=proxmox-host ise Proxmox değişkenleri görünür; gruplar yan yana, grupsuzlar önce" {
+    mkplat; printf 'plat=proxmox-host\n' > "$T/vals"
+    run comp_vars_describe "$T/p.json" "$T/vals"
+    names=$(printf '%s\n' "$output" | cut -f1 | tr '\n' ' ')
+    [ "$names" = "plat genel_a genel_b pve_x pve_y ag_z " ]
+    [[ "$(printf '%s\n' "$output" | grep '^pve_x' | cut -f9)" == "Proxmox" ]] || false
+}
+
+@test "describe: platform_var tanımsızsa ya da değeri belirlenemezse süzme yapılmaz" {
+    mkplat; python3 - "$T/p.json" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1])); d.pop("platform_var"); json.dump(d,open(sys.argv[1],"w"))
+PY
+    : > "$T/vals"
+    run comp_vars_describe "$T/p.json" "$T/vals"
+    [[ "$output" == *"pve_x"* ]] || false
 }

@@ -109,6 +109,11 @@ Kurallar: `effects` boş olmayan eylem onaysız çalışmaz; `destructive` ve `c
 - `warn_if`: değer buna eşitse arayüz uyarı gösterir ve onay ister. Onay **yalnızca yapılandırmayı değiştiren** eylemlerde (`effects`'te `installs-package` dışında bir şey olan, örn. `apply`) sorulur; salt okunur eylemler (`preview`, durum/rapor) ve yalnızca araç kuran eylemler (`audit`) sormaz, risk onayı asıl değişikliğin yapıldığı eylemde alınır. **Varsayılanı `warn_if`'e eşit olan değişken her çalıştırmada uyarı tetikler**: varsayılandan sapmayı yakalamak için `warn_if`'i varsayılanın TERSİ yapın.
 - `required: true`: değişken zorunludur; eksikse **değiştiren eylemler ve başka bir eylemin ön koşulu olan eylemler** (örn. `preview`) çalışmaz. Salt okunur durum eylemleri (örn. `rollback_status`) zorunlu değişken olmadan da çalışır (verilen değerler yine doğrulanır). Bir değişkeni zorunlu yapan paket, bu eylemlerin onu kullandığından emin olmalıdır.
 - Değerler kullanıcı klasöründe geçici, izni 600 olan bir değişken dosyasıyla verilir, iş bitince silinir.
+- **Platforma göre süzme ve gruplama (isteğe bağlı, geriye uyumlu):** büyük bir paket (örn. 100+ değişken) her sunucuda yalnızca ilgili değişkenleri göstersin diye:
+  - Bildirim üst düzeyinde `"platform_var": "hardening_platform"`: platformu seçen değişkenin adı (tanımlı bir `string`/`enum` değişken; değeri sunucunun değişken dosyasından, yoksa bildirilen `default`'tan okunur).
+  - Değişkende `"platforms": ["proxmox-host"]`: değişken yalnızca bu platformlarda görünür (1-10 küçük harfli kimlik). Alan yoksa her platformda görünür. Platform belirlenemezse süzme yapılmaz.
+  - Değişkende `"group": "Proxmox"` (1-40 karakter): ekranda `[Proxmox]` etiketiyle gösterilir, aynı gruplar yan yana toplanır, grupsuz değişkenler önce gelir.
+  - **Gizlenen değişken silinmez:** dosyada yazılı değeri yine çalıştırmaya iletilir; `required` kuralı da gizli değişkenler için geçerlidir. Ekran, kaç değişkenin gizlendiğini yazar. Eski sshpocket sürümleri bu alanları yok sayar.
 
 ## 7. Çalıştırma sözleşmesi
 
