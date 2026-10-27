@@ -261,7 +261,7 @@ comp_menu_history() {
 
 # comp_menu_vars <paket> <sunucu> <bilgi> → değişken listesi; seçileni düzenletir
 comp_menu_vars() {
-    local id="$1" server="$2" info="$3" line n t r d lo hi desc cur forced pick
+    local id="$1" server="$2" info="$3" line n t r d lo hi desc cur forced pick grp gp total
     local -a lines labels
     forced=$(_comp_menu_forced "$info")
     while true; do
@@ -274,22 +274,27 @@ comp_menu_vars() {
             n=$(_comp_menu_field "$line" 1); t=$(_comp_menu_field "$line" 2); r=$(_comp_menu_field "$line" 3)
             d=$(_comp_menu_unq "$(_comp_menu_field "$line" 4)"); lo=$(_comp_menu_field "$line" 5); hi=$(_comp_menu_field "$line" 6)
             desc=$(_comp_menu_field "$line" 8)
+            grp=$(_comp_menu_field "$line" 9); gp=""; [ -n "$grp" ] && gp="[$grp] "
             cur=$(comp_vars_get "$COMP_MENU_VARS" "$n" 2>/dev/null) || cur=""
             if printf '%s\n' "$forced" | grep -qxF -- "$n"; then
-                labels+=("$n — otomatik (çalıştırıcı kullanıcı klasörüne yönlendirir; değiştirilemez)")
+                labels+=("$gp$n — otomatik (çalıştırıcı kullanıcı klasörüne yönlendirir; değiştirilemez)")
             elif [ -n "$cur" ]; then
-                labels+=("$n = $cur")
+                labels+=("$gp$n = $cur")
             elif [ -n "$d" ]; then
-                labels+=("$n = (varsayılan: $d)")
+                labels+=("$gp$n = (varsayılan: $d)")
             else
-                labels+=("$n = (boş)${r:+$([ "$r" = yes ] && echo '  ❌ zorunlu')}")
+                labels+=("$gp$n = (boş)${r:+$([ "$r" = yes ] && echo '  ❌ zorunlu')}")
             fi
             UI_PICK_DESCS+=("$t${lo:+ · en az $lo}${hi:+ · en çok $hi} — ${desc:-açıklama yok}")
-        done < <(comp_vars_describe "$COMP_MENU_MF")
+        done < <(comp_vars_describe "$COMP_MENU_MF" "$COMP_MENU_VARS")
         [ "${#lines[@]}" -gt 0 ] || { echo "Pakette değişken yok."; read -r -p "Devam için Enter..." _ || true; return 0; }
         clear
         if declare -F ui_header >/dev/null; then ui_header "Sunucu › $server › Paketler › $id › Değişkenler"; fi
         echo ""
+        total=$(comp_vars_describe "$COMP_MENU_MF" | grep -c .)
+        if [ "$total" -gt "${#lines[@]}" ] 2>/dev/null; then
+            echo "ℹ️  $((total - ${#lines[@]})) değişken bu sunucunun platformuna uygun olmadığı için gizlendi (yazılı değerleri yine de çalıştırmaya iletilir)."
+        fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Eylem listesine döner."
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")

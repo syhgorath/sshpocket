@@ -12,8 +12,8 @@ _comp_vars_py() { python3 -I "$COMP_RUN_PY" "$@"; }
 # comp_vars_file <sunucu-klasörü> <paket> → değerler dosyasının yolu
 comp_vars_file() { printf '%s/%s.vars' "$1" "$2"; }
 
-# comp_vars_describe <component.json> → değişken başına TSV: ad, tür, zorunlu, varsayılan, min, max, warn_if, açıklama
-comp_vars_describe() { _comp_vars_py describe "$1"; }
+# comp_vars_describe <component.json> [<vars-dosyası>] → (vars-dosyası verilirse platforma göre süzülmüş) değişken başına TSV: ad, tür, zorunlu, varsayılan, min, max, warn_if, açıklama
+comp_vars_describe() { _comp_vars_py describe "$1" ${2:+"$2"}; }
 
 # comp_vars_check <component.json> <ad> <değer> → 0 geçerli ("warn=<ad>" yazılabilir) · 1 geçersiz (neden stderr'de)
 comp_vars_check() { _comp_vars_py check "$1" "$2" "$3"; }

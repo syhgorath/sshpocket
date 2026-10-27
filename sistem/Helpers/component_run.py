@@ -158,23 +158,67 @@ def clean(text):
     return re.sub(r"[\t\r\n\x00-\x1f\x7f]+", " ", str(text)).strip()
 
 
+def read_vars_file(path):
+    vals = {}
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                if "=" in line and not line.lstrip().startswith("#"):
+                    k, _, val = line.rstrip("\n").partition("=")
+                    vals[k.strip()] = val.strip()
+    except OSError:
+        pass
+    return vals
+
+
+def current_platform(manifest, decl, vars_path):
+    """platform_var'ın değeri: vars dosyasında yazılı değer, yoksa bildirilen varsayılan; belirlenemezse '' (süzme yapılmaz)."""
+    d = read_json(manifest)
+    pv = d.get("platform_var") if isinstance(d, dict) else None
+    if not isinstance(pv, str) or pv not in decl:
+        return ""
+    val = read_vars_file(vars_path).get(pv) if vars_path else None
+    if not val:
+        dv = decl[pv].get("default")
+        val = dv if isinstance(dv, str) else ""
+    return val or ""
+
+
 def cmd_describe(argv):
-    if len(argv) != 3:
-        print("kullanım: component_run.py describe <component.json>", file=sys.stderr)
+    # describe <component.json> [<vars-dosyası>]: vars-dosyası verilirse platform_var'a göre platforms dışındaki değişkenler çıkarılır
+    if len(argv) not in (3, 4):
+        print("kullanım: component_run.py describe <component.json> [<vars-dosyası>]", file=sys.stderr)
         return 2
     decl, order = declared_vars(argv[2])
     if errors:
         for m in errors:
             print("HATA: %s" % m, file=sys.stderr)
         return 1
+    plat = current_platform(argv[2], decl, argv[3]) if len(argv) == 4 else ""
+    # grup sırası: grubun ilk göründüğü yere göre; gruplar yan yana, grupsuzlar ilk sıralarında kalır
+    groups = []
     for name in order:
+        g = decl[name].get("group")
+        g = clean(g) if isinstance(g, str) else ""
+        if g and g not in groups:
+            groups.append(g)
+    def sort_key(name):
+        g = decl[name].get("group")
+        g = clean(g) if isinstance(g, str) else ""
+        return (groups.index(g) + 1) if g else 0
+    for name in sorted(order, key=lambda n: (sort_key(n), order.index(n))):
         v = decl[name]
+        pls = v.get("platforms")
+        if plat and isinstance(pls, list) and plat not in pls:
+            continue
         dflt = json.dumps(v["default"], ensure_ascii=False) if "default" in v else ""
         warn = json.dumps(v["warn_if"]) if "warn_if" in v else ""
         mn = str(v["min"]) if isinstance(v.get("min"), int) and not isinstance(v.get("min"), bool) else ""
         mx = str(v["max"]) if isinstance(v.get("max"), int) and not isinstance(v.get("max"), bool) else ""
+        grp = v.get("group")
+        grp = clean(grp) if isinstance(grp, str) else ""
         print("\t".join([name, clean(v.get("type", "string")), "yes" if v.get("required") is True else "no",
-                         clean(dflt), mn, mx, clean(warn), clean(v.get("description", ""))]))
+                         clean(dflt), mn, mx, clean(warn), clean(v.get("description", "")), grp]))
     return 0
 
 

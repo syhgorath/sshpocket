@@ -238,6 +238,28 @@ PY
     run vget rb_timeout; [ "$status" -ne 0 ]
 }
 
+@test "değişkenler: platforma uymayan değişkenler gizlenir, gruplar etiketle gösterilir, gizlenen sayısı yazılır" {
+    python3 - "$T/comps/demo/1.0.0/component.json" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+d["platform_var"]="plat"
+d["vars"]=[{"name":"allow_from","type":"list[cidr]","required":True},
+           {"name":"plat","type":"enum","values":["generic","proxmox-host"],"default":"generic"},
+           {"name":"genel_a","type":"bool","default":True},
+           {"name":"pve_x","type":"bool","default":False,"platforms":["proxmox-host"],"group":"Proxmox"},
+           {"name":"ag_z","type":"bool","default":False,"group":"Ağ"}]
+json.dump(d,open(p,"w"))
+PY
+    run comp_menu_actions demo web1 <<<$'1\n0\n0'
+    [[ "$output" == *"genel_a"* && "$output" == *"[Ağ] ag_z"* ]] || false
+    [[ "$output" != *"pve_x"* ]] || false
+    [[ "$output" == *"1 değişken bu sunucunun platformuna uygun olmadığı için gizlendi"* ]] || false
+    printf 'allow_from=10.99.0.0/24\nplat=proxmox-host\n' > "$D/demo.vars"
+    run comp_menu_actions demo web1 <<<$'1\n0\n0'
+    [[ "$output" == *"[Proxmox] pve_x"* ]] || false
+    [[ "$output" != *"gizlendi"* ]] || false
+}
+
 # ---------- CIDR editörü ----------
 @test "cidr: öneri eklenir; listede tek ağ varsa uyarı çıkar ve 'H' ile o haliyle kaydedilir" {
     setup_net; rm -f "$D/demo.vars"
