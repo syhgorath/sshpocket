@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Sunucu menüsünde denetim puanı:** 🛡️ Paketler › paket ekranında araç başına son denetim puanı ve bir öncekiyle fark gösterilir (`📊 Lynis: 83 (2 gün önce) · önceki 61 (+22)`). Yalnızca puan. Ortak `summary.json` biçimi (`tool`, `date`, `score`; eski `hardening_index` desteklenir) `docs/package-standard.md`'de tanımlandı; OpenSCAP gibi yeni bir araç eklemek sshpocket'te kod değişikliği istemez.
+
 ### Değişti
 - Sunucu saati farkı uyarısına paket seçeneği ipucu eklendi: `linux-hardening` için `hardening_time_makestep=true` (apply saati düzeltir, varsayılan kapalı). `docs/hardening-kullanim.md` ilgili bölüm genişletildi.
 - `--components run`: Ansible bağlantı/`become` bekleme süresi 10 sn'den **30 sn**'ye çıkarıldı (`ANSIBLE_TIMEOUT`, kullanıcının kendi değeri korunur). Gerçek Proxmox VM'inde zaman zaman görülen "Timeout (12s) waiting for privilege escalation prompt" için.

@@ -115,6 +115,30 @@ _comp_menu_status_lines() {
     done < <(comp_info_all "$info" action)
 }
 
+# _comp_menu_score_lines <paket> <sunucu> → araç başına son denetim puanı ve bir öncekiyle fark (yalnızca puan); veri yoksa hiçbir şey yazmaz
+# Veri: <durum>/<paket>/<sunucu>/**/summary.json (component_scores.py; ortak biçim docs/package-standard.md "Denetim özeti")
+_comp_menu_score_lines() {
+    local id="$1" server="$2" py tool epoch score now delta latest tool_prev out=""
+    py="${COMP_SCORES_PY:-${SISTEM_PATH:-.}/Helpers/component_scores.py}"
+    command -v python3 >/dev/null 2>&1 && [ -f "$py" ] || return 0
+    now=$(date +%s)
+    tool_prev=""
+    while IFS=$'\t' read -r tool epoch score; do
+        [ -n "$tool" ] || continue
+        if [ "$tool" != "$tool_prev" ]; then
+            [ -n "$out" ] && printf '%s\n' "$out"
+            latest="$score"; out="  📊 $tool: $score"
+            if [[ "$epoch" =~ ^[0-9]+$ ]] && [ "$epoch" -le "$now" ]; then out="$out ($(_comp_menu_age $((now - epoch))))"; fi
+            tool_prev="$tool"
+        else
+            delta=$(awk -v a="$latest" -v b="$score" 'BEGIN{d=a-b; if (d>0) printf "+%g", d; else if (d<0) printf "%g", d; else printf "±0"}')
+            out="$out · önceki $score ($delta)"
+        fi
+    done < <(python3 -I "$py" "$(_comp_gate_state_dir)" "$id" "$server" 2>/dev/null)
+    [ -n "$out" ] && printf '%s\n' "$out"
+    return 0
+}
+
 # _comp_menu_action_blocked <bilgi> <eylem> <eksik-değişkenler> → 0 ise eylem kapalı: zorunlu değişken eksik VE eylem değiştirici ya da
 # başka bir eylemin ön koşulu. Salt okunur durum eylemleri (rollback_status) zorunlu değişken olmadan da açıktır (CLI ile aynı kural).
 _comp_menu_action_blocked() {
@@ -145,6 +169,7 @@ comp_menu_actions() {
             echo "  ✅ Zorunlu değişkenler tamam"
         fi
         _comp_menu_status_lines "$id" "$server" "$info"
+        _comp_menu_score_lines "$id" "$server"
         echo ""
         labels=("📝 Değişkenler${missing:+  ← önce burası}")
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
