@@ -29,25 +29,43 @@ comp_detect_sudo_ws() {
     printf '%s\n' "$out" | grep -qx 'SSHPOCKET_SUDO_WS=yes'
 }
 
+# _comp_fmt_utc <epoch> → HH:MM:SS (UTC); GNU (-d @) ve BSD/macOS (-r) date ile çalışır
+_comp_fmt_utc() { date -u -d "@$1" +%H:%M:%S 2>/dev/null || date -u -r "$1" +%H:%M:%S 2>/dev/null || printf '?'; }
+
 # comp_warn_clock_skew <host> <port> <kullanıcı> <anahtar> → sunucu saati yerel saatten 60 sn'den fazla farklıysa uyarır (stderr); ENGELLEMEZ, hep 0 döner.
-# Snapshot geri alınınca VM saati geride kalır ve apt "Not live until" ile düşer. Uzak komut SABİT ve salt okunurdur; okunamazsa sessiz geçer.
+# Snapshot geri alınınca VM saati geride kalır ve apt "Not live until" ile düşer; TOTP/2FA kodları da saat kaymasında reddedilir.
+# Uzak komut SABİT ve salt okunurdur (saat + saat dilimi + NTP durumu); okunamazsa sessiz geçer. Düzeltmeyi KULLANICI yapar (saat sıçrar); burada yalnızca hazır komut gösterilir.
 comp_warn_clock_skew() {
-    local host="$1" port="$2" user="$3" key="$4" out remote local_now diff min dir
+    local host="$1" port="$2" user="$3" key="$4" out remote local_now diff min dir tz ntp qkey off line
     out=$(ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
               -o PreferredAuthentications=publickey -o PasswordAuthentication=no \
-              -p "$port" -i "$key" "$user@$host" 'date +%s' 2>/dev/null) || return 0
+              -p "$port" -i "$key" "$user@$host" 'date +%s; timedatectl show -p Timezone -p NTPSynchronized 2>/dev/null' 2>/dev/null) || return 0
     remote=$(printf '%s\n' "$out" | head -n 1)
     [[ "$remote" =~ ^[0-9]{1,12}$ ]] || return 0
+    tz=""; ntp=""
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^Timezone=([A-Za-z0-9_+/-]{1,64})$ ]]; then tz="${BASH_REMATCH[1]}"; fi
+        if [[ "$line" =~ ^NTPSynchronized=(yes|no)$ ]]; then ntp="${BASH_REMATCH[1]}"; fi
+    done <<< "$out"
     local_now=$(date +%s)
     diff=$(( 10#$remote - local_now ))
     if [ "$diff" -lt 0 ]; then dir="geride"; diff=$(( -diff )); else dir="ileride"; fi
     [ "$diff" -gt 60 ] || return 0
     min=$(( (diff + 30) / 60 ))
+    printf -v qkey '%q' "$key"
     {
         echo "  ⚠️  Sunucu saati yaklaşık $min dakika $dir (snapshot geri alındıysa olağandır)."
-        echo "      apt \"Not live until\" hatası verebilir; audit/apply başarısız olabilir."
-        echo "      Düzeltme (sunucuda): sudo chronyc makestep"
-        echo "      Olmazsa: sudo systemctl restart chrony; sleep 8; sudo chronyc makestep"
+        echo "      Sunucu: $(_comp_fmt_utc "$((10#$remote))") UTC${tz:+ (saat dilimi: $tz)} · Bu bilgisayar: $(_comp_fmt_utc "$local_now") UTC · Fark: $((diff / 60)) dk $((diff % 60)) sn $dir"
+        echo "      apt \"Not live until\" hatası verebilir; audit/apply başarısız olabilir. Sunucuda TOTP/2FA varsa kodlar da reddedilir."
+        # fark neredeyse tam saat (en az 30 dk, 30 dk'nın katı ±2 dk) ise saat dilimi karışıklığı olabilir
+        off=$(( diff % 1800 ))
+        if [ "$diff" -ge 1800 ] && { [ "$off" -lt 120 ] || [ "$off" -gt 1680 ]; }; then
+            echo "      Fark tam saat dilimi farkına benziyor (~$(( (diff + 900) / 1800 )) yarım saat): sunucu saati yerel saat olarak ayarlanmış olabilir. 'timedatectl' ile saat dilimini ve RTC ayarını kontrol edin."
+        fi
+        [ "$ntp" != "no" ] || echo "      NTP eşitlemesi kapalı/başarısız (NTPSynchronized=no): düzeltme kalıcı olmayabilir; chrony kaynaklarını kontrol edin."
+        echo "      Düzeltme (hazır komut, sudo parolanızı siz yazarsınız; saat SIÇRAR):"
+        echo "        ssh -t -p $port -i $qkey $user@$host 'sudo systemctl restart chrony; sleep 8; sudo chronyc makestep; date -u'"
+        echo "      Ya da sunucuda: sudo chronyc makestep"
         echo "      Ya da paket seçeneği: linux-hardening için hardening_time_makestep=true (apply saati düzeltir; saati sıçratır, varsayılan kapalı)."
     } >&2
     return 0

@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **Saat sapması uyarısı daha açıklayıcı** (`--components run`, 60 sn'den büyük fark): sunucu ve bu bilgisayarın saati (UTC), fark, sunucunun saat dilimi, NTP eşitleme durumu (`NTPSynchronized=no` ise kalıcı olmayabileceği), TOTP/2FA etkisi ve **kopyalanabilir hazır düzeltme komutu** gösterilir. Fark tam saat dilimi farkına benziyorsa ipucu verilir. Uzak komut hâlâ sabit ve salt okunurdur (`date +%s; timedatectl show -p Timezone -p NTPSynchronized`); gelen satırlar katı desenle okunur. Saati sshpocket düzeltmez (saat sıçrar, karar kullanıcıda); uyarı engellemez.
+
 ### Eklendi
 - **Değişkenler ekranı: arama, grup ve "değiştirdiklerim" süzgeci.** Bir paketin 25'ten fazla değişkeni varsa liste başında `🔎 Ara`, `📂 Grup` (pakette `group` varsa) ve `✏️ Yalnızca değiştirdiklerim` satırları çıkar; arama ad ve açıklamada büyük/küçük harf ayırmadan çalışır, süzgeç açıkken `↩ Süzgeci temizle` görünür ve başlıkta `Gösterilen: X / Y · bu sunucuda değiştirilen: N` yazar. Dosyada değeri yazılı satırlar `✏️` ile işaretlenir; uzun değerler 40 karaktere kısaltılır (düzenleme ekranında tam değer görünür). Küçük paketlerde numaralandırma eskisi gibidir.
 
