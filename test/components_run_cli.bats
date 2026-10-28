@@ -34,7 +34,7 @@ JSON
 #!/bin/bash
 echo "\$*" >> "$T/ssh_calls"
 [ "\${FAKE_SSH_FAIL:-0}" = 1 ] && { [ -n "\${FAKE_SSH_ERR:-}" ] && printf '%s\\n' "\$FAKE_SSH_ERR" >&2; exit 255; }
-case "\$*" in *"date +%s") if [ -n "\${FAKE_DATE_OUT+x}" ]; then printf '%s\\n' "\$FAKE_DATE_OUT"; else echo \$(( \$(date +%s) + \${FAKE_SKEW:-0} )); fi; exit 0 ;; esac
+case "\$*" in *"date +%s"*) if [ -n "\${FAKE_DATE_OUT+x}" ]; then printf '%s\\n' "\$FAKE_DATE_OUT"; else echo \$(( \$(date +%s) + \${FAKE_SKEW:-0} )); [ -z "\${FAKE_TZ_OUT:-}" ] || printf '%s\\n' "\$FAKE_TZ_OUT"; fi; exit 0 ;; esac
 case "\$*" in *sudo.ws*) [ "\${FAKE_SUDOWS:-1}" = 1 ] && { echo SSHPOCKET_SUDO_WS=yes; exit 0; } || exit 1 ;; esac
 printf '%s\n' "\${FAKE_OSREL:-NAME=\"Ubuntu\"
 ID=ubuntu
@@ -63,7 +63,7 @@ modeof() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
     # uzak komut SABİT: satırın tamamı birebir eşleşmeli (ek komut sızdırılamaz)
     [ "$(head -n 1 "$T/ssh_calls")" = "-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o PreferredAuthentications=publickey -o PasswordAuthentication=no -p 22 -i $T/servers/web1/id_ed25519_web1 ziya@10.1.10.193 cat /etc/os-release" ]
     [ "$(sed -n 3p "$T/ssh_calls" | grep -c 'test -x /usr/bin/sudo.ws')" = "1" ]      # üçüncü çağrı: salt okunur sudo.ws sorgusu
-    [ "$(sed -n 2p "$T/ssh_calls" | grep -c ' date +%s$')" = "1" ]                  # ikinci çağrı: sabit saat sorgusu
+    [ "$(sed -n 2p "$T/ssh_calls" | grep -c " date +%s; timedatectl show -p Timezone -p NTPSynchronized 2>/dev/null\$")" = "1" ]   # ikinci çağrı: sabit, salt okunur saat sorgusu
     grep -q -- "--limit web1" "$T/ansible_args"
     grep -q '"allow_from"' "$T/seen_vars"                 # servers/web1/demo.vars kullanıldı
     grep -q '|1.0.0|preview|ok$' "$T/state/demo/web1/results"
@@ -303,6 +303,37 @@ CASES
     FAKE_SKEW=7200 run comp_cli_run demo preview web1 </dev/null
     [ "$status" -eq 0 ]
     [[ "$output" == *"yaklaşık 120 dakika ileride"* ]] || false
+}
+
+@test "saat: uyarı iki saati, farkı, saat dilimini ve hazır (kopyalanabilir) düzeltme komutunu gösterir" {
+    FAKE_SKEW=-1800 FAKE_TZ_OUT=$'Timezone=Europe/Istanbul\nNTPSynchronized=yes' run comp_cli_run demo preview web1 </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"saat dilimi: Europe/Istanbul"* ]] || false
+    [[ "$output" == *"Bu bilgisayar:"* && "$output" == *"Fark: 30 dk 0 sn geride"* ]] || false
+    [[ "$output" == *"TOTP/2FA"* ]] || false
+    [[ "$output" == *"ssh -t -p 22 -i "*"ziya@10.1.10.193 'sudo systemctl restart chrony; sleep 8; sudo chronyc makestep; date -u'"* ]] || false
+    [[ "$output" != *"NTPSynchronized=no"* ]] || false
+    [ -e "$T/ansible_args" ]                                     # hâlâ engellemez
+}
+
+@test "saat: NTP eşitlemesi kapalıysa kalıcı olmayabileceği söylenir; saat dilimi okunamazsa o kısım atlanır" {
+    FAKE_SKEW=-600 FAKE_TZ_OUT='NTPSynchronized=no' run comp_cli_run demo preview web1 </dev/null
+    [[ "$output" == *"NTPSynchronized=no"* ]] || false
+    [[ "$output" != *"saat dilimi:"* ]] || false
+}
+
+@test "saat: fark tam saat dilimi farkına benziyorsa ipucu verilir; rastgele farkta verilmez" {
+    FAKE_SKEW=-10800 run comp_cli_run demo preview web1 </dev/null
+    [[ "$output" == *"saat dilimi farkına benziyor"* ]] || false
+    FAKE_SKEW=-2300 run comp_cli_run demo preview web1 </dev/null
+    [[ "$output" != *"saat dilimi farkına benziyor"* ]] || false
+    [[ "$output" == *"Sunucu saati yaklaşık"* ]] || false
+}
+
+@test "saat: sunucudan gelen saat dilimi/NTP satırları kabuk için güvenli değilse yok sayılır" {
+    FAKE_SKEW=-600 FAKE_TZ_OUT=$'Timezone=$(touch /tmp/x)\nNTPSynchronized=maybe' run comp_cli_run demo preview web1 </dev/null
+    [[ "$output" != *"saat dilimi:"* && "$output" != *'$(touch'* ]] || false
+    [[ "$output" != *"NTPSynchronized=no"* ]] || false
 }
 
 @test "saat: okunamayan çıktıda sessiz geçer" {
