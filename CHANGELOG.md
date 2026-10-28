@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.17] - 2026-10-29
+
+`runner: script`: paketler Ansible yerine hedef sunucuda çalışan betiklerle eylem tanımlayabilir (sudo'lu yolda root'a ait kopya + SHA-256 doğrulama).
+
 ### Eklendi
 - **`runner: script`:** paketler Ansible yerine `scripts/<ad>.sh` betikleriyle eylem tanımlayabilir. Betik **hedef sunucuda** çalışır (kontrol makinesinde yabancı kod çalışmaz): sudo gerekmiyorsa ssh stdin'inden akar; `requires_sudo` ise sunucuda 0600 geçici dosyaya yazılır, `ssh -t` ile tek sudo oturumunda **root'a ait 0700 klasöre kopyalanıp SHA-256'sı yerelde hesaplanan özetle doğrulanır** (uyuşmazsa çalışmaz; yükleme ile sudo arasındaki değiştirme yarışı kapalı) ve çalıştırılır; sudo parolası aynı terminalde sudo isteminde girilir, dosyalar her çıkışta silinir. Değişkenler `SSHPOCKET_VAR_<AD>` olarak tek tırnakla kaçırılarak geçer; sonuç `SSHPOCKET_RESULT <id>.<eylem> k=v` satırıyla gelir. Ortak kapılar (host key, ajan, profil, root reddi, önkoşul, onay) ansible ile aynıdır; Python ortamı gerekmez. Manifest doğrulayıcı ve `validate` betik yolunu/varlığını denetler. Standart §7 güncellendi.
 
