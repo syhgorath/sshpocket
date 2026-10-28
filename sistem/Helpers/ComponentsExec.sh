@@ -58,13 +58,20 @@ _comp_exec_remote_rm() {
     COMP_EXEC_REMOTE_TMP=""
 }
 
+# _comp_exec_sha256 <dosya> → dosyanın SHA-256 özeti (hex); sha256sum ya da shasum yoksa 1
+_comp_exec_sha256() {
+    if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+    elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | cut -d' ' -f1
+    else return 1; fi
+}
+
 # _comp_exec_script <bilgi> <eylem> <vars.json> <yerel-iş-klasörü> <durum-klasörü>
 # Betik paketin 'scripts/' klasöründen okunur; başına SSHPOCKET_* export satırları eklenir ve SUNUCUDA 'bash -s -- <argümanlar>' ile çalışır.
 #  · sudo gerekmiyorsa: ssh stdin'inden akıtılır (betik stdin okuyamaz).
-#  · requires_sudo ise: sunucuda 0600 geçici dosyaya yazılır, ssh -t ile (sudo istemi AYNI terminalde) çalıştırılır, HER çıkışta silinir.
+#  · requires_sudo ise: sunucuda 0600 geçici dosyaya yazılır; ssh -t ile (sudo istemi AYNI terminalde) root'a ait klasöre kopyalanıp SHA-256 doğrulanır ve çalıştırılır; her çıkışta silinir.
 _comp_exec_script() {
     local info="$1" action="$2" vf="$3" work="$4" sdir="$5" refused="$COMP_EXEC_REFUSED"
-    local cmd script payload log rc rpath sudo_prog rargs w
+    local cmd script payload log rc rpath sudo_prog rargs w hash rscript
     local -a words ssh_base
     cmd=$(comp_action_get "$info" "$action" cmd)
     IFS=' ' read -r -a words <<< "$cmd"
@@ -91,12 +98,19 @@ _comp_exec_script() {
         [[ "$rpath" =~ ^/tmp/sshpocket-[A-Za-z0-9]{8}$ ]] || { echo "Sunucudaki geçici betik yolu beklenmedik: çalıştırılmadı." >&2; return "$refused"; }
         COMP_EXEC_REMOTE_TMP="$rpath"
         sudo_prog="sudo"; [ -n "${COMP_CTX_BECOME_EXE:-}" ] && sudo_prog="$COMP_CTX_BECOME_EXE"
+        hash=$(_comp_exec_sha256 "$payload") && [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || { echo "Betiğin özeti hesaplanamadı (sha256sum/shasum yok)." >&2; return "$refused"; }
         {
             echo "🔑 Sudo parolası istenecek: aşağıdaki istem sunucudaki sudo parolasıdır (sudo parola istemiyorsa yalnızca Enter)."
             echo "   Parola yalnızca sunucunun sudo isteminde girilir; sshpocket'e, günlüğe ya da komut satırına yazılmaz."
         } >&2
-        "${ssh_base[@]}" -t "$COMP_CTX_USER@$COMP_CTX_HOST" "$sudo_prog bash $rpath$rargs" 2>&1 | tee -a "$log"
+        # Kullanıcı sahipli geçici dosya root olarak ÇALIŞTIRILMAZ: önce root'a ait 0700 klasöre kopyalanır, kopyanın SHA-256'sı yerelde hesaplanan
+        # özetle karşılaştırılır (uyuşmazsa 97 ile durur), ancak sonra çalışır. Böylece yükleme ile sudo arasında dosya değiştirilse bile root yalnızca
+        # imzalı paketteki betiği çalıştırır. Klasör her çıkışta silinir.
+        # shellcheck disable=SC2016  # değişkenler SUNUCUDA genişler (yerelde değil)
+        rscript='d=$(mktemp -d) || exit 96; trap "rm -rf \"$d\"" EXIT; install -o root -g root -m 0700 -- "$1" "$d/s.sh" || exit 96; h=$(sha256sum "$d/s.sh" | cut -d" " -f1); [ "$h" = "$2" ] || { echo "ÖZET UYUŞMUYOR: betik çalıştırılmadı (sunucudaki kopya imzalı paketteki betikle aynı değil)." >&2; exit 97; }; shift 2; bash "$d/s.sh" "$@"'
+        "${ssh_base[@]}" -t "$COMP_CTX_USER@$COMP_CTX_HOST" "$sudo_prog bash -c '$rscript' bash $rpath $hash$rargs" 2>&1 | tee -a "$log"
         rc="${PIPESTATUS[0]}"
+        if [ "$rc" -eq 97 ]; then echo "⛔ Sunucudaki betik özeti yerelle uyuşmadı: betik ÇALIŞTIRILMADI. Sunucuda /tmp'ye başka bir süreç yazmış olabilir; sunucuyu inceleyin." >&2; fi
         _comp_exec_remote_rm
     else
         "${ssh_base[@]}" "$COMP_CTX_USER@$COMP_CTX_HOST" "bash -s --$rargs" < "$payload" 2>&1 | tee -a "$log"
