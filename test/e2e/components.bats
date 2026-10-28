@@ -233,25 +233,25 @@ hardened() { in_lab 'test -e /etc/ssh/sshd_config.d/00-hardening.conf && ufw sta
     grep -q '|rollback_disarm|ok$' "$STATE/userdata/linux-hardening/lab/results"
 }
 
-@test "pve_firewall_preview, Proxmox OLMAYAN host'ta nedenini söyleyerek durur; sunucuda hiçbir şey değişmez" {
+@test "pve_firewall_preview, Proxmox OLMAYAN platformda sshpocket tarafından reddedilir (ssh'a gitmeden); sunucuda hiçbir şey değişmez" {
     local before after
     before=$(in_lab 'ufw status | head -1; ls /etc/pve 2>&1 | head -1; ls /etc/ssh/sshd_config.d | wc -l')
     lab_run pve_firewall_preview
     [ "$status" -ne 0 ]
-    [[ "$output" == *"yalnızca Proxmox VE hostları içindir"* ]] || false
-    [[ "$output" == *"changed=0"* ]] || false
+    [[ "$output" == *"bu sunucunun platformunda (generic) kullanılamaz; yalnızca: proxmox-host"* ]] || false
     after=$(in_lab 'ufw status | head -1; ls /etc/pve 2>&1 | head -1; ls /etc/ssh/sshd_config.d | wc -l')
     [ "$before" = "$after" ]
     run in_lab 'test -e /etc/pve'
     [ "$status" -ne 0 ]
-    grep -q '|pve_firewall_preview|fail$' "$STATE/userdata/linux-hardening/lab/results"
+    run grep -q '|pve_firewall_preview|' "$STATE/userdata/linux-hardening/lab/results"
+    [ "$status" -ne 0 ]
 }
 
 # Proxmox benzeri LAB: /etc/pve + pveversion işaretleri ve sunucu değişkenlerinde hardening_pve_apply=true (ana `apply` için gerekir).
 # 0.7.0'da bu durumda pve_firewall_preview cluster.fw'yi GERÇEKTEN yazıyordu; 0.8.0'da önizleme yazma kapısını daima kapalı tutar.
 pve_lab_cleanup() {
     in_lab 'rm -rf /etc/pve /usr/bin/pveversion' 2>/dev/null || true
-    [ -f "$STATE/servers/lab/linux-hardening.vars" ] && sed -i.bak '/^hardening_pve_apply=/d' "$STATE/servers/lab/linux-hardening.vars" && rm -f "$STATE/servers/lab/linux-hardening.vars.bak"
+    [ -f "$STATE/servers/lab/linux-hardening.vars" ] && sed -i.bak -e '/^hardening_pve_apply=/d' -e '/^hardening_platform=/d' "$STATE/servers/lab/linux-hardening.vars" && rm -f "$STATE/servers/lab/linux-hardening.vars.bak"
     return 0
 }
 teardown() { [ -f "$STATE/kh" ] && pve_lab_cleanup; return 0; }
@@ -263,7 +263,7 @@ teardown() { [ -f "$STATE/kh" ] && pve_lab_cleanup; return 0; }
     [[ "$cmd" == *"--check"* ]] || false
     [[ "$cmd" != *" -e "* && "$cmd" != *" -i "* && "$cmd" != *"--limit"* ]] || false
     in_lab 'mkdir -p /etc/pve/firewall && printf "#!/bin/sh\necho pve-manager/9.0.0\n" > /usr/bin/pveversion && chmod +x /usr/bin/pveversion'
-    printf 'hardening_pve_apply=true\n' >> "$STATE/servers/lab/linux-hardening.vars"
+    printf 'hardening_pve_apply=true\nhardening_platform=proxmox-host\n' >> "$STATE/servers/lab/linux-hardening.vars"
     local armed_before
     armed_before=$(in_lab 'systemctl is-active hardening-rollback.timer 2>&1; ls /etc/pve/firewall | wc -l')
     E2E_RISKY=e lab_run pve_firewall_preview

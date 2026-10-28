@@ -24,7 +24,7 @@ RE_PLATFORM = re.compile(r"^[a-z0-9][a-z0-9._-]{0,29}$")
 RE_PROFILE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 RE_GROUP = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
 RE_CMD_BAD = re.compile(r"[;&|`$<>(){}\\\"'\n\r\t\x00]")
-VAR_DESC_MAX = 1000   # değişken açıklaması (arayüzde gösterilir); diğer metinler 500
+VAR_DESC_MAX = 2000   # değişken açıklaması (arayüzde gösterilir); diğer metinler 500
 RE_TEXT_BAD = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 RE_PYRANGE = re.compile(r"^>=[0-9]+\.[0-9]+(,<[0-9]+\.[0-9]+)?$")
 RE_OUTKEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")

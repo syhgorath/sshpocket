@@ -202,12 +202,15 @@ print(json.dumps(d))" > "$T/m.json"
     [ "$status" -ne 0 ]
 }
 
-@test "değişken açıklaması en çok 1000 karakter (platform gibi uzun açıklamalar); aşan ve kontrol karakterli reddedilir; uyarı metni sınırı 500 kalır" {
-    local d500 d1000 d1001
+@test "değişken açıklaması en çok 2000 karakter (Proxmox web_exclusive gibi uzun açıklamalar); aşan ve kontrol karakterli reddedilir; uyarı metni sınırı 500 kalır" {
+    local d500 d1000 d1001 d2000 d2001
     d500=$(python3 -c "print('a'*500)"); d1000=$(python3 -c "print('a'*1000)"); d1001=$(python3 -c "print('a'*1001)")
+    d2000=$(python3 -c "print('a'*2000)"); d2001=$(python3 -c "print('a'*2001)")
     mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"string\",\"description\":\"$d1000\"}]}"
     valid
-    mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"string\",\"description\":\"$d1001\"}]}"
+    mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"string\",\"description\":\"$d2000\"}]}"
+    valid
+    mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"string\",\"description\":\"$d2001\"}]}"
     invalid
     [[ "$output" == *"description geçersiz metin"* ]] || false
     mf "{$BASE,$ok_act,\"vars\":[{\"name\":\"x\",\"type\":\"string\",\"description\":\"a\\u0007b\"}]}"
