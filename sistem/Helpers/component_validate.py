@@ -262,6 +262,18 @@ def check_actions(root, info):
                     fail("Eylemler", "%s: playbook yok: %s" % (a, pb))
                 else:
                     pass
+        elif runner == "script":
+            # script: cmd 'scripts/<ad>.sh [argümanlar]' (biçimi manifest doğrulayıcısı denetler); betik pakette olmalı, düz dosya (sembolik bağ değil)
+            script = os.path.join(root, toks[0]) if toks else ""
+            if not toks or not os.path.isfile(script):
+                fail("Eylemler", "%s: betik yok: %s" % (a, toks[0] if toks else "(boş)"))
+                continue
+            if os.path.islink(script):
+                fail("Eylemler", "%s: betik sembolik bağ olamaz: %s" % (a, toks[0]))
+                continue
+            if os.path.getsize(script) > 262144:
+                fail("Eylemler", "%s: betik 256 KB'tan büyük: %s" % (a, toks[0]))
+                continue
         # değiştiren eylem kuralları (uyarı: kurtarma eylemleri ön koşulsuz olabilir)
         if mutating:
             if sudo != "yes":

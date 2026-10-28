@@ -308,3 +308,29 @@ JSON
     printf '%s,"actions":{"a":{"cmd":"x a","effects":[]},"b":{"cmd":"x b","effects":["changes-config"],"requires":["a"],"platforms":["p1"]}}}' "$base" > "$T/r4.json"
     run comp_manifest_info "$T/r4.json" demo 1.0.0; [ "$status" -eq 0 ]
 }
+
+# ---------- runner: script ----------
+SCRIPT_BASE='{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"script","profiles":[{"id":"ubuntu-26.04","status":"supported"}]'
+
+@test "manifest (script): geçerli 'scripts/<ad>.sh [argümanlar]' kabul edilir, cmd olduğu gibi yazılır" {
+    printf '%s,"actions":{"saglik":{"cmd":"scripts/saglik.sh --dry-run x=1","effects":[]}}}' "$SCRIPT_BASE" > "$T/s1.json"
+    run comp_manifest_info "$T/s1.json" demo 1.0.0; [ "$status" -eq 0 ]
+    [[ "$output" == *"runner=script"* && "$output" == *"action.saglik.cmd=scripts/saglik.sh --dry-run x=1"* ]] || false
+}
+
+@test "manifest (script): ansible-playbook, kök betik, '..', mutlak yol, başka uzantı ve kötü argümanlar reddedilir" {
+    for bad in 'ansible-playbook playbooks/a.yml' 'saglik.sh' 'scripts/../etc/x.sh' '/tmp/x.sh' 'scripts/a.py' 'scripts/a.sh --x;y' 'scripts/a.sh $(id)' 'scripts/a.sh a b c d e f g h i'; do
+        printf '%s,"actions":{"a":{"cmd":"%s","effects":[]}}}' "$SCRIPT_BASE" "$bad" > "$T/s2.json"
+        run comp_manifest_info "$T/s2.json" demo 1.0.0
+        [ "$status" -ne 0 ] || { echo "KABUL EDİLDİ: $bad"; return 1; }
+    done
+}
+
+@test "manifest (script): invoke, inventory_group ve outputs.dir_var desteklenmez; ansible'da hâlâ serbest" {
+    printf '%s,"invoke":{"append":[{"arg":"--x"}]},"actions":{"a":{"cmd":"scripts/a.sh","effects":[]}}}' "$SCRIPT_BASE" > "$T/s3.json"
+    run comp_manifest_info "$T/s3.json" demo 1.0.0; [ "$status" -ne 0 ]; [[ "$output" == *"yalnızca ansible"* ]] || false
+    printf '%s,"inventory_group":"x","actions":{"a":{"cmd":"scripts/a.sh","effects":[]}}}' "$SCRIPT_BASE" > "$T/s4.json"
+    run comp_manifest_info "$T/s4.json" demo 1.0.0; [ "$status" -ne 0 ]
+    printf '%s,"actions":{"a":{"cmd":"scripts/a.sh","effects":[],"outputs":{"dir_var":"d"}}},"vars":[{"name":"d","type":"path"}]}' "$SCRIPT_BASE" > "$T/s5.json"
+    run comp_manifest_info "$T/s5.json" demo 1.0.0; [ "$status" -ne 0 ]; [[ "$output" == *"dir_var script runner"* ]] || false
+}

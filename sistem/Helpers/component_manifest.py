@@ -27,6 +27,8 @@ RE_CMD_BAD = re.compile(r"[;&|`$<>(){}\\\"'\n\r\t\x00]")
 VAR_DESC_MAX = 2000   # değişken açıklaması (arayüzde gösterilir); diğer metinler 500
 RE_TEXT_BAD = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 RE_PYRANGE = re.compile(r"^>=[0-9]+\.[0-9]+(,<[0-9]+\.[0-9]+)?$")
+RE_SCRIPT = re.compile(r"^scripts/[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.sh$")
+RE_SCRIPT_ARG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._=:/+,-]{0,63}$|^--?[A-Za-z0-9][A-Za-z0-9._=:/+,-]{0,63}$")
 RE_OUTKEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 RE_VALUE = re.compile(r"^(<[a-z0-9_ -]{1,40}>|[A-Za-z0-9_./:@=,+-]{1,200})$")
 
@@ -162,6 +164,15 @@ def main():
         if not is_str(cmd) or not cmd.strip() or len(cmd) > 400 or RE_CMD_BAD.search(cmd):
             err("%s: cmd geçersiz (kabuk meta karakteri/satır sonu yok, boş olamaz)" % name)
             cmd = ""
+        if runner == "script" and cmd:
+            # script: ilk sözcük paket içindeki 'scripts/<ad>.sh' yolu (".." ve mutlak yol yok), kalanı düz argüman (sunucuda 'bash -s -- <argümanlar>')
+            sw = cmd.split()
+            if not RE_SCRIPT.match(sw[0]) or ".." in sw[0]:
+                err("%s: script runner için cmd 'scripts/<ad>.sh [argümanlar]' ile başlamalı" % name)
+                cmd = ""
+            elif any(not RE_SCRIPT_ARG.match(w) for w in sw[1:]) or len(sw) > 9:
+                err("%s: script argümanları düz sözcük olmalı (en çok 8; harf/rakam ve . _ = : / + , -)" % name)
+                cmd = ""
         effects = a.get("effects")
         if (not isinstance(effects, list) or any(e not in EFFECTS for e in effects)
                 or len(set(effects)) != len(effects)):
@@ -212,7 +223,9 @@ def main():
                 err("%s: outputs nesne olmalı" % name)
             else:
                 dv = outs.get("dir_var")
-                if dv is not None:
+                if dv is not None and runner == "script":
+                    err("%s: outputs.dir_var script runner'da desteklenmez (betik sunucuda çalışır; sonuç SSHPOCKET_RESULT satırıyla gelir)" % name)
+                elif dv is not None:
                     decl = {}
                     for vv in d.get("vars", []) if isinstance(d.get("vars", []), list) else []:
                         if isinstance(vv, dict) and is_str(vv.get("name")):
@@ -378,6 +391,9 @@ def main():
     # --- invoke.append ---
     inv_lines = []
     inv = d.get("invoke", {})
+    if runner == "script" and (inv or d.get("inventory_group") is not None):
+        err("invoke ve inventory_group yalnızca ansible runner içindir")
+        inv = {}
     app = inv.get("append", []) if isinstance(inv, dict) else None
     if not isinstance(app, list):
         err("invoke.append liste olmalı")

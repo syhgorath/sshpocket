@@ -45,15 +45,80 @@ comp_exec_parse_result() {
     return 0
 }
 
+# --- script runner (docs/package-standard.md §7) ---
+COMP_EXEC_REMOTE_TMP=""
+
+# _comp_exec_remote_rm → sudo'lu yolda sunucuya yazılan geçici betiği (içinde değişken değerleri olabilir) siler; her çıkışta çağrılır, hata verirse sessiz geçer
+_comp_exec_remote_rm() {
+    [ -n "$COMP_EXEC_REMOTE_TMP" ] || return 0
+    [[ "$COMP_EXEC_REMOTE_TMP" =~ ^/tmp/sshpocket-[A-Za-z0-9]{8}$ ]] || return 0
+    ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+        -o PreferredAuthentications=publickey -o PasswordAuthentication=no \
+        -p "$COMP_CTX_PORT" -i "$COMP_CTX_KEY" "$COMP_CTX_USER@$COMP_CTX_HOST" "rm -f $COMP_EXEC_REMOTE_TMP" >/dev/null 2>&1 || true
+    COMP_EXEC_REMOTE_TMP=""
+}
+
+# _comp_exec_script <bilgi> <eylem> <vars.json> <yerel-iş-klasörü> <durum-klasörü>
+# Betik paketin 'scripts/' klasöründen okunur; başına SSHPOCKET_* export satırları eklenir ve SUNUCUDA 'bash -s -- <argümanlar>' ile çalışır.
+#  · sudo gerekmiyorsa: ssh stdin'inden akıtılır (betik stdin okuyamaz).
+#  · requires_sudo ise: sunucuda 0600 geçici dosyaya yazılır, ssh -t ile (sudo istemi AYNI terminalde) çalıştırılır, HER çıkışta silinir.
+_comp_exec_script() {
+    local info="$1" action="$2" vf="$3" work="$4" sdir="$5" refused="$COMP_EXEC_REFUSED"
+    local cmd script payload log rc rpath sudo_prog rargs w
+    local -a words ssh_base
+    cmd=$(comp_action_get "$info" "$action" cmd)
+    IFS=' ' read -r -a words <<< "$cmd"
+    script="$COMP_CTX_PKGDIR/${words[0]}"
+    if [ ! -f "$script" ] || [ -L "$script" ] || [ "$(wc -c < "$script" | tr -d ' ')" -gt 262144 ]; then
+        echo "Betik bulunamadı, sembolik bağ ya da çok büyük (en çok 256 KB): ${words[0]}" >&2; return "$refused"
+    fi
+    payload="$work/payload.sh"
+    { python3 -I "$COMP_RUN_PY" env "$vf" "$COMP_CTX_SERVER" "$action" "$COMP_CTX_PROFILE" && cat "$script"; } > "$payload" \
+        || { echo "Betik hazırlanamadı (değişkenler)." >&2; return "$refused"; }
+    rargs=""
+    for w in "${words[@]:1}"; do rargs="$rargs $(printf '%q' "$w")"; done
+    ssh_base=(ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10
+              -o PreferredAuthentications=publickey -o PasswordAuthentication=no -p "$COMP_CTX_PORT" -i "$COMP_CTX_KEY")
+    log="$sdir/last-run.log"
+    ( umask 077; : > "$log" ) || return "$refused"
+    # shellcheck disable=SC2064
+    trap "rm -r -- $(printf '%q' "$work") 2>/dev/null; _comp_exec_remote_rm" EXIT
+
+    if [ "$(comp_action_get "$info" "$action" sudo)" = "yes" ]; then
+        # shellcheck disable=SC2016  # $f sunucuda genişler (yerelde değil)
+        rpath=$("${ssh_base[@]}" "$COMP_CTX_USER@$COMP_CTX_HOST" 'umask 077; f=$(mktemp /tmp/sshpocket-XXXXXXXX) && cat > "$f" && printf %s "$f"' < "$payload" 2>/dev/null) \
+            || { echo "Betik sunucuya yazılamadı." >&2; return "$refused"; }
+        [[ "$rpath" =~ ^/tmp/sshpocket-[A-Za-z0-9]{8}$ ]] || { echo "Sunucudaki geçici betik yolu beklenmedik: çalıştırılmadı." >&2; return "$refused"; }
+        COMP_EXEC_REMOTE_TMP="$rpath"
+        sudo_prog="sudo"; [ -n "${COMP_CTX_BECOME_EXE:-}" ] && sudo_prog="$COMP_CTX_BECOME_EXE"
+        {
+            echo "🔑 Sudo parolası istenecek: aşağıdaki istem sunucudaki sudo parolasıdır (sudo parola istemiyorsa yalnızca Enter)."
+            echo "   Parola yalnızca sunucunun sudo isteminde girilir; sshpocket'e, günlüğe ya da komut satırına yazılmaz."
+        } >&2
+        "${ssh_base[@]}" -t "$COMP_CTX_USER@$COMP_CTX_HOST" "$sudo_prog bash $rpath$rargs" 2>&1 | tee -a "$log"
+        rc="${PIPESTATUS[0]}"
+        _comp_exec_remote_rm
+    else
+        "${ssh_base[@]}" "$COMP_CTX_USER@$COMP_CTX_HOST" "bash -s --$rargs" < "$payload" 2>&1 | tee -a "$log"
+        rc="${PIPESTATUS[0]}"
+    fi
+    return "$rc"
+}
+
 # _comp_exec_body <bilgi> <paket> <sürüm> <eylem> → alt kabukta çalışır; geçici dosyalar HER çıkışta (Ctrl-C/TERM dahil) silinir
 _comp_exec_body() {
     local info="$1" id="$2" ver="$3" action="$4" kv
-    local server="$COMP_CTX_SERVER" pkg="$COMP_CTX_PKGDIR" bindir="$COMP_CTX_BINDIR" work sdir vf inv group dir_var outdir log w prog rc line
+    local server="$COMP_CTX_SERVER" pkg="$COMP_CTX_PKGDIR" bindir="${COMP_CTX_BINDIR:-}" runner work sdir vf inv group dir_var outdir log w prog rc line
     local -a sets warn_names
     local refused="$COMP_EXEC_REFUSED"
 
-    [ -f "$pkg/component.json" ] && [ -d "$bindir" ] || { echo "Paket dizini ya da venv bulunamadı." >&2; return "$refused"; }
-    [ "$(comp_info_get "$info" runner)" = "ansible" ] || { echo "Yalnızca ansible runner destekleniyor." >&2; return "$refused"; }
+    runner=$(comp_info_get "$info" runner)
+    [ -f "$pkg/component.json" ] || { echo "Paket dizini bulunamadı." >&2; return "$refused"; }
+    case "$runner" in
+        ansible) [ -d "$bindir" ] || { echo "Python ortamı (venv) bulunamadı." >&2; return "$refused"; } ;;
+        script) ;;
+        *) echo "Desteklenmeyen runner: $runner" >&2; return "$refused" ;;
+    esac
 
     # ---- kapılar (hepsi yerel; biri durdurursa HİÇBİR ŞEY çalışmaz) ----
     comp_gate_not_root "$info" "$action" "$COMP_CTX_USER" || return "$refused"
@@ -100,6 +165,12 @@ _comp_exec_body() {
 
     # ---- onay (effects + uyarılar gösterilir) ----
     comp_gate_confirm "$info" "$action" "$server" || return "$refused"
+
+    # ---- script runner: betik SUNUCUDA çalışır (Mac'te yabancı kod çalışmaz); kapılar/değişkenler/onay yukarıda ortak ----
+    if [ "$runner" = "script" ]; then
+        _comp_exec_script "$info" "$action" "$vf" "$work" "$sdir"
+        return $?
+    fi
 
     # ---- girdiler ----
     group=$(comp_info_get "$info" inventory_group); group="${group:-sshpocket}"

@@ -299,3 +299,22 @@ PY
     [ "$status" -eq 1 ]
     [[ "$output" == *"bulunamadı"* ]] || false
 }
+
+@test "script paketi: betik varsa ❌ yok; betik yoksa, sembolik bağsa ya da çok büyükse ❌" {
+    S="$T/scr-1.0.0"; mkdir -p "$S/scripts"
+    cat > "$S/component.json" <<'JSON'
+{"id":"scr","version":"1.0.0","sshpocket_api":1,"runner":"script",
+ "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "actions":{"saglik":{"cmd":"scripts/saglik.sh","effects":[]}}}
+JSON
+    printf '1.0.0\n' > "$S/VERSION"; printf '# scr\n' > "$S/README.md"; printf '## [1.0.0]\n- ilk\n' > "$S/CHANGELOG.md"
+    printf '#!/usr/bin/env bash\necho ok\n' > "$S/scripts/saglik.sh"
+    run python3 -I "$VAL" "$S"
+    [[ "$output" != *"❌"* ]] || { echo "$output"; false; }
+    rm "$S/scripts/saglik.sh"
+    run python3 -I "$VAL" "$S"; [[ "$output" == *"betik yok: scripts/saglik.sh"* ]] || false
+    ln -s /etc/hostname "$S/scripts/saglik.sh"
+    run python3 -I "$VAL" "$S"; [[ "$output" == *"sembolik bağ"* ]] || false
+    rm "$S/scripts/saglik.sh"; head -c 300000 /dev/zero | tr '\0' 'a' > "$S/scripts/saglik.sh"
+    run python3 -I "$VAL" "$S"; [[ "$output" == *"256 KB"* ]] || false
+}

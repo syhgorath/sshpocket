@@ -137,15 +137,18 @@ comp_cli_run() {
     ssh_validate_target "$ip" "$user" "$port" 2>/dev/null || { echo "Sunucu bilgisi eksik/geçersiz (IP, kullanıcı, port)." >&2; return "$refused"; }
     [ -f "$key" ] || { echo "SSH key bulunamadı: $key" >&2; return "$refused"; }
 
-    # Python ortamı: yoksa AÇIKÇA onay istenir (ağdan indirir)
-    range=$(comp_info_get "$info" requires.python); range="${range:->=3.12}"
-    if ! venv=$(comp_venv_lookup "$id" "$pkg" "$range"); then
-        echo "Python ortamı kurulu değil. İlk kullanımda kurulacak: PyPI'dan yalnızca hash'li wheel paketleri (yaklaşık 10 MB indirme," >&2
-        echo "diskte yaklaşık 90 MB; ~/.cache/sshpocket altında, sistem Python'una dokunulmaz)." >&2
-        printf 'Kurulsun mu? [e/H]: ' >&2
-        IFS= read -r ans || { echo >&2; echo "Onay alınamadı." >&2; return "$refused"; }
-        case "$ans" in e|E|evet|Evet) ;; *) echo "İptal edildi." >&2; return "$refused" ;; esac
-        venv=$(comp_venv_ensure "$id" "$pkg" "$range") || return "$refused"
+    # Python ortamı (yalnızca ansible runner): yoksa AÇIKÇA onay istenir (ağdan indirir). script runner venv gerektirmez.
+    venv=""
+    if [ "$(comp_info_get "$info" runner)" = "ansible" ]; then
+        range=$(comp_info_get "$info" requires.python); range="${range:->=3.12}"
+        if ! venv=$(comp_venv_lookup "$id" "$pkg" "$range"); then
+            echo "Python ortamı kurulu değil. İlk kullanımda kurulacak: PyPI'dan yalnızca hash'li wheel paketleri (yaklaşık 10 MB indirme," >&2
+            echo "diskte yaklaşık 90 MB; ~/.cache/sshpocket altında, sistem Python'una dokunulmaz)." >&2
+            printf 'Kurulsun mu? [e/H]: ' >&2
+            IFS= read -r ans || { echo >&2; echo "Onay alınamadı." >&2; return "$refused"; }
+            case "$ans" in e|E|evet|Evet) ;; *) echo "İptal edildi." >&2; return "$refused" ;; esac
+            venv=$(comp_venv_ensure "$id" "$pkg" "$range") || return "$refused"
+        fi
     fi
 
     # İşletim sistemi profili: anahtar ajanda olmalı, host key tanınmalı; sonra salt okunur algılama
@@ -175,7 +178,7 @@ comp_cli_run() {
 
     values="$dir/$id.vars"
     [ -f "$values" ] || values=""
-    COMP_CTX_PKGDIR="$pkg"; COMP_CTX_BINDIR="$venv/bin"; COMP_CTX_SERVER="$server"; COMP_CTX_HOST="$ip"; COMP_CTX_USER="$user"
+    COMP_CTX_PKGDIR="$pkg"; COMP_CTX_BINDIR="${venv:+$venv/bin}"; COMP_CTX_SERVER="$server"; COMP_CTX_HOST="$ip"; COMP_CTX_USER="$user"
     COMP_CTX_PORT="$port"; COMP_CTX_KEY="$key"; COMP_CTX_PREFIX="$prefix"; COMP_CTX_PROFILE="$profile"; COMP_CTX_VALUES="$values"
     comp_exec_action "$info" "$id" "$ver" "$action"
     rc=$?
