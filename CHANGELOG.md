@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Belgeler
+- **`linux-hardening` 0.8.4 gerçek VM doğrulaması** (Ubuntu 26.04 ve Proxmox VE 9) README ve `docs/hardening-kullanim.md`'ye işlendi: platform süzmesi, altı sunucu başına anahtar (`false` yazmaz, önceden yazılanı silmez), `pve_keep_banner` (yeniden başlatma sonrası banner korunur), yeniden tasarlanan `pve_web_exclusive` (8006/3128 listede olmayan aynı alt ağ istemcisinde kapanır), ek güvenlik duvarı portu. `pve_web_exclusive` için eski "beklendiği gibi çalışmıyor" uyarısı kaldırıldı.
+
 ## [3.6.15] - 2026-10-28
 
 Eylemlerde `platforms` (Ubuntu sunucuda `pve_firewall_*` görünmez); `linux-hardening` 0.8.4 kilitlendi; değişken açıklama sınırı 2000; sürüm yayını için `scripts/release-publish.sh`.
