@@ -147,7 +147,7 @@ val() { run python3 -I "$VAL" "$@"; }
     val "$P"
     [ "$status" -eq 0 ]
     [[ "$output" == *"demo_api_token: adı parola/anahtar/token izlenimi veriyor"* ]] || false
-    [[ "$output" == *"demo_kullanilmaz: playbook/rol/vars içinde kullanılmıyor"* ]] || false
+    [[ "$output" == *"demo_kullanilmaz: playbook/rol/vars/betik içinde kullanılmıyor"* ]] || false
     [[ "$output" == *"demo_eski_bicim: eski biçim"* ]] || false
 }
 
@@ -164,7 +164,7 @@ val() { run python3 -I "$VAL" "$@"; }
     printf -- '- hosts: all\n  tasks: []\n' > "$P/playbooks/s.yml"
     val "$P"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"status: outputs.format var ama playbook/rollerde 'SSHPOCKET_RESULT demo.status' çıktısı bulunamadı"* ]] || false
+    [[ "$output" == *"status: outputs.format var ama playbook/rol/betiklerde 'SSHPOCKET_RESULT demo.status' çıktısı bulunamadı"* ]] || false
 }
 
 @test "uyarı: değiştiren eylem var ama belgede geri alma/kurtarma anlatılmamış" {
@@ -317,4 +317,21 @@ JSON
     run python3 -I "$VAL" "$S"; [[ "$output" == *"sembolik bağ"* ]] || false
     rm "$S/scripts/saglik.sh"; head -c 300000 /dev/zero | tr '\0' 'a' > "$S/scripts/saglik.sh"
     run python3 -I "$VAL" "$S"; [[ "$output" == *"256 KB"* ]] || false
+}
+
+@test "script paketi: sonuç satırı ve SSHPOCKET_VAR_<AD> kullanımı betiklerde aranır (yanlış alarm yok); eksikse ⚠️" {
+    S="$T/scr2-1.0.0"; mkdir -p "$S/scripts"
+    cat > "$S/component.json" <<'JSON'
+{"id":"scr","version":"1.0.0","sshpocket_api":1,"runner":"script",
+ "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "actions":{"saglik":{"cmd":"scripts/saglik.sh","effects":[],"outputs":{"format":"keyvalue-line","keys":["disk"]}}},
+ "vars":[{"name":"esik","type":"int","default":80,"description":"eşik"}]}
+JSON
+    printf '1.0.0\n' > "$S/VERSION"; printf '# scr\n' > "$S/README.md"; printf '## [1.0.0]\n- ilk\n' > "$S/CHANGELOG.md"
+    printf '#!/usr/bin/env bash\necho "SSHPOCKET_RESULT scr.saglik disk=${SSHPOCKET_VAR_ESIK}"\n' > "$S/scripts/saglik.sh"
+    run python3 -I "$VAL" "$S"
+    [[ "$output" != *"⚠️"* && "$output" != *"❌"* ]] || { echo "$output"; false; }
+    printf '#!/usr/bin/env bash\necho ok\n' > "$S/scripts/saglik.sh"
+    run python3 -I "$VAL" "$S"
+    [[ "$output" == *"çıktısı bulunamadı"* && "$output" == *"esik: playbook/rol/vars/betik içinde kullanılmıyor"* ]] || false
 }

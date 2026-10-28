@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **`validate` script paketlerinde yanlış uyarı vermez:** sonuç satırı (`SSHPOCKET_RESULT …`) ve değişken kullanımı artık `scripts/` klasöründe de aranır; değişken betikte `SSHPOCKET_VAR_<AD>` olarak okunuyorsa "kullanılmıyor" uyarısı çıkmaz.
+
 ## [3.6.17] - 2026-10-29
 
 `runner: script`: paketler Ansible yerine hedef sunucuda çalışan betiklerle eylem tanımlayabilir (sudo'lu yolda root'a ait kopya + SHA-256 doğrulama).

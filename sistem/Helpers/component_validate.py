@@ -233,7 +233,7 @@ def check_actions(root, info):
     pid = first(info, "id")
     runner = first(info, "runner")
     names = info.get("action", [])
-    code = corpus(root, ["playbooks", "roles", "vars", "inventory", "templates", "files"])
+    code = corpus(root, ["playbooks", "roles", "vars", "inventory", "templates", "files", "scripts"])
     mutating_without_docs = False
     for a in names:
         cmd = first(info, "action.%s.cmd" % a)
@@ -289,7 +289,7 @@ def check_actions(root, info):
         if first(info, "action.%s.outputs.format" % a):
             tag = "SSHPOCKET_RESULT %s.%s" % (pid, a)
             if tag not in code:
-                issues.append("outputs.format var ama playbook/rollerde '%s' çıktısı bulunamadı" % tag)
+                issues.append("outputs.format var ama playbook/rol/betiklerde '%s' çıktısı bulunamadı" % tag)
         if issues:
             for i in issues:
                 warn("Eylemler", "%s: %s" % (a, i))
@@ -303,7 +303,7 @@ def check_vars(root, info):
     if not vars_:
         ok("Değişkenler", "değişken tanımı yok")
         return
-    code = corpus(root, ["playbooks", "roles", "vars", "inventory", "templates", "files"])
+    code = corpus(root, ["playbooks", "roles", "vars", "inventory", "templates", "files", "scripts"])
     for name, vtype, req, typed in [(v + [""] * 4)[:4] for v in vars_]:
         notes = []
         if typed == "0":
@@ -311,8 +311,9 @@ def check_vars(root, info):
         # bool/int bir parola taşıyamaz (örn. password_inactive_days = gün sayısı): yalnızca metin alabilen türlerde uyar
         if SECRET_NAME.search(name) and vtype not in ("bool", "int"):
             notes.append("adı parola/anahtar/token izlenimi veriyor: gizli değer değişken OLAMAZ (standart §6)")
-        if name not in code:
-            notes.append("playbook/rol/vars içinde kullanılmıyor")
+        # script runner: değişken betikte SSHPOCKET_VAR_<AD> olarak okunur
+        if name not in code and ("SSHPOCKET_VAR_%s" % name.upper()) not in code:
+            notes.append("playbook/rol/vars/betik içinde kullanılmıyor")
         if notes:
             for n in notes:
                 warn("Değişkenler", "%s: %s" % (name, n))
