@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **`components.lock`: `linux-hardening` 0.8.3 → 0.8.4** (116 değişken, 8 eylem). Paket `platform_var: hardening_platform` ile 9 Proxmox değişkenini (`group: Proxmox`) ve `pve_firewall_preview/apply` eylemlerini yalnızca `proxmox-host` platformunda gösterir (Ubuntu'da 107 değişken, 6 eylem görünür; gizli değişkenin yazılı değeri yine çalıştırmaya iletilir). 6 yeni koşulsuz-görev anahtarı (varsayılan açık) ve `hardening_pve_keep_banner`. `pve_web_exclusive` yeniden tasarlandı. sshpocket: değişken açıklama sınırı 1000 → 2000 karakter (paketteki `pve_web_exclusive` açıklaması 1182 karakter). Gerçek VM doğrulaması sürüyor.
+
 ### Eklendi
 - **Eylemlerde `platforms` (isteğe bağlı):** manifestte bir eyleme `"platforms": ["proxmox-host"]` yazılırsa eylem yalnızca o platformda listelenir; diğer sunucularda menüden gizlenir ("N eylem … gizlendi" notu) ve CLI'dan çalıştırılması ssh'a gitmeden reddedilir. Ön koşul tutarlılığı manifest doğrulamasında denetlenir. Eski sürümler alanı yok sayar. Örnek: Ubuntu sunucuda `pve_firewall_*` görünmez.
 - **`scripts/release-publish.sh`:** sürüm yayınını tek komuta indirir. Ön kontroller (main, temiz, güncel, CHANGELOG başlığı, imza anahtarı, Release yok, `main` CI'ı bu commit için yeşil) → etiket → `release.sh` → `gh release create` (notlar CHANGELOG'dan) → yüklenen dosyaların SHA-256 doğrulaması. `--dry-run` yalnızca planı gösterir. Elle yol `RELEASING.md`'de yedek olarak durur.
