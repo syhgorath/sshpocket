@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.16] - 2026-10-28
+
+Değişkenler ekranında arama/grup/"değiştirdiklerim" süzgeci; saat sapması uyarısı iki saati, farkı, saat dilimini ve hazır düzeltme komutunu gösterir; `linux-hardening` 0.8.4 gerçek VM doğrulaması belgelendi.
+
 ### Değişti
 - **Saat sapması uyarısı daha açıklayıcı** (`--components run`, 60 sn'den büyük fark): sunucu ve bu bilgisayarın saati (UTC), fark, sunucunun saat dilimi, NTP eşitleme durumu (`NTPSynchronized=no` ise kalıcı olmayabileceği), TOTP/2FA etkisi ve **kopyalanabilir hazır düzeltme komutu** gösterilir. Fark tam saat dilimi farkına benziyorsa ipucu verilir. Uzak komut hâlâ sabit ve salt okunurdur (`date +%s; timedatectl show -p Timezone -p NTPSynchronized`); gelen satırlar katı desenle okunur. Saati sshpocket düzeltmez (saat sıçrar, karar kullanıcıda); uyarı engellemez.
 
