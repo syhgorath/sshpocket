@@ -95,7 +95,7 @@ Docker LAB'ı** vardır: `./test/e2e/lab/up.sh && bats test/e2e/components.bats`
 
 
 ## Yeni seçenekler (0.8.x) ve gerçek VM notları
-Aşağıdakiler gerçek VM'lerde (Ubuntu 26.04 ve tek düğümlü Proxmox VE 9, boş sunucular) sınandı; **misafir VM/CT'li Proxmox, Docker'lı VM, Raspberry Pi ve HA kümesinde denenmedi**.
+Aşağıdakiler (0.8.4 dahil) gerçek VM'lerde (Ubuntu 26.04 ve tek düğümlü Proxmox VE 9, boş sunucular) sınandı; **misafir VM/CT'li Proxmox, Docker'lı VM, Raspberry Pi ve HA kümesinde denenmedi**.
 
 | Seçenek | Platform | Not |
 |---|---|---|
@@ -107,16 +107,23 @@ Aşağıdakiler gerçek VM'lerde (Ubuntu 26.04 ve tek düğümlü Proxmox VE 9, 
 | `hardening_fail2ban_pve_web` | Proxmox | 8006 için jail; yanlış parola sonrası IP banlanır, kapatınca iki dosya silinir. |
 | `hardening_pve_pveproxy_allow_from` | Proxmox | `/etc/default/pveproxy` bloğu; kontrol makinesinin adresi listede değilse yazmaz, `[]` blok tek başınaysa dosyayı siler. Kontrol makinesi VPN/LAN arasında değişirse **ikisini de** listeye yazın. |
 | `hardening_pve_web_allow_from` | Proxmox | Yalnızca `pve_firewall_*` eylemleriyle `cluster.fw`'ye `[IPSET web]` yazar (ana `apply` ile değil). |
-| `hardening_pve_web_exclusive` | Proxmox | ⚠️ **Beklendiği gibi çalışmıyor:** 8006, aynı alt ağdaki (örn. `10.1.10.0/24`) listede olmayan bir istemciden **kapanmadı** ve kurallarda olmayan SPICE portu (3128) da açık kaldı. Nedeni bilinmiyor (Proxmox yerleşik kuralları şüpheli). Güvenliğiniz bu seçeneğe bağlı olmasın. |
+| `hardening_pve_web_exclusive` | Proxmox | **0.8.4'te yeniden tasarlandı ve gerçek VM'de doğrulandı.** `true` iken 8006 yalnızca `hardening_pve_web_allow_from` listesinden açılır: aynı alt ağdaki listede olmayan bir istemci 8006 ve 3128'e bağlanamaz (ölçüldü). SSH, ping ve `hardening_pve_firewall_extra_ports` ayrı bir `admin` kümesinden (yönetim ağları) verilir. Bilinen yan etki: web listesindeki adresler Proxmox'un yerleşik kuralları yüzünden 3128/VNC/SSH'a da güvenlik duvarı düzeyinde erişir (sshd kendi izin listesini ayrıca uygular). Liste boşsa ya da kontrol makinesi listede değilse hiçbir şey yazılmaz. `false`'a dönünce `cluster.fw` yeniden `management` = yönetim ağları olur. **Önce snapshot alın; yanlış liste web arayüzünü keser (SSH açık kalır).** |
+| `hardening_pve_firewall_extra_ports` | Proxmox | Yönetim ağlarına ek portlar (`"9100/tcp"`, `"8000:8010/udp"`); `web_exclusive` açıkken `admin` kümesine bağlı yazılır (ölçüldü). |
+| `hardening_pve_keep_banner` (varsayılan açık) | Proxmox | `pvebanner.service`'e drop-in ekler; yeniden başlatmadan sonra da `/etc/issue` yasal uyarı metni korunur (gerçek VM'de reboot ile doğrulandı, Lynis `BANN-7126` geri gelmedi). `false` yapınca drop-in silinir. `hardening_legal_banner=false` iken drop-in yazılmaması paketin belgesinde yazar; gerçek VM'de ayrıca denenmedi. |
 
-**Proxmox'ta yeniden başlatma:** `pvebanner.service` her açılışta `/etc/issue` dosyasını yeniden yazar; yasal uyarı bandı (Lynis `BANN-7126`) kaybolur, `/etc/issue.net` korunur.
+**Proxmox'ta yeniden başlatma:** `pvebanner.service` her açılışta `/etc/issue` dosyasını yeniden yazar. 0.8.3 ve öncesinde yasal uyarı bandı (Lynis `BANN-7126`) kaybolurdu; 0.8.4'te `hardening_pve_keep_banner` (varsayılan açık) bunu önler. `/etc/issue.net` her zaman korunur.
+
+## Platform süzmesi ve sunucu başına anahtarlar (0.8.4)
+- **Platforma göre görünüm:** paket `platform_var: hardening_platform` bildirir. Ubuntu sunucuda 9 Proxmox değişkeni (`[Proxmox]` grubu) ve `pve_firewall_preview` / `pve_firewall_apply` eylemleri menüde **görünmez** (107/116 değişken, 6/8 eylem); Proxmox'ta hepsi görünür. Gizli bir değişkenin dosyada yazılı değeri yine çalıştırmaya iletilir. Platformu belirleyen `hardening_platform` değişkenidir (varsayılan `generic`).
+- **Altı sunucu başına anahtar (hepsi varsayılan açık, davranış değişmez):** `hardening_sysctl_hardening`, `hardening_disable_network_protocols`, `hardening_disable_filesystem_modules`, `hardening_unattended_upgrades`, `hardening_legal_banner`, `hardening_journald_persistent`. `false` iken ilgili görevler **atlanır** (temiz Ubuntu'da dosya yazılmaz; ölçüldü).
+- **`false` önceden uygulanmış değişikliği geri almaz:** yazılmış dosya ve kurulu paket kalır (örn. `unattended_upgrades` önce açık uygulandıysa `unattended-upgrades` ve `20auto-upgrades` sunucuda durur). Kalıcı olarak kapatmak için dosyayı/paketi elle kaldırın.
 
 ## Parolalı sudo ve Ubuntu 26.04 (sudo-rs)
 Ubuntu 26.04'ün varsayılan `sudo`'su `sudo-rs`'tir ve Ansible'ın parolalı `become`'ı onunla `Timeout (12s) waiting for privilege escalation prompt` ile takılır. sshpocket, Ubuntu sunucularda klasik sudo (`/usr/bin/sudo.ws`) varsa Ansible'a onu kullandırır (envantere `ansible_become_exe`), çalıştırma sırasında bunu bir satırla bildirir. NOPASSWD sudo'da fark yoktur. Parolayı yine yalnızca Ansible'ın `BECOME password:` isteminde girersiniz.
 Sertleştirme sonrası `passwd` kuralları sıkılaşır (`minlen 14`, `minclass 3`, `dictcheck`, `maxrepeat 3`): parola ≥14 karakter, dört sınıftan (küçük/büyük/rakam/sembol) en az üçü, sözlük kelimesi içermemeli.
 
 ## Sudo parola istemi bekleme süresi
-`--components run`, Ansible'ın bağlantı/`become` bekleme süresini **30 sn** yapar (`ANSIBLE_TIMEOUT`; Ansible varsayılanı 10 sn, hata mesajında "12s" görünür). Gerçek bir Proxmox VM'inde zaman zaman "Timeout (12s) waiting for privilege escalation prompt" görüldü (nedeni bilinmiyor, VM anlık takılması olabilir); daha uzun bekleme koşuyu yarıda kesmez. Kendi değerinizi `ANSIBLE_TIMEOUT=60 ./start.sh …` ile verebilirsiniz.
+`--components run`, Ansible'ın bağlantı/`become` bekleme süresini **30 sn** yapar (`ANSIBLE_TIMEOUT`; Ansible varsayılanı 10 sn, hata mesajında "12s" görünür). Gerçek bir Proxmox VM'inde zaman zaman "Timeout (12s) waiting for privilege escalation prompt" görüldü (nedeni bilinmiyor, VM anlık takılması olabilir; 30 sn ile yapılan 0.8.4 turlarında bir kez bile görülmedi); daha uzun bekleme koşuyu yarıda kesmez. Kendi değerinizi `ANSIBLE_TIMEOUT=60 ./start.sh …` ile verebilirsiniz.
 
 ## Sunucu saati (snapshot sonrası)
 `--components run` başlarken sunucunun saatini salt okunur `date +%s` ile yerel saatle karşılaştırır; fark 60 sn'den büyükse uyarır (engellemez). VM snapshot'tan döndürüldüğünde saat geride kalır ve apt `Not live until` hatası verir, `audit`/`apply` düşebilir. Sunucuda `sudo chronyc makestep`; olmazsa `sudo systemctl restart chrony; sleep 8; sudo chronyc makestep`.
