@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.15] - 2026-10-28
+
+Eylemlerde `platforms` (Ubuntu sunucuda `pve_firewall_*` görünmez); `linux-hardening` 0.8.4 kilitlendi; değişken açıklama sınırı 2000; sürüm yayını için `scripts/release-publish.sh`.
+
 ### Değişti
 - **`components.lock`: `linux-hardening` 0.8.3 → 0.8.4** (116 değişken, 8 eylem). Paket `platform_var: hardening_platform` ile 9 Proxmox değişkenini (`group: Proxmox`) ve `pve_firewall_preview/apply` eylemlerini yalnızca `proxmox-host` platformunda gösterir (Ubuntu'da 107 değişken, 6 eylem görünür; gizli değişkenin yazılı değeri yine çalıştırmaya iletilir). 6 yeni koşulsuz-görev anahtarı (varsayılan açık) ve `hardening_pve_keep_banner`. `pve_web_exclusive` yeniden tasarlandı. sshpocket: değişken açıklama sınırı 1000 → 2000 karakter (paketteki `pve_web_exclusive` açıklaması 1182 karakter). Gerçek VM doğrulaması sürüyor.
 
