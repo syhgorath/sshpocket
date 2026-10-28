@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Değişkenler ekranı: arama, grup ve "değiştirdiklerim" süzgeci.** Bir paketin 25'ten fazla değişkeni varsa liste başında `🔎 Ara`, `📂 Grup` (pakette `group` varsa) ve `✏️ Yalnızca değiştirdiklerim` satırları çıkar; arama ad ve açıklamada büyük/küçük harf ayırmadan çalışır, süzgeç açıkken `↩ Süzgeci temizle` görünür ve başlıkta `Gösterilen: X / Y · bu sunucuda değiştirilen: N` yazar. Dosyada değeri yazılı satırlar `✏️` ile işaretlenir; uzun değerler 40 karaktere kısaltılır (düzenleme ekranında tam değer görünür). Küçük paketlerde numaralandırma eskisi gibidir.
+
 ### Belgeler
 - **`linux-hardening` 0.8.4 gerçek VM doğrulaması** (Ubuntu 26.04 ve Proxmox VE 9) README ve `docs/hardening-kullanim.md`'ye işlendi: platform süzmesi, altı sunucu başına anahtar (`false` yazmaz, önceden yazılanı silmez), `pve_keep_banner` (yeniden başlatma sonrası banner korunur), yeniden tasarlanan `pve_web_exclusive` (8006/3128 listede olmayan aynı alt ağ istemcisinde kapanır), ek güvenlik duvarı portu. `pve_web_exclusive` için eski "beklendiği gibi çalışmıyor" uyarısı kaldırıldı.
 

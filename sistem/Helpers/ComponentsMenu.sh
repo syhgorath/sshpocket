@@ -264,47 +264,139 @@ comp_menu_history() {
     read -r -p "Devam için Enter..." _ || return 1
 }
 
+# Büyük paketlerde (çok değişken) değişkenler ekranının başına arama/süzgeç satırları eklenir; küçük paketlerde numaralandırma eskisi gibidir.
+COMP_MENU_VARS_FILTER_MIN="${COMP_MENU_VARS_FILTER_MIN:-25}"
+
+# _comp_menu_clip <metin> [en-çok] → uzun değeri kısaltır (…)
+_comp_menu_clip() {
+    local m="${2:-40}"
+    if [ "${#1}" -gt "$m" ]; then printf '%s…' "${1:0:$((m - 1))}"; else printf '%s' "$1"; fi
+}
+
+# _comp_menu_group_name <süzgeç> → grup süzgecinin ekrandaki adı ("" = tümü, "-" = grupsuz)
+_comp_menu_group_name() {
+    if [ -z "$1" ]; then printf 'tümü'; elif [ "$1" = "-" ]; then printf '%s' '(grupsuz)'; else printf '%s' "$1"; fi
+}
+
+# _comp_menu_var_match <ad> <açıklama> <grup> <değişmiş:0|1> <metin> <grup-süzgeci> <yalnız-değişenler:0|1> → 0 ise satır gösterilir
+# grup-süzgeci: boş = hepsi, "-" = grupsuzlar, aksi halde grup adı. Metin aramasında büyük/küçük harf ayrımı yoktur (ad ve açıklama).
+_comp_menu_var_match() {
+    local hay needle
+    if [ "$7" = 1 ] && [ "$4" != 1 ]; then return 1; fi
+    case "$6" in
+        "") ;;
+        "-") [ -z "$3" ] || return 1 ;;
+        *) [ "$3" = "$6" ] || return 1 ;;
+    esac
+    if [ -n "$5" ]; then
+        hay=$(printf '%s %s' "$1" "$2" | tr '[:upper:]' '[:lower:]')
+        needle=$(printf '%s' "$5" | tr '[:upper:]' '[:lower:]')
+        case "$hay" in *"$needle"*) ;; *) return 1 ;; esac
+    fi
+    return 0
+}
+
 # comp_menu_vars <paket> <sunucu> <bilgi> → değişken listesi; seçileni düzenletir
 comp_menu_vars() {
-    local id="$1" server="$2" info="$3" line n t r d lo hi desc cur forced pick grp gp total
-    local -a lines labels
+    local id="$1" server="$2" info="$3" line n t r d lo hi desc cur forced pick grp gp total chg g nc kind mark
+    local f_text="" f_group="" f_changed=0 nchg show_ctl glist
+    local -a lines labels all_lines ctl_kinds ctl_labels ctl_descs var_labels var_descs gl gpick
     forced=$(_comp_menu_forced "$info")
     while true; do
-        lines=(); labels=()
-        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
-        local -a UI_PICK_DESCS=()
+        all_lines=(); lines=(); var_labels=(); var_descs=(); ctl_kinds=(); ctl_labels=(); ctl_descs=(); nchg=0; glist=""
         while IFS= read -r line; do
-            [ -n "$line" ] || continue
-            lines+=("$line")
+            [ -n "$line" ] && all_lines+=("$line")
+        done < <(comp_vars_describe "$COMP_MENU_MF" "$COMP_MENU_VARS")
+        [ "${#all_lines[@]}" -gt 0 ] || { echo "Pakette değişken yok."; read -r -p "Devam için Enter..." _ || true; return 0; }
+        # değişen sayısı ve grup listesi (süzgeçten bağımsız)
+        for line in "${all_lines[@]}"; do
+            n=$(_comp_menu_field "$line" 1); grp=$(_comp_menu_field "$line" 9)
+            if ! printf '%s\n' "$forced" | grep -qxF -- "$n"; then
+                cur=$(comp_vars_get "$COMP_MENU_VARS" "$n" 2>/dev/null) || cur=""
+                [ -z "$cur" ] || nchg=$((nchg + 1))
+            fi
+            if [ -n "$grp" ] && ! printf '%s\n' "$glist" | grep -qxF -- "$grp"; then glist="${glist:+$glist$'\n'}$grp"; fi
+        done
+        for line in "${all_lines[@]}"; do
             n=$(_comp_menu_field "$line" 1); t=$(_comp_menu_field "$line" 2); r=$(_comp_menu_field "$line" 3)
             d=$(_comp_menu_unq "$(_comp_menu_field "$line" 4)"); lo=$(_comp_menu_field "$line" 5); hi=$(_comp_menu_field "$line" 6)
             desc=$(_comp_menu_field "$line" 8)
             grp=$(_comp_menu_field "$line" 9); gp=""; [ -n "$grp" ] && gp="[$grp] "
-            cur=$(comp_vars_get "$COMP_MENU_VARS" "$n" 2>/dev/null) || cur=""
-            if printf '%s\n' "$forced" | grep -qxF -- "$n"; then
-                labels+=("$gp$n — otomatik (çalıştırıcı kullanıcı klasörüne yönlendirir; değiştirilemez)")
-            elif [ -n "$cur" ]; then
-                labels+=("$gp$n = $cur")
-            elif [ -n "$d" ]; then
-                labels+=("$gp$n = (varsayılan: $d)")
-            else
-                labels+=("$gp$n = (boş)${r:+$([ "$r" = yes ] && echo '  ❌ zorunlu')}")
+            cur=""; chg=0
+            if ! printf '%s\n' "$forced" | grep -qxF -- "$n"; then
+                cur=$(comp_vars_get "$COMP_MENU_VARS" "$n" 2>/dev/null) || cur=""
+                [ -z "$cur" ] || chg=1
             fi
-            UI_PICK_DESCS+=("$t${lo:+ · en az $lo}${hi:+ · en çok $hi} — ${desc:-açıklama yok}")
-        done < <(comp_vars_describe "$COMP_MENU_MF" "$COMP_MENU_VARS")
-        [ "${#lines[@]}" -gt 0 ] || { echo "Pakette değişken yok."; read -r -p "Devam için Enter..." _ || true; return 0; }
+            _comp_menu_var_match "$n" "$desc" "$grp" "$chg" "$f_text" "$f_group" "$f_changed" || continue
+            lines+=("$line")
+            mark=""; [ "$chg" = 1 ] && mark="✏️  "
+            if printf '%s\n' "$forced" | grep -qxF -- "$n"; then
+                var_labels+=("$gp$n — otomatik (çalıştırıcı kullanıcı klasörüne yönlendirir; değiştirilemez)")
+            elif [ -n "$cur" ]; then
+                var_labels+=("$mark$gp$n = $(_comp_menu_clip "$cur")")
+            elif [ -n "$d" ]; then
+                var_labels+=("$gp$n = (varsayılan: $(_comp_menu_clip "$d"))")
+            else
+                var_labels+=("$gp$n = (boş)${r:+$([ "$r" = yes ] && echo '  ❌ zorunlu')}")
+            fi
+            var_descs+=("$t${lo:+ · en az $lo}${hi:+ · en çok $hi} — ${desc:-açıklama yok}")
+        done
+        # arama/süzgeç satırları: büyük paketlerde ya da süzgeç açıkken
+        show_ctl=0
+        if [ "${#all_lines[@]}" -gt "$COMP_MENU_VARS_FILTER_MIN" ] || [ -n "$f_text$f_group" ] || [ "$f_changed" = 1 ]; then show_ctl=1; fi
+        if [ "$show_ctl" = 1 ]; then
+            ctl_kinds+=(search); ctl_labels+=("🔎 Ara: ${f_text:-(yok)}"); ctl_descs+=("Değişken adı ya da açıklamasında arar (büyük/küçük harf fark etmez). Boş bırakırsanız aramayı temizler.")
+            if [ -n "$glist" ]; then
+                ctl_kinds+=(group); ctl_labels+=("📂 Grup: $(_comp_menu_group_name "$f_group")"); ctl_descs+=("Değişkenleri paketin grup etiketine göre süzer.")
+            fi
+            ctl_kinds+=(changed); ctl_labels+=("✏️  Yalnızca değiştirdiklerim: $([ "$f_changed" = 1 ] && echo açık || echo kapalı) ($nchg)"); ctl_descs+=("Bu sunucu için dosyada değeri yazılı olanları gösterir (✏️ işaretli satırlar).")
+            if [ -n "$f_text$f_group" ] || [ "$f_changed" = 1 ]; then
+                ctl_kinds+=(clear); ctl_labels+=("↩ Süzgeci temizle"); ctl_descs+=("Arama, grup ve 'değiştirdiklerim' süzgecini kaldırır.")
+            fi
+        fi
+        nc=${#ctl_kinds[@]}
+        labels=(${ctl_labels[@]+"${ctl_labels[@]}"} ${var_labels[@]+"${var_labels[@]}"})
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=(${ctl_descs[@]+"${ctl_descs[@]}"} ${var_descs[@]+"${var_descs[@]}"})
         clear
         if declare -F ui_header >/dev/null; then ui_header "Sunucu › $server › Paketler › $id › Değişkenler"; fi
         echo ""
         total=$(comp_vars_describe "$COMP_MENU_MF" | grep -c .)
-        if [ "$total" -gt "${#lines[@]}" ] 2>/dev/null; then
-            echo "ℹ️  $((total - ${#lines[@]})) değişken bu sunucunun platformuna uygun olmadığı için gizlendi (yazılı değerleri yine de çalıştırmaya iletilir)."
+        if [ "$total" -gt "${#all_lines[@]}" ] 2>/dev/null; then
+            echo "ℹ️  $((total - ${#all_lines[@]})) değişken bu sunucunun platformuna uygun olmadığı için gizlendi (yazılı değerleri yine de çalıştırmaya iletilir)."
+        fi
+        if [ "$show_ctl" = 1 ]; then
+            echo "Gösterilen: ${#lines[@]} / ${#all_lines[@]} değişken · bu sunucuda değiştirilen: $nchg"
+            [ "${#lines[@]}" -gt 0 ] || echo "Süzgece uyan değişken yok."
         fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Eylem listesine döner."
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
-        line="${lines[$((pick - 1))]}"
+        if [ "$pick" -le "$nc" ]; then
+            kind="${ctl_kinds[$((pick - 1))]}"
+            case "$kind" in
+                search)
+                    IFS= read -r -p "Ara (Enter = temizle): " f_text || return 0
+                    f_text="${f_text//[[:cntrl:]]/}" ;;
+                changed) if [ "$f_changed" = 1 ]; then f_changed=0; else f_changed=1; fi ;;
+                clear) f_text=""; f_group=""; f_changed=0 ;;
+                group)
+                    gl=(); while IFS= read -r g; do [ -n "$g" ] && gl+=("$g"); done <<< "$glist"
+                    gpick=("Tümü" "${gl[@]}" "(grupsuz)")
+                    # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+                    local -a UI_PICK_DESCS=()
+                    pick=$(_comp_menu_pick "Geri" "${gpick[@]}")
+                    if [ "$pick" -ge 1 ] 2>/dev/null; then
+                        if [ "$pick" -eq 1 ]; then f_group=""
+                        elif [ "$pick" -eq $((${#gpick[@]})) ]; then f_group="-"
+                        else f_group="${gl[$((pick - 2))]}"
+                        fi
+                    fi ;;
+            esac
+            continue
+        fi
+        line="${lines[$((pick - nc - 1))]}"
         n=$(_comp_menu_field "$line" 1); t=$(_comp_menu_field "$line" 2)
         echo ""
         if printf '%s\n' "$forced" | grep -qxF -- "$n"; then
