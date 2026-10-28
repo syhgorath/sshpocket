@@ -5,6 +5,7 @@
 # Değerler dosyası düz "ad=değer" satırlarıdır (# yorum, boş satır serbest; liste = virgülle ayrılmış). Hiçbir şey
 # eval edilmez. --set, dosyadaki değeri ezer (çalıştırıcının zorladığı değerler: örn. outputs.dir_var).
 #        python3 -I component_run.py describe <component.json>            → değişken başına bir TSV satırı
+#        python3 -I component_run.py env <vars.json> <sunucu> <eylem> <profil>   → script runner: sunucuda betiğe verilecek export satırları
 #        python3 -I component_run.py net-prefix <adres> <maske> | net-suggest <adres> <önek> | net-valid <adres> | net-add <liste> <cidr>   (erişim ağı önerisi / kapsama)
 #        python3 -I component_run.py check <component.json> <ad> <değer>   → tek değeri doğrular (warn_if eşleşirse stdout'a "warn=<ad>")
 # Çıkış 0: geçerli; çıktı.json izin 600 ile YENİ dosya olarak yazılır. stdout'a yalnızca "warn=<ad>" (warn_if
@@ -198,6 +199,47 @@ def cmd_platform(argv):
     return 0
 
 
+def cmd_env(argv):
+    # env <vars.json> <sunucu> <eylem> <profil>: script runner için sunucuda betiğe verilecek 'export' satırları (stdout).
+    # Değişkenler SSHPOCKET_VAR_<AD> olarak, değerler POSIX tek tırnakla kaçırılarak yazılır; liste = virgülle birleşik, bool = true|false.
+    if len(argv) != 6:
+        print("kullanım: component_run.py env <vars.json> <sunucu> <eylem> <profil>", file=sys.stderr)
+        return 2
+    import shlex
+    vars_path, server, action, profile = argv[2:6]
+    for label, val in (("sunucu", server), ("eylem", action), ("profil", profile)):
+        if not re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", val):
+            print("HATA: %s adı geçersiz" % label, file=sys.stderr)
+            return 1
+    data = read_json(vars_path)
+    if errors or not isinstance(data, dict):
+        print("HATA: değişken dosyası okunamadı", file=sys.stderr)
+        return 1
+    lines = ["export SSHPOCKET_SERVER=%s" % shlex.quote(server),
+             "export SSHPOCKET_ACTION=%s" % shlex.quote(action),
+             "export SSHPOCKET_PROFILE=%s" % shlex.quote(profile)]
+    for name in sorted(data):
+        v = data[name]
+        if not RE_NAME.match(name):
+            print("HATA: değişken adı geçersiz: %r" % name, file=sys.stderr)
+            return 1
+        if isinstance(v, bool):
+            txt = "true" if v else "false"
+        elif isinstance(v, list):
+            txt = ",".join(str(x) for x in v)
+        elif isinstance(v, (int, str)):
+            txt = str(v)
+        else:
+            print("HATA: %s: desteklenmeyen değer türü" % name, file=sys.stderr)
+            return 1
+        if RE_CTRL.search(txt):
+            print("HATA: %s: denetim karakteri içeriyor" % name, file=sys.stderr)
+            return 1
+        lines.append("export SSHPOCKET_VAR_%s=%s" % (name.upper(), shlex.quote(txt)))
+    print("\n".join(lines))
+    return 0
+
+
 def cmd_describe(argv):
     # describe <component.json> [<vars-dosyası>]: vars-dosyası verilirse platform_var'a göre platforms dışındaki değişkenler çıkarılır
     if len(argv) not in (3, 4):
@@ -329,6 +371,8 @@ def main(argv):
         return cmd_net_add(argv)
     if len(argv) >= 2 and argv[1] in ("net-prefix", "net-suggest", "net-valid"):
         return cmd_net(argv)
+    if len(argv) >= 2 and argv[1] == "env":
+        return cmd_env(argv)
     if len(argv) >= 2 and argv[1] == "platform":
         return cmd_platform(argv)
     if len(argv) >= 2 and argv[1] == "describe":

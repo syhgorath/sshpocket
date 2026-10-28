@@ -123,7 +123,15 @@ sshpocket pakete **bağlamı** şöyle verir:
 | Runner | Bağlam |
 |---|---|
 | `ansible` | Geçici inventory (`inventory_group`; `ansible_host/user/port/private_key_file`; izin 600, iş bitince silinir), `-e @<değişken dosyası>`, çalışma dizini = paket kökü (`ansible.cfg` oradan okunur) |
-| `script` | Ortam değişkenleri: `SSHPOCKET_HOST`, `SSHPOCKET_USER`, `SSHPOCKET_PORT`, `SSHPOCKET_KEY`, `SSHPOCKET_SERVER` (ad), `SSHPOCKET_VARS_FILE`, `SSHPOCKET_OUT_DIR` |
+| `script` | Betik **hedef sunucuda** çalışır (kontrol makinesinde değil). Paketin `scripts/<ad>.sh` dosyası, başına `export` satırları eklenerek sunucuya akıtılır ve `bash -s -- <cmd argümanları>` ile çalışır. Betiğe geçen ortam: `SSHPOCKET_SERVER` (ad), `SSHPOCKET_ACTION`, `SSHPOCKET_PROFILE` ve her değişken için `SSHPOCKET_VAR_<AD>` (bool = `true`/`false`, liste = virgülle birleşik; değerler tek tırnakla kaçırılır, hiçbir zaman kabukta çözümlenmez). Bağlantı bilgisi (`HOST`, `KEY` vb.) **verilmez**: betik sunucuya bağlanmaz, zaten oradadır. |
+
+**`script` runner ayrıntıları**
+- `cmd` = `scripts/<ad>.sh [argümanlar]`: yol paket içinde, `..`/mutlak yol/sembolik bağ yok, en çok 256 KB; argümanlar düz sözcük (en çok 8). `invoke`, `inventory_group` ve `outputs.dir_var` kullanılamaz (betik sunucuda çalışır). Python ortamı (venv) gerekmez.
+- **Sudo gerekmiyorsa** (`requires_sudo` yok): betik ssh stdin'inden akar; betik stdin'i okuyamaz.
+- **`requires_sudo: true`**: betik sunucuda 0600 geçici dosyaya (`/tmp/sshpocket-XXXXXXXX`) yazılır, `ssh -t` ile `sudo bash <dosya>` olarak çalışır (sudo parolası **aynı terminalde, sudo isteminde** girilir; sshpocket'e/günlüğe yazılmaz) ve dosya her çıkışta (hata, Ctrl-C dahil) silinir. Ubuntu'da `sudo.ws` varsa o kullanılır.
+- **Sonuç**: `outputs.format: keyvalue-line` ise betik tek satır yazar: `SSHPOCKET_RESULT <id>.<eylem> anahtar=değer …` (ansible ile aynı sözleşme ve sınırlar).
+- Önizleme: betik `--dry-run` gibi bir argümanı destekliyorsa iki eylem tanımlanır (`*_onizle`: `effects: []`, gerçek eylem `requires` ile ona bağlanır). Desteklemiyorsa değiştiren eylem `confirm: yes-no` (en az) ister.
+- Kapılar ansible ile **aynıdır** (host key, ajan, profil, root reddi, taze önkoşul, onay, `warn_if`); biri durdurursa SSH'a hiç gidilmez.
 
 Her iki runner için ortak kurallar:
 - **Parola/passphrase asla verilmez.** Passphrase Keychain→`ssh-agent`'tadır; sudo parolası yalnızca `interactive` istemle girilir.
@@ -224,7 +232,7 @@ Geriye dönük uyum: `score` yoksa `hardening_index` okunur (linux-hardening). D
 | # | Soru | Karar |
 |---|---|---|
 | 1 | Bildirim biçimi | **`component.json`** (okuma `python3 -I` + stdlib `json`). `component.yml` yalnızca insan-okunur kaynak; paket üretimi JSON'u ondan türetir. |
-| 2 | `runner: script` | Şema ve bağlam (§7) **tanımlı**; ilk uygulama yalnızca `ansible`. `script` ikinci paketle birlikte kodlanır. |
+| 2 | `runner: script` | **Uygulandı** (sshpocket 3.6.17+): betik hedef sunucuda çalışır (§7). |
 | 3 | `confirm` | sshpocket **asgari kuralı** koyar (§5); paket yalnızca sıkılaştırabilir, gevşetemez. |
 | 4 | Sonuç satırı | Tek satır `SSHPOCKET_RESULT <id>.<eylem> key=value …` (§8); linux-hardening#28 buna uyarlanır. |
 | 5 | Bildirim özeti kilitte | **Hayır**: bildirim zaten imzalı arşivin içinde; kilit dosyası arşivin sha256'sını taşır. |
