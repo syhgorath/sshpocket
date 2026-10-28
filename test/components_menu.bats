@@ -281,6 +281,70 @@ PY
     [[ "$output" != *"gizlendi"* ]] || false
 }
 
+# ---------- değişkenler ekranı: arama, grup, değiştirdiklerim, kısaltma ----------
+@test "süzgeç: küçük pakette arama satırları çıkmaz; eşik aşılınca çıkar ve numaralandırma 'ara' satırlarından sonra başlar" {
+    run comp_menu_actions demo web1 <<<$'1\n0\n0'
+    [[ "$output" != *"🔎 Ara"* ]] || false
+    export COMP_MENU_VARS_FILTER_MIN=2
+    run comp_menu_actions demo web1 <<<$'1\n0\n0'
+    [[ "$output" == *"🔎 Ara: (yok)"* && "$output" == *"Yalnızca değiştirdiklerim: kapalı (1)"* && "$output" == *"Gösterilen: 5 / 5"* ]] || false
+    [[ "$output" != *"Grup:"* ]] || false      # pakette grup yoksa grup satırı çıkmaz
+    # ilk değişken (allow_from) artık 3. satır: 1=ara 2=değiştirdiklerim
+    run comp_menu_actions demo web1 <<<$'1\n4\n\n0\n0'
+    [[ "$output" == *"rb_enabled"* ]] || false
+}
+
+@test "süzgeç: arama ad/açıklamada büyük-küçük harfsiz çalışır; temizle satırı çıkar ve süzgeci kaldırır" {
+    export COMP_MENU_VARS_FILTER_MIN=2
+    run comp_menu_actions demo web1 <<<$'1\n1\nTIMEOUT\n0\n0'
+    [[ "$output" == *"🔎 Ara: TIMEOUT"* && "$output" == *"Gösterilen: 1 / 5"* && "$output" == *"↩ Süzgeci temizle"* ]] || false
+    run comp_menu_actions demo web1 <<<$'1\n1\nyokböyle\n0\n0'
+    [[ "$output" == *"Süzgece uyan değişken yok."* ]] || false
+    # arama + temizle (son satır): yeniden 5 / 5
+    run comp_menu_actions demo web1 <<<$'1\n1\ntimeout\n4\n0\n0'
+    [[ "$output" == *"Gösterilen: 5 / 5"* ]] || false
+}
+
+@test "süzgeç: 'yalnızca değiştirdiklerim' dosyada değeri yazılı olanları gösterir (✏️ işaretli)" {
+    export COMP_MENU_VARS_FILTER_MIN=2
+    run comp_menu_actions demo web1 <<<$'1\n2\n0\n0'
+    [[ "$output" == *"Yalnızca değiştirdiklerim: açık (1)"* && "$output" == *"Gösterilen: 1 / 5"* && "$output" == *"✏️  allow_from = 10.99.0.0/24"* ]] || false
+}
+
+@test "süzgeç: grup seçimi yalnızca o grubu gösterir; '(grupsuz)' grupsuzları gösterir" {
+    python3 - "$T/comps/demo/1.0.0/component.json" <<'PY'
+import json,sys
+p=sys.argv[1]; d=json.load(open(p))
+for v in d["vars"]:
+    v["group"]="Ağ" if v["name"]=="allow_from" else ("Zaman" if v["name"].startswith("rb_") else None)
+    if v["group"] is None: del v["group"]
+json.dump(d,open(p,"w"))
+PY
+    INFO=$(comp_manifest_info "$T/comps/demo/1.0.0/component.json" demo 1.0.0)
+    export COMP_MENU_VARS_FILTER_MIN=2
+    run comp_menu_actions demo web1 <<<$'1\n2\n2\n0\n0'
+    [[ "$output" == *"📂 Grup: Ağ"* && "$output" == *"Gösterilen: 1 / 5"* ]] || false
+    run comp_menu_actions demo web1 <<<$'1\n2\n4\n0\n0'
+    [[ "$output" == *"📂 Grup: (grupsuz)"* && "$output" == *"Gösterilen: 2 / 5"* ]] || false
+}
+
+@test "süzgeç: süzülmüş listeden seçilen satır doğru değişkeni düzenler" {
+    export COMP_MENU_VARS_FILTER_MIN=2
+    run comp_menu_actions demo web1 <<<$'1\n1\ntimeout\n4\n600\n\n0\n0'
+    [ "$(vget rb_timeout)" = "600" ]
+}
+
+@test "kısaltma: uzun değerler 40 karaktere kısaltılır; kısa değerler değişmez" {
+    run _comp_menu_clip "kısa"
+    [ "$output" = "kısa" ]
+    long=$(python3 -c "print('a'*60)")
+    run _comp_menu_clip "$long"
+    [ "$(python3 -c 'import sys; print(len(sys.argv[1]))' "$output")" = 40 ]
+    [[ "$output" == *"…" ]] || false
+    run _comp_menu_clip "$long" 10
+    [ "$(python3 -c 'import sys; print(len(sys.argv[1]))' "$output")" = 10 ]
+}
+
 # ---------- CIDR editörü ----------
 @test "cidr: öneri eklenir; listede tek ağ varsa uyarı çıkar ve 'H' ile o haliyle kaydedilir" {
     setup_net; rm -f "$D/demo.vars"
