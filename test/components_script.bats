@@ -39,12 +39,24 @@ last="\${@: -1}"
 case "\$last" in
   *"mktemp /tmp/sshpocket-"*) cat > "$T/uploaded"; printf '%s' "\${FAKE_RPATH:-/tmp/sshpocket-AbCd1234}"; exit 0 ;;
   "bash -s --"*) cat > "$T/streamed"; eval "\$last" < "$T/streamed"; exit \$? ;;
-  *"bash /tmp/sshpocket-"*) args="\${last#*bash /tmp/sshpocket-AbCd1234}"; eval "bash $T/uploaded \$args"; exit \$? ;;
+  *"bash -c '"*"bash /tmp/sshpocket-AbCd1234 "*)
+     # SUNUCU tarafı GERÇEKTEN çalışır (betiğin kendisi): 'sudo' atlanır, install/sha256sum yerel eşdeğerlerle değiştirilir
+     echo "\$last" > "$T/sudo_cmd"
+     cp "$T/uploaded" /tmp/sshpocket-AbCd1234
+     [ -z "\${FAKE_TAMPER:-}" ] || echo "# degistirildi" >> /tmp/sshpocket-AbCd1234
+     PATH="$T/shim:\$PATH" eval "\${last#* }"; rc=\$?; rm -f /tmp/sshpocket-AbCd1234; exit \$rc ;;
   "rm -f "*) echo "\$last" >> "$T/rm_calls"; exit 0 ;;
 esac
 exit 0
 STUB
     chmod +x "$T/bin/ssh"
+    # kök olmayan test ortamı için: install -o/-g atılır, sha256sum = shasum
+    mkdir -p "$T/shim"
+    printf '#!/bin/bash\nargs=(); while [ $# -gt 0 ]; do case "$1" in -o|-g) shift 2 ;; *) args+=("$1"); shift ;; esac; done\nexec /usr/bin/install "${args[@]}"\n' > "$T/shim/install"
+    printf '#!/bin/bash\nexec shasum -a 256 "$@"\n' > "$T/shim/sha256sum"
+    # macOS'ta 'mktemp -d' TMPDIR'i yok sayar (Linux saygı duyar): sunucu davranışını taklit et ki sızıntı testte görülebilsin
+    printf '#!/bin/bash\nif [ "$*" = "-d" ]; then exec /usr/bin/mktemp -d "$TMPDIR/tmp.XXXXXXXX"; fi\nexec /usr/bin/mktemp "$@"\n' > "$T/shim/mktemp"
+    chmod +x "$T/shim/install" "$T/shim/sha256sum" "$T/shim/mktemp"
     COMP_CTX_PKGDIR="$T/pkg"; COMP_CTX_BINDIR=""; COMP_CTX_SERVER=web1; COMP_CTX_HOST=10.1.10.193
     COMP_CTX_USER=ziya; COMP_CTX_PORT=22; COMP_CTX_KEY=/Volumes/test/k; COMP_CTX_PREFIX=WEB1
     COMP_CTX_PROFILE=ubuntu-26.04; COMP_CTX_VALUES="$T/values"; COMP_CTX_BECOME_EXE=""
@@ -94,10 +106,14 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     [ "$status" -eq 0 ]
     [[ "$output" == *"TEMIZLIK ARGS:[] ESIK=75"* && "$output" == *"Sudo parolası istenecek"* ]] || false
     grep -q "umask 077; f=\$(mktemp /tmp/sshpocket-XXXXXXXX)" "$T/ssh_calls"
-    grep -q -- " -t ziya@10.1.10.193 sudo bash /tmp/sshpocket-AbCd1234" "$T/ssh_calls" || grep -q -- "-t .*sudo bash /tmp/sshpocket-AbCd1234" "$T/ssh_calls"
+    grep -q -- " -t ziya@10.1.10.193 sudo bash -c " "$T/ssh_calls"
+    grep -q "install -o root -g root -m 0700" "$T/sudo_cmd"                          # kök sahipli kopya
+    grep -qE " bash /tmp/sshpocket-AbCd1234 [0-9a-f]{64}$" "$T/sudo_cmd"            # yolun ardından yerel SHA-256 gider
+    [ "$(sed -E 's/.* bash \/tmp\/sshpocket-AbCd1234 ([0-9a-f]{64}).*/\1/' "$T/sudo_cmd")" = "$(shasum -a 256 "$T/uploaded" | cut -d' ' -f1)" ]
     grep -q '^export SSHPOCKET_VAR_ESIK=75$' "$T/uploaded"
     grep -qx "rm -f /tmp/sshpocket-AbCd1234" "$T/rm_calls"
     [ "$(tmpleft)" = "0" ]
+    [ -z "$(ls -A "$T/tmp")" ]                                                       # sunucu tarafındaki kök klasör (mktemp -d) de silindi
 }
 
 @test "script (sudo'lu): COMP_CTX_BECOME_EXE (sudo.ws) kullanılır" {
@@ -105,7 +121,7 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     rm -f "$T/ssh_calls"
     COMP_CTX_BECOME_EXE=/usr/bin/sudo.ws run comp_exec_action "$INFO" demo 1.0.0 temizlik <<<"e"
     [ "$status" -eq 0 ]
-    grep -q "/usr/bin/sudo.ws bash /tmp/sshpocket-AbCd1234" "$T/ssh_calls"
+    grep -q "/usr/bin/sudo.ws bash -c " "$T/ssh_calls"
 }
 
 @test "script: betik başarısızsa çıkış kodu döner, 'fail' kaydedilir; sudo'lu yolda geçici dosya yine silinir" {
@@ -158,4 +174,23 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     [ "$status" -ne 0 ]
     run python3 -I "$ROOT/sistem/Helpers/component_run.py" env "$T/v.json" "web 1;x" saglik ubuntu-26.04
     [ "$status" -ne 0 ]
+}
+
+@test "script (sudo'lu): yükleme ile sudo arasında dosya değiştirilirse özet uyuşmaz, betik ÇALIŞMAZ (97), geçici dosya yine silinir" {
+    comp_exec_action "$INFO" demo 1.0.0 temizlik_onizle </dev/null >/dev/null
+    rm -f "$T/rm_calls"
+    FAKE_TAMPER=1 run comp_exec_action "$INFO" demo 1.0.0 temizlik <<<"e"
+    [ "$status" -eq 97 ]
+    [[ "$output" == *"ÖZET UYUŞMUYOR"* && "$output" == *"ÇALIŞTIRILMADI"* ]] || false
+    [[ "$output" != *"TEMIZLIK ARGS"* ]] || false                                   # betik hiç çalışmadı
+    grep -q '|1.0.0|temizlik|fail$' "$T/state/demo/web1/results"
+    grep -qx "rm -f /tmp/sshpocket-AbCd1234" "$T/rm_calls"
+    [ -z "$(ls -A "$T/tmp")" ]                                                       # uyuşmazlıkta da kök klasör silindi
+}
+
+@test "script (sudo'lu): uzak komut tek tırnaklı sabit bir betik; kullanıcı değerleri/argümanlar tırnağın DIŞINDA ve kaçırılmış" {
+    comp_exec_action "$INFO" demo 1.0.0 temizlik_onizle </dev/null >/dev/null
+    comp_exec_action "$INFO" demo 1.0.0 temizlik <<<"e" >/dev/null
+    [[ "$(cat "$T/sudo_cmd")" == "sudo bash -c 'd=\$(mktemp -d)"* ]] || false
+    [[ "$(cat "$T/sudo_cmd")" != *"esik"* && "$(cat "$T/sudo_cmd")" != *"PWNED"* ]] || false    # değişken değerleri komut satırında YOK (yalnızca dosyada)
 }
