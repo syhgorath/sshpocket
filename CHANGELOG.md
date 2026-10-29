@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- Sunucu adı onayı (`type-server-name`) yazım hatasında 3 deneme verir (her yanlışta `1/3`, `2/3` bildirimi); ad yine birebir yazılmalı, girdi bitince (EOF) hemen vazgeçilir.
+- Ansible `Incorrect sudo password` / `Missing sudo password` ile düşerse sudo parolasının reddedildiğini ve komutun yeniden çalıştırılabileceğini söyleyen bir not gösterilir.
+
 ## [3.6.18] - 2026-10-30
 
 `linux-hardening` 0.9.0 kilitlendi (alan anahtarları, kalıcı kaldırma eylemleri); `runner: script` sudo'lu yolda sonuç ayrıştırma (CRLF) ve `validate` script/Türkçe kurtarma adı düzeltmeleri.

@@ -171,6 +171,13 @@ JSON
     run comp_gate_confirm "$INFO" apply web1 </dev/null; [ "$status" -ne 0 ]
 }
 
+@test "onay type-server-name: yazım hatasında 3 deneme; üçüncüde doğru ad geçer, 3 yanlış iptal eder" {
+    run comp_gate_confirm "$INFO" apply web1 <<<$'web\nwb1\nweb1';  [ "$status" -eq 0 ]
+    run comp_gate_confirm "$INFO" apply web1 <<<$'a\nb\nc\nweb1';  [ "$status" -ne 0 ]
+    [[ "$output" == *"3 kez uyuşmadı"* ]]
+    run comp_gate_confirm "$INFO" apply web1 <<<$'a\nweb1';        [ "$status" -eq 0 ]
+}
+
 @test "onay: paket destructive eylemde 'none' yazsa bile sshpocket asgarisi (sunucu adı) uygulanır" {
     run comp_gate_confirm "$INFO" wipe web1 <<<"e";    [ "$status" -ne 0 ]
     run comp_gate_confirm "$INFO" wipe web1 <<<"web1"; [ "$status" -eq 0 ]
