@@ -15,6 +15,8 @@ setup() {
  "actions":{
   "saglik":{"cmd":"scripts/saglik.sh","effects":[],
             "outputs":{"format":"keyvalue-line","keys":["disk","yeniden_baslat"]}},
+  "sudo_sonuc":{"cmd":"scripts/sudo_sonuc.sh","effects":[],"requires_sudo":true,
+            "outputs":{"format":"keyvalue-line","keys":["disk","yeniden_baslat"]}},
   "temizlik_onizle":{"cmd":"scripts/temizlik.sh --dry-run","effects":[]},
   "temizlik":{"cmd":"scripts/temizlik.sh","effects":["changes-config"],"requires_sudo":true,"requires":["temizlik_onizle"],"confirm":"yes-no"}},
  "vars":[{"name":"esik","type":"int","default":80,"min":1,"max":100},
@@ -25,6 +27,7 @@ JSON
 echo "ARGS:[$*] SERVER=$SSHPOCKET_SERVER ACTION=$SSHPOCKET_ACTION ESIK=$SSHPOCKET_VAR_ESIK NOT=$SSHPOCKET_VAR_NOT_METNI"
 echo "SSHPOCKET_RESULT demo.saglik disk=41 yeniden_baslat=hayir"
 SH
+    printf '#!/usr/bin/env bash\necho "SSHPOCKET_RESULT demo.sudo_sonuc disk=41 yeniden_baslat=hayir"\n' > "$T/pkg/scripts/sudo_sonuc.sh"
     cat > "$T/pkg/scripts/temizlik.sh" <<'SH'
 #!/usr/bin/env bash
 echo "TEMIZLIK ARGS:[$*] ESIK=$SSHPOCKET_VAR_ESIK"
@@ -44,7 +47,8 @@ case "\$last" in
      echo "\$last" > "$T/sudo_cmd"
      cp "$T/uploaded" /tmp/sshpocket-AbCd1234
      [ -z "\${FAKE_TAMPER:-}" ] || echo "# degistirildi" >> /tmp/sshpocket-AbCd1234
-     PATH="$T/shim:\$PATH" eval "\${last#* }"; rc=\$?; rm -f /tmp/sshpocket-AbCd1234; exit \$rc ;;
+     PATH="$T/shim:\$PATH" eval "\${last#* }" > "$T/stub_out" 2>&1; rc=\$?; rm -f /tmp/sshpocket-AbCd1234
+     if [ -n "\${FAKE_CRLF:-}" ]; then sed \$'s/\$/\\r/' "$T/stub_out"; else cat "$T/stub_out"; fi; exit \$rc ;;
   "rm -f "*) echo "\$last" >> "$T/rm_calls"; exit 0 ;;
 esac
 exit 0
@@ -193,4 +197,13 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     comp_exec_action "$INFO" demo 1.0.0 temizlik <<<"e" >/dev/null
     [[ "$(cat "$T/sudo_cmd")" == "sudo bash -c 'd=\$(mktemp -d)"* ]] || false
     [[ "$(cat "$T/sudo_cmd")" != *"esik"* && "$(cat "$T/sudo_cmd")" != *"PWNED"* ]] || false    # değişken değerleri komut satırında YOK (yalnızca dosyada)
+}
+
+@test "script (sudo'lu): ssh -t'nin CRLF satır sonları sonuç satırı ayrıştırmasını bozmaz (gerçek makinede 'gun=7\\r' hatası)" {
+    FAKE_CRLF=1 run comp_exec_action "$INFO" demo 1.0.0 sudo_sonuc <<<"e"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Sonuç satırı geçersiz"* ]] || false
+    [ "$(sed -n 2p "$T/state/demo/web1/result.sudo_sonuc")" = "disk=41" ]
+    [ "$(sed -n 3p "$T/state/demo/web1/result.sudo_sonuc")" = "yeniden_baslat=hayir" ]
+    grep -q $'\r' "$T/state/demo/web1/last-run.log"                                  # günlükte CR gerçekten vardı (test anlamlı)
 }
