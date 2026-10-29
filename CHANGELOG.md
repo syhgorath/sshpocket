@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Değişti
+- **`components.lock`: `linux-hardening` 0.9.0 → 0.9.1** (128 değişken, 11 eylem; 0.9.0 gerçek VM turunun bulgularını düzeltir: `kaldir` sahiplik testi, modprobe uyarı metni, `hardening_ssh_allow_from` artık `required` değil). Gerçek VM doğrulaması sürüyor.
 - Sunucu adı onayı (`type-server-name`) yazım hatasında 3 deneme verir (her yanlışta `1/3`, `2/3` bildirimi); ad yine birebir yazılmalı, girdi bitince (EOF) hemen vazgeçilir.
 - Ansible `Incorrect sudo password` / `Missing sudo password` ile düşerse sudo parolasının reddedildiğini ve komutun yeniden çalıştırılabileceğini söyleyen bir not gösterilir.
 
