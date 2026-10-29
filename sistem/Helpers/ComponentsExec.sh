@@ -23,7 +23,7 @@ comp_exec_parse_result() {
     [ "$(comp_action_get "$info" "$action" outputs.format)" = "keyvalue-line" ] || return 0
     id=$(comp_info_get "$info" id)
     keys=",$(comp_action_get "$info" "$action" outputs.keys),"
-    line=$(grep 'SSHPOCKET_RESULT' "$log" 2>/dev/null | tail -n 1)
+    line=$(grep 'SSHPOCKET_RESULT' "$log" 2>/dev/null | tail -n 1 | tr -d '\r')   # ssh -t (script runner, sudo'lu yol) satır sonlarını CRLF yapar
     [ -n "$line" ] || { echo "Sonuç satırı bulunamadı (SSHPOCKET_RESULT)." >&2; return 1; }
     rest="SSHPOCKET_RESULT${line#*SSHPOCKET_RESULT}"
     rest="${rest%%\\n*}"; rest="${rest%%\"*}"; rest="${rest%%\'*}"

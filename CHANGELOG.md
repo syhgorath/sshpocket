@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Düzeltildi
+- **`runner: script` sudo'lu yolda sonuç satırı ayrıştırılamıyordu:** `ssh -t` çıktıdaki satır sonlarını CRLF yapıyor, son anahtarın değeri `7\r` olarak okunup "Sonuç satırı geçersiz" deniyordu (eylem çalışıyor ama sonuç kaydedilmiyordu). Ayrıştırıcı artık `\r`'yi atar; gerçek makinede (ubuntutest) bulundu, regresyon testi eklendi.
 - **`validate` script paketlerinde yanlış uyarı vermez:** sonuç satırı (`SSHPOCKET_RESULT …`) ve değişken kullanımı artık `scripts/` klasöründe de aranır; değişken betikte `SSHPOCKET_VAR_<AD>` olarak okunuyorsa "kullanılmıyor" uyarısı çıkmaz.
 
 ## [3.6.17] - 2026-10-29
