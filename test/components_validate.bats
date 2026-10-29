@@ -134,11 +134,12 @@ val() { run python3 -I "$VAL" "$@"; }
 }
 
 @test "uyarı yok: kurtarma eylemi (rollback_*) ve yalnızca araç kuran eylem preview ön koşulu istemez; yapılandırma değiştiren hâlâ ister" {
-    jedit "$P/component.json" 'a=d["actions"]; a["rollback_now"]=dict(a["apply"]); a["rollback_now"].pop("requires",None); a["rollback_now"]["effects"]=["changes-config"]; a["scan"]=dict(a["apply"]); a["scan"].pop("requires",None); a["scan"]["effects"]=["installs-package"]; a["apply"].pop("requires")'
+    jedit "$P/component.json" 'a=d["actions"]; a["rollback_now"]=dict(a["apply"]); a["rollback_now"].pop("requires",None); a["rollback_now"]["effects"]=["changes-config"]; a["scan"]=dict(a["apply"]); a["scan"].pop("requires",None); a["scan"]["effects"]=["installs-package"]; a["kaldir_geri_yukle"]=dict(a["apply"]); a["kaldir_geri_yukle"].pop("requires",None); a["kaldir_geri_yukle"]["effects"]=["changes-config"]; a["apply"].pop("requires")'
     val "$P"
     [ "$status" -eq 0 ]
     [[ "$output" != *"rollback_now: salt okunur bir 'preview'"* ]] || false
     [[ "$output" != *"scan: salt okunur bir 'preview'"* ]] || false
+    [[ "$output" != *"kaldir_geri_yukle: salt okunur bir 'preview'"* ]] || false      # Türkçe kurtarma adı (geri_al/kaldir_geri_yukle) da kurtarma sayılır
     [[ "$output" == *"apply: salt okunur bir 'preview' ön koşulu yok"* ]] || false
 }
 

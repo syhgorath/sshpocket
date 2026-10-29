@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **`components.lock`: `linux-hardening` 0.8.4 → 0.9.0** (128 değişken, 11 eylem; tüm değişkenler gruplu). Yeni: 13 alan anahtarı (`hardening_<alan>_enabled`, hepsi varsayılan açık), kalıcı kaldırma eylemleri `kaldir_onizle` (salt okunur, `SİLİNECEK:` satırları), `kaldir` (sunucu adıyla onay) ve `kaldir_geri_yukle`. Ubuntu'da 118 değişken ve 9 eylem, Proxmox'ta 128 değişken ve 11 eylem görünür. Gerçek VM doğrulaması sürüyor.
+- `validate`: kurtarma eylemi adı artık adın ya da `_` sonrası sözcüğün başında `rollback|recover|restore|undo|geri` içeriyorsa tanınır (`kaldir_geri_yukle` gibi Türkçe adlar `--strict`'te yanlış uyarı vermez).
+
 ### Düzeltildi
 - **`runner: script` sudo'lu yolda sonuç satırı ayrıştırılamıyordu:** `ssh -t` çıktıdaki satır sonlarını CRLF yapıyor, son anahtarın değeri `7\r` olarak okunup "Sonuç satırı geçersiz" deniyordu (eylem çalışıyor ama sonuç kaydedilmiyordu). Ayrıştırıcı artık `\r`'yi atar; gerçek makinede (ubuntutest) bulundu, regresyon testi eklendi.
 - **`validate` script paketlerinde yanlış uyarı vermez:** sonuç satırı (`SSHPOCKET_RESULT …`) ve değişken kullanımı artık `scripts/` klasöründe de aranır; değişken betikte `SSHPOCKET_VAR_<AD>` olarak okunuyorsa "kullanılmıyor" uyarısı çıkmaz.
