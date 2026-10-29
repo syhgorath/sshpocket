@@ -293,6 +293,14 @@ BASE='"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profil
     grep -q "ansible_become_exe=/usr/bin/sudo.ws" "$T/seen_inv"
 }
 
+@test "yanlış sudo parolası: 'Incorrect sudo password' çıktısında yeniden deneme ipucu gösterilir" {
+    FAKE_RC=4 FAKE_OUT='fatal: [web1]: FAILED! => {"msg": "Incorrect sudo password"}' run comp_exec_action "$INFO" demo 1.0.0 status </dev/null
+    [ "$status" -eq 4 ]
+    [[ "$output" == *"Sudo parolası reddedildi"* ]] || false
+    FAKE_RC=4 FAKE_OUT='baska bir hata' run comp_exec_action "$INFO" demo 1.0.0 status </dev/null
+    [[ "$output" != *"Sudo parolası reddedildi"* ]] || false
+}
+
 @test "sudo-rs: 'privilege escalation prompt' zaman aşımında anlaşılır ipucu gösterilir" {
     FAKE_RC=4 FAKE_OUT='[ERROR]: Task failed: Timeout (12s) waiting for privilege escalation prompt:' run comp_exec_action "$INFO" demo 1.0.0 status </dev/null
     [ "$status" -eq 4 ]

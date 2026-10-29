@@ -131,9 +131,9 @@ _comp_gate_ask() {
 }
 
 # comp_gate_confirm <bilgi> <eylem> <sunucu> → effects + uyarıları gösterir, confirm kuralını uygular
-# none: onaysız · yes-no: e/evet · type-server-name: sunucu adı birebir yazılır. EOF = ret.
+# none: onaysız · yes-no: e/evet · type-server-name: sunucu adı birebir yazılır (3 deneme). EOF = ret.
 comp_gate_confirm() {
-    local info="$1" action="$2" server="$3" mode eff w ans
+    local info="$1" action="$2" server="$3" mode eff w ans try
     mode=$(comp_action_get "$info" "$action" confirm)
     eff=$(comp_action_get "$info" "$action" effects)
     {
@@ -148,9 +148,13 @@ comp_gate_confirm() {
             case "$ans" in e|E|evet|Evet) return 0 ;; esac
             echo "İptal edildi." >&2; return 1 ;;
         type-server-name)
-            ans=$(_comp_gate_ask "Onaylamak için sunucu adını yazın ($server): ") || { echo "Onay alınamadı." >&2; return 1; }
-            [ "$ans" = "$server" ] && return 0
-            echo "Sunucu adı uyuşmadı; iptal edildi." >&2; return 1 ;;
+            # yazım hatasına 3 deneme; girdi bitince (EOF) hemen vazgeçilir. Ad yine birebir yazılmak zorundadır.
+            for try in 1 2 3; do
+                ans=$(_comp_gate_ask "Onaylamak için sunucu adını yazın ($server): ") || { echo "Onay alınamadı." >&2; return 1; }
+                [ "$ans" = "$server" ] && return 0
+                [ "$try" -lt 3 ] && echo "Sunucu adı uyuşmadı ($try/3); tekrar deneyin." >&2
+            done
+            echo "Sunucu adı 3 kez uyuşmadı; iptal edildi." >&2; return 1 ;;
         *) echo "Bilinmeyen onay kuralı: $mode" >&2; return 1 ;;
     esac
 }

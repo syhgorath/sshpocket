@@ -219,6 +219,9 @@ _comp_exec_body() {
             echo "    (Ubuntu 26.04'te varsayılan sudo-rs parolalı kullanımda takılır). Parolayı kontrol edin; sudo'yu elle deneyin (ssh ile: sudo -v)."
         } >&2
     fi
+    if [ "$rc" -ne 0 ] && grep -q "Incorrect sudo password\|Missing sudo password" "$log" 2>/dev/null; then
+        echo "  ↳ Sudo parolası reddedildi. Aynı komutu yeniden çalıştırıp 'BECOME password:' istemine doğru parolayı yazın." >&2
+    fi
     return "$rc"
 }
 
