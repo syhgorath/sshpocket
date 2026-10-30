@@ -6,6 +6,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ### Düzeltildi
 - Test: `yürütme: TERM ve HUP` testinin sahte `ansible-playbook`'u sinyalden sonra çıktı borularını bırakır; yetim işlem `bats`'ı asmaz ve tam koşuda dalgalanmaz.
+- **Aynı anda iki paket kurulumu** (örn. iki Terminal sekmesinde `--components sync`) artık `mv` yüzünden iç içe klasör (`0.9.1/linux-hardening-0.9.1`) üretmez: kurulum bölümü `mkdir` tabanlı kilitle (`<paket>/.install.lock`, sahibi ölmüşse temizlenir, doluysa ~10 sn bekler) korunur ve kilit altında "zaten kurulu mu" yeniden bakılır. Bozuk iç içe kurulumda eski davranış korunur: "kurulu paketin dosyaları değişmiş", elle silip yeniden `sync`.
 
 ### Değişti
 - **Ortak arayüz parçaları (`UI.sh`):** menülerdeki seçici (`ui_pick`), kaydırma bölgeli ekran (`ui_region_begin/end/reset`, `ui_rule_label`) ve genel liste editörü (`ui_edit_list`) paket menüsünden çıkarıldı; `comp_menu_edit_list` artık yalnızca CIDR/paket geri çağrımlarını verir. Davranış değişmedi. `UI_PICK_*` ve `UI_LIST_*` bağlam değişkenleri `docs/ui-design.md` §5b'de belgelendi (yeni paketler, örn. `utility`, aynı altyapıyı kullanır). Paketten bağımsız yeni testler.
