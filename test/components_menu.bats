@@ -5,7 +5,7 @@ load test_helper
 setup() {
     load_helpers
     export SISTEM_PATH="$ROOT/sistem"
-    for f in UI Servers Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsGates ComponentsVars ComponentsMenu; do source "$H/$f.sh"; done
+    for f in UI Servers Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsGates ComponentsExec ComponentsVars ComponentsMenu; do source "$H/$f.sh"; done
     T="$BATS_TEST_TMPDIR"
     export SSHPOCKET_COMPONENTS_DIR="$T/comps" SSHPOCKET_SERVERS_DIR="$T/srv"
     D="$T/srv/web1"; mkdir -p "$D" "$T/comps/demo/1.0.0"
@@ -822,4 +822,21 @@ PY
     run _comp_menu_history_card demo web1
     [[ "$output" == *"10-16 14:17  preview ✅"* && "$output" == *"10-16 14:38  apply ❌"* ]] || false
     [[ "$output" != *"yabanci"* && "$output" == *"Son günlüğün sonu"* && "$output" == *"  satir2"* ]] || false
+}
+
+@test "ilerleme tablosu: önizlemede 'değişecek' (~ tahmini) ve toplam; uygulamada 'değişen'; bitmeyen alan ⏳; satır yoksa sessiz" {
+    local log="$T/pg.log"
+    printf '%s\n' \
+      'x SSHPOCKET_PROGRESS alan=ssh sira=1/3 durum=bitti degisen=2 atlanan=1 kesin=0' \
+      'x SSHPOCKET_PROGRESS alan=ufw sira=2/3 durum=bitti degisen=3 atlanan=0 uyari=1' \
+      'x SSHPOCKET_PROGRESS alan=aide sira=3/3 durum=basladi bekle_tahmin=300' > "$log"
+    run _comp_menu_progress_lines "$INFO" preview "$log"
+    [[ "$output" == *"Alanlar (3 açık):"* && "$output" == *"✅ ssh"*"değişecek ~2 · atlanan 1"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"ufw"*"değişecek 3"*"⚠ uyarı 1"* && "$output" == *"⏳ aide"*"bitmedi (tahmini bekleme 300 sn)"* ]] || false
+    [[ "$output" == *"Toplam değişecek: 5"* ]] || false
+    run _comp_menu_progress_lines "$INFO" audit "$log"
+    [[ "$output" == *"değişen 3"* && "$output" != *"Toplam"* ]] || false
+    printf 'PLAY RECAP\n' > "$log"
+    run _comp_menu_progress_lines "$INFO" preview "$log"
+    [ -z "$output" ]
 }

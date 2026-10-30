@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **İlerleme satırı ayrıştırıcısı:** paketin `SSHPOCKET_PROGRESS alan=… sira=n/toplam durum=basladi|bitti [degisen atlanan kesin uyari bekle_tahmin]` satırları (`comp_progress_parse`) sonuç panelinde alan tablosu olur: uygulamada "değişen", önizlemede "değişecek" (+ toplam; `kesin=0` ise `~` tahmini), bitmeyen alan ⏳, uyarı sayısı. Satır yoksa panel eskisi gibidir; `SSHPOCKET_RESULT` ayrıştırıcısıyla çakışmaz. Biçim `docs/package-standard.md`'de.
+
 ### Düzeltildi
 - Test: `yürütme: TERM ve HUP` testinin sahte `ansible-playbook`'u sinyalden sonra çıktı borularını bırakır; yetim işlem `bats`'ı asmaz ve tam koşuda dalgalanmaz.
 - **Aynı anda iki paket kurulumu** (örn. iki Terminal sekmesinde `--components sync`) artık `mv` yüzünden iç içe klasör (`0.9.1/linux-hardening-0.9.1`) üretmez: kurulum bölümü `mkdir` tabanlı kilitle (`<paket>/.install.lock`, sahibi ölmüşse temizlenir, doluysa ~10 sn bekler) korunur ve kilit altında "zaten kurulu mu" yeniden bakılır. Bozuk iç içe kurulumda eski davranış korunur: "kurulu paketin dosyaları değişmiş", elle silip yeniden `sync`.

@@ -309,3 +309,34 @@ BASE='"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profil
     FAKE_RC=4 FAKE_OUT='baska bir hata' run comp_exec_action "$INFO" demo 1.0.0 status </dev/null
     [[ "$output" != *"Sudo istemi beklenirken"* ]] || false
 }
+
+# ---------- SSHPOCKET_PROGRESS ayrıştırma ----------
+@test "ilerleme: tırnaklı/girintili satırlar okunur, alan başına son durum, bilinmeyen anahtar ve bozuk satır yok sayılır" {
+    cat > "$T/log" <<'LOG'
+TASK [x] ***
+    "msg": "SSHPOCKET_PROGRESS alan=ssh sira=1/3 durum=basladi"
+ok: [h] => {"msg": "SSHPOCKET_PROGRESS alan=ssh sira=1/3 durum=bitti degisen=2 atlanan=1 kesin=1"}
+  "msg": "SSHPOCKET_PROGRESS alan=aide sira=2/3 durum=basladi",
+  "msg": "SSHPOCKET_PROGRESS alan=aide sira=2/3 durum=basladi bekle_tahmin=300",
+  SSHPOCKET_PROGRESS alan=ufw sira=3/3 durum=bitti degisen=0 atlanan=0 uyari=2 yeni=1
+SSHPOCKET_PROGRESS alan=BOZUK sira=x durum=bitti
+LOG
+    run comp_progress_parse "$T/log"
+    [ "$status" -eq 0 ]
+    [ "${#lines[@]}" -eq 3 ]
+    [ "${lines[0]}" = $'ssh\t1\t3\tbitti\t2\t1\t1\t-\t-' ]
+    [ "${lines[1]}" = $'aide\t2\t3\tbasladi\t-\t-\t-\t-\t300' ]
+    [ "${lines[2]}" = $'ufw\t3\t3\tbitti\t0\t0\t-\t2\t-' ]
+}
+
+@test "ilerleme: satır yoksa ya da dosya yoksa çıktı boş ve dönüş 1" {
+    printf 'PLAY RECAP\n' > "$T/log"
+    run comp_progress_parse "$T/log"; [ "$status" -eq 1 ] && [ -z "$output" ]
+    run comp_progress_parse "$T/yok";  [ "$status" -eq 1 ]
+}
+
+@test "ilerleme: SSHPOCKET_RESULT ayrıştırıcısıyla çakışmaz" {
+    printf 'SSHPOCKET_PROGRESS alan=ssh sira=1/1 durum=bitti degisen=1\nSSHPOCKET_RESULT demo.status armed=yes\n' > "$T/log"
+    comp_exec_parse_result "$INFO" status "$T/log"
+    [ "$COMP_EXEC_RESULT" = "armed=yes" ]
+}

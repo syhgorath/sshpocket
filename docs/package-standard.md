@@ -146,6 +146,11 @@ Her iki runner için ortak kurallar:
   dosya 0600); paket bunu `outputs.dir_var` ile alır.
 - **Makine-okunur sonuç satırı** (log'dan bağımsız, Ansible çıktı biçimine bağlı olmayan tek satır):
   `SSHPOCKET_RESULT <id>.<eylem> key=value key=value …` — anahtarlar bildirimde `outputs.keys` ile **bildirilir**.
+- **İlerleme satırı** (isteğe bağlı; Ansible callback eklentisi üretir): alan başına başında ve sonunda tek satır
+  `SSHPOCKET_PROGRESS alan=<ad> sira=<n>/<toplam> durum=basladi|bitti [degisen=<n> atlanan=<n> kesin=0|1 uyari=<n> bekle_tahmin=<sn>]`.
+  `toplam` yalnız açık alanları sayar ve koşu boyunca sabittir; önizlemede `degisen` "uygulanırsa değişecek" demektir, `kesin=0` sayının
+  tahmini olduğunu gösterir. Satır başı/tırnak varsayılmaz, bilinmeyen anahtarlar yok sayılır, satırda `SSHPOCKET_RESULT` geçmez.
+  Satır yoksa "ilerleme bilgisi yok" sayılır. sshpocket sonuç panelinde alan tablosunu gösterir (`bitti` olmayan alan ⏳).
 - `outputs.summary`: eylemin yazdığı özet dosyası (JSON); sshpocket okuyup gösterir.
 
 ### Denetim özeti (`summary.json`) ve menüdeki puan
