@@ -126,12 +126,22 @@ _ui_pick_draw() {
     printf '\033[?7h' >&2        # sarma yeniden AÇIK
 }
 
+# fzf sürümü tamsayı olarak: 0.74.5 → 7405 (major*10000 + minor*100 + patch); okunamazsa 0
+ui_fzf_version() {
+    local v a b c
+    v=$("${1:-fzf}" --version </dev/null 2>/dev/null | head -n 1 | awk '{print $1}') || v=""
+    IFS=. read -r a b c <<< "$v"
+    c="${c//[^0-9]/}"
+    [[ "$a" =~ ^[0-9]+$ && "${b:-0}" =~ ^[0-9]+$ ]] || { printf '0'; return 0; }
+    printf '%d' "$((10#$a * 10000 + 10#${b:-0} * 100 + 10#${c:-0}))" 2>/dev/null || printf '0'
+}
+
 # fzf arka ucu: "<no>\t<etiket>" satırları; açıklama --preview ile (dosyadan, kabuğa veri verilmez).
 # Parametreler ui_pick_arrows ile aynı. Çıktı: seçilen numara (geri/Esc/hata = 0)
 _ui_pick_fzf() {
     local sel="${1:-1}" back="$2"; shift 2
     local -a items=("$@")
-    local n=$# tmp i label out rc num fzf_bin
+    local n=$# tmp i label out rc num fzf_bin key
     fzf_bin=$(ui_fzf_bin) || return 2
     tmp=$(mktemp -d "${TMPDIR:-/tmp}/sshpocket-fzf.XXXXXX") || return 1
     if ! [[ "$tmp" =~ ^[A-Za-z0-9_./-]+$ ]]; then rm -r -- "${tmp:?}"; return 2; fi   # güvenli olmayan yol: kendi seçicimiz
@@ -150,13 +160,41 @@ _ui_pick_fzf() {
         i=0
         while [ "$i" -lt "$n" ]; do printf '%s\n' "${UI_PICK_DESCS[$i]:-}"; i=$((i + 1)); done
     } > "$tmp/desc"
-    out=$("$fzf_bin" --delimiter=$'\t' --with-nth=2.. --layout=reverse --height='~60%' --min-height=8 \
-              --border --no-sort --cycle --prompt='› ' \
-              --header='Enter: aç · ←/Esc: geri · yazarak ara' \
-              --preview "awk -v n={1} 'NR==n+1' '$tmp/desc'" --preview-window='down,3,wrap,border-top' \
-              --bind 'left:abort' --bind "start:pos($sel)" < "$tmp/list")
+    local -a opts
+    opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height='~60%' --min-height=8
+          --border --no-sort --cycle --prompt='› '
+          --header='Enter: aç · ←/Esc: geri · yazarak ara'
+          --preview "awk -v n={1} 'NR==n+1' '$tmp/desc'" --preview-window='down,3,wrap,border-top'
+          --bind 'left:abort' --bind "start:pos($sel)")
+    if [ -n "${UI_PICK_WIDE:-}" ]; then
+        # geniş düzen: sağda önizleme, etiketli çerçeveler (yol çubuğu = kenarlık etiketi); eski fzf'te yalnız sağ önizleme
+        local hdr="${UI_PICK_HEADER:-}" ver
+        ver=$(ui_fzf_version "$fzf_bin")
+        opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height='85%' --min-height=12
+              --no-sort --cycle --prompt='› '
+              --preview "awk -v n={1} 'NR==n+1' '$tmp/desc'" --preview-window='right,48%,wrap'
+              --bind 'left:abort' --bind "start:pos($sel)")
+        hdr="${hdr:+$hdr$'\n'}Enter: aç · ←/Esc: geri · yazarak ara${UI_PICK_EXPECT_HINT:+ · $UI_PICK_EXPECT_HINT}"
+        opts+=(--header="$hdr")
+        if [ "${ver:-0}" -ge 3500 ]; then
+            opts+=(--border=rounded --preview-label=' Açıklama ')
+            [ -z "${UI_PICK_TITLE:-}" ] || opts+=(--border-label=" $UI_PICK_TITLE ")
+        else
+            opts+=(--border)
+        fi
+        if [ "${ver:-0}" -ge 5800 ]; then
+            opts+=(--list-border=rounded --input-border=rounded --header-border=rounded --input-label=' Ara ')
+        fi
+    fi
+    [ -z "${UI_PICK_EXPECT:-}" ] || opts+=(--expect="$UI_PICK_EXPECT")
+    out=$("$fzf_bin" "${opts[@]}" < "$tmp/list")
     rc=$?
     rm -r -- "${tmp:?}"
+    if [ -n "${UI_PICK_EXPECT:-}" ] && [ "$rc" -eq 0 ]; then
+        # --expect: ilk satır basılan kısayol (Enter'da boş), sonra seçilen satır
+        key="${out%%$'\n'*}"; out="${out#*$'\n'}"
+        if [ -n "$key" ]; then printf 'key:%s' "$key"; return 0; fi
+    fi
     num="${out%%$'\t'*}"
     if [ "$rc" -eq 0 ] && [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -le "$n" ]; then printf '%s' "$num"; else printf '0'; fi
     return 0

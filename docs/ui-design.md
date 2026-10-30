@@ -121,3 +121,7 @@ Menüde `⚙️ Ayarlar`. Satırlar: ayar adı, mevcut değer, Enter ile değiş
 - Biçim: `ANAHTAR=değer`; mevcut güvenli ayrıştırıcıyla okunur, **yalnızca bilinen anahtarlar** kabul edilir, değerler doğrulanır (kabuğa verilmez).
 - **Öncelik:** ortam değişkeni (`SSHPOCKET_STATUS` vb., betik/test için) > ayar dosyası > varsayılan.
 - Kasıtlı olarak az sayıda ayar: her ayar bir test ve bir belge maliyetidir. Yeni ayar için gerekçe istenir.
+
+
+## 5b. fzf geniş düzen (3.7 hazırlığı)
+Seçici (`_ui_pick_fzf`) isteğe bağlı bağlam değişkenleri alır: `UI_PICK_WIDE=1` (sağda önizleme), `UI_PICK_TITLE` (kenarlık etiketi = yol çubuğu), `UI_PICK_HEADER` (konum özeti), `UI_PICK_EXPECT` ve `UI_PICK_EXPECT_HINT` (fzf `--expect`: basılan tuş `key:<ad>` olarak döner). Sürüm `ui_fzf_version` ile okunur, eski fzf'te etiketli çerçeveler atlanır. Şimdilik yalnız Değişkenler ekranı kullanır; diğer ekranlara yayma ve durum özeti (dashboard hissi) sıradaki adım.

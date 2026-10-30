@@ -36,6 +36,8 @@ _comp_menu_pick() {
     if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
         choice=$(ui_pick_arrows 1 "$back" "$@")
         echo "" >&2
+        # fzf kısayolu (UI_PICK_EXPECT): çağıran işler; yalnızca seçicinin kendi çıktısı, elle yazılan değil
+        if [ -n "${UI_PICK_EXPECT:-}" ] && [ "$choice" = "key:$UI_PICK_EXPECT" ]; then printf '%s' "$choice"; return 0; fi
     else
         for label in "$@"; do printf '  %d) %s\n' "$i" "$label" >&2; i=$((i + 1)); done
         printf '  0) %s (q)\n' "$back" >&2
@@ -278,6 +280,24 @@ _comp_menu_group_name() {
     if [ -z "$1" ]; then printf 'tümü'; elif [ "$1" = "-" ]; then printf '%s' '(grupsuz)'; else printf '%s' "$1"; fi
 }
 
+# _comp_menu_pick_group → grup seçtirir; f_group'u (çağıranın dinamik kapsamı) günceller. Tümü="" · grupsuz="-"
+_comp_menu_pick_group() {
+    local g pick
+    local -a gl gpick
+    gl=(); while IFS= read -r g; do [ -n "$g" ] && gl+=("$g"); done <<< "$glist"
+    gpick=("Tümü" "${gl[@]}" "(grupsuz)")
+    # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+    local -a UI_PICK_DESCS=()
+    local UI_PICK_WIDE="" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER="" UI_PICK_TITLE=""
+    pick=$(_comp_menu_pick "Geri" "${gpick[@]}")
+    if [ "$pick" -ge 1 ] 2>/dev/null; then
+        if [ "$pick" -eq 1 ]; then f_group=""
+        elif [ "$pick" -eq $((${#gpick[@]})) ]; then f_group="-"
+        else f_group="${gl[$((pick - 2))]}"
+        fi
+    fi
+}
+
 # _comp_menu_var_match <ad> <açıklama> <grup> <değişmiş:0|1> <metin> <grup-süzgeci> <yalnız-değişenler:0|1> → 0 ise satır gösterilir
 # grup-süzgeci: boş = hepsi, "-" = grupsuzlar, aksi halde grup adı. Metin aramasında büyük/küçük harf ayrımı yoktur (ad ve açıklama).
 _comp_menu_var_match() {
@@ -300,7 +320,7 @@ _comp_menu_var_match() {
 comp_menu_vars() {
     local id="$1" server="$2" info="$3" line n t r d lo hi desc cur forced pick grp gp total chg g nc kind mark
     local f_text="" f_group="" f_changed=0 nchg show_ctl glist
-    local -a lines labels all_lines ctl_kinds ctl_labels ctl_descs var_labels var_descs gl gpick
+    local -a lines labels all_lines ctl_kinds ctl_labels ctl_descs var_labels var_descs
     forced=$(_comp_menu_forced "$info")
     while true; do
         all_lines=(); lines=(); var_labels=(); var_descs=(); ctl_kinds=(); ctl_labels=(); ctl_descs=(); nchg=0; glist=""
@@ -371,7 +391,13 @@ comp_menu_vars() {
         fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Eylem listesine döner."
+        # fzf geniş düzeni: yol çubuğu kenarlık etiketi, sağda açıklama, üstte konum özeti, Ctrl-O ile grup seçimi
+        # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+        local UI_PICK_WIDE=1 UI_PICK_TITLE="Sunucu › $server › $id › Değişkenler" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER=""
+        UI_PICK_HEADER="Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg"
+        if [ -n "$glist" ]; then UI_PICK_EXPECT="ctrl-o"; UI_PICK_EXPECT_HINT="Ctrl-O: grup seç"; fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
+        if [ "$pick" = "key:ctrl-o" ]; then _comp_menu_pick_group; continue; fi
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
         if [ "$pick" -le "$nc" ]; then
             kind="${ctl_kinds[$((pick - 1))]}"
@@ -381,18 +407,7 @@ comp_menu_vars() {
                     f_text="${f_text//[[:cntrl:]]/}" ;;
                 changed) if [ "$f_changed" = 1 ]; then f_changed=0; else f_changed=1; fi ;;
                 clear) f_text=""; f_group=""; f_changed=0 ;;
-                group)
-                    gl=(); while IFS= read -r g; do [ -n "$g" ] && gl+=("$g"); done <<< "$glist"
-                    gpick=("Tümü" "${gl[@]}" "(grupsuz)")
-                    # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
-                    local -a UI_PICK_DESCS=()
-                    pick=$(_comp_menu_pick "Geri" "${gpick[@]}")
-                    if [ "$pick" -ge 1 ] 2>/dev/null; then
-                        if [ "$pick" -eq 1 ]; then f_group=""
-                        elif [ "$pick" -eq $((${#gpick[@]})) ]; then f_group="-"
-                        else f_group="${gl[$((pick - 2))]}"
-                        fi
-                    fi ;;
+                group) _comp_menu_pick_group ;;
             esac
             continue
         fi

@@ -198,8 +198,10 @@ make_fake_fzf() {
     mkdir -p "$BATS_TEST_TMPDIR/fbin"
     cat > "$BATS_TEST_TMPDIR/fbin/fzf" <<STUB
 #!/bin/bash
+[ "\$1" = "--version" ] && { echo "\${FZF_FAKE_VERSION:-0.0.1 (fake)}"; exit 0; }
 printf '%s\n' "\$@" > "$BATS_TEST_TMPDIR/fzf.args"
 cat > "$BATS_TEST_TMPDIR/fzf.stdin"
+for a in "\$@"; do case "\$a" in --expect=*) echo "\${FZF_FAKE_KEY:-}";; esac; done
 # --preview değerinden açıklama dosyası yolunu çıkarıp sakla
 prev=""; while [ \$# -gt 0 ]; do [ "\$1" = "--preview" ] && prev="\$2"; shift; done
 f=\$(printf '%s' "\$prev" | grep -oE "'[^']+'\$" | tr -d "'")
@@ -428,4 +430,55 @@ for cols in (100, 80, 60):
 print("COGALMA=" + ("EVET" if bad else "HAYIR"))
 PY
     [[ "$output" == *"COGALMA=HAYIR"* ]]
+}
+
+
+@test "fzf sürümü: 0.74.5 → 7405; okunamazsa 0" {
+    make_fake_fzf
+    FZF_FAKE_VERSION="0.74.5 (Homebrew)" run ui_fzf_version "$BATS_TEST_TMPDIR/fbin/fzf"
+    [ "$output" = "7405" ]
+    FZF_FAKE_VERSION="0.58.0" run ui_fzf_version "$BATS_TEST_TMPDIR/fbin/fzf"
+    [ "$output" = "5800" ]
+    run ui_fzf_version "$BATS_TEST_TMPDIR/yok"
+    [ "$output" = "0" ]
+}
+
+@test "fzf geniş düzen: sağda önizleme, yol çubuğu kenarlık etiketi, başlıkta özet ve kısayol ipucu" {
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=2 FZF_FAKE_VERSION="0.74.5 (t)"
+    UI_PICK_WIDE=1 UI_PICK_TITLE="Sunucu › s1 › Değişkenler" UI_PICK_HEADER="Grup: Tümü · 2/2" UI_PICK_EXPECT_HINT="Ctrl-O: grup seç" \
+        run ui_pick_arrows 1 Geri "Bir" "İki"
+    [ "$output" = "2" ]
+    grep -q -- "right,48%,wrap" "$BATS_TEST_TMPDIR/fzf.args"
+    grep -qxF -- " Sunucu › s1 › Değişkenler " <(sed -n '/^--border-label=/{s/^--border-label=//;p;}' "$BATS_TEST_TMPDIR/fzf.args")
+    grep -q -- "--list-border=rounded" "$BATS_TEST_TMPDIR/fzf.args"
+    grep -q "Grup: Tümü · 2/2" "$BATS_TEST_TMPDIR/fzf.args"
+    grep -q "Ctrl-O: grup seç" "$BATS_TEST_TMPDIR/fzf.args"
+}
+
+@test "fzf geniş düzen: eski fzf'te etiketli çerçeveler kullanılmaz (yalnız sağ önizleme)" {
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=1 FZF_FAKE_VERSION="0.30.0"
+    UI_PICK_WIDE=1 UI_PICK_TITLE="Yol" run ui_pick_arrows 1 Geri "Bir"
+    [ "$output" = "1" ]
+    grep -q -- "right,48%,wrap" "$BATS_TEST_TMPDIR/fzf.args"
+    run ! grep -q -- "--border-label\|--list-border\|--input-border" "$BATS_TEST_TMPDIR/fzf.args"
+}
+
+@test "fzf kısayol: UI_PICK_EXPECT ile basılan tuş 'key:<ad>' döner; Enter'da seçilen numara" {
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=2
+    UI_PICK_EXPECT=ctrl-o FZF_FAKE_KEY=ctrl-o run ui_pick_arrows 1 Geri "Bir" "İki"
+    [ "$output" = "key:ctrl-o" ]
+    grep -qxF -- "--expect=ctrl-o" "$BATS_TEST_TMPDIR/fzf.args"
+    UI_PICK_EXPECT=ctrl-o FZF_FAKE_KEY="" run ui_pick_arrows 1 Geri "Bir" "İki"
+    [ "$output" = "2" ]
+}
+
+@test "fzf varsayılan düzen değişmedi: UI_PICK_WIDE yokken altta önizleme ve --border" {
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=1 FZF_FAKE_VERSION="0.74.5 (t)"
+    run ui_pick_arrows 1 Geri "Bir"
+    grep -q -- "down,3,wrap,border-top" "$BATS_TEST_TMPDIR/fzf.args"
+    run ! grep -q -- "--border-label\|right,48%" "$BATS_TEST_TMPDIR/fzf.args"
 }
