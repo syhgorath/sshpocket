@@ -223,3 +223,47 @@ nothing_installed() { [ ! -e "$SSHPOCKET_COMPONENTS_DIR/demo/current" ] && [ -z 
     run grep -c -- '--max-filesize' "$H/ComponentsInstall.sh"
     [ "$output" -ge 1 ]
 }
+
+
+@test "kilit: canlı bir kurulum kilit tutuyorsa bekler ve sonunda reddeder; hiçbir şey kurulmaz" {
+    make_pkg 1.0.0
+    mkdir -p "$T/components/demo/.install.lock"
+    sleep 30 & local holder=$!
+    echo "$holder" > "$T/components/demo/.install.lock/pid"
+    SSHPOCKET_INSTALL_LOCK_TRIES=2 run install_ver 1.0.0
+    kill "$holder" 2>/dev/null; wait "$holder" 2>/dev/null || true
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"başka bir kurulum sürüyor"* ]] || false
+    [ ! -e "$T/components/demo/1.0.0" ]
+}
+
+@test "kilit: sahibi ölmüş (yarım kalmış) kilit temizlenir ve kurulum sürer" {
+    make_pkg 1.0.0
+    mkdir -p "$T/components/demo/.install.lock"
+    echo 99999999 > "$T/components/demo/.install.lock/pid"
+    run install_ver 1.0.0
+    [ "$status" -eq 0 ]
+    [ -f "$T/components/demo/1.0.0/component.json" ]
+    [ ! -e "$T/components/demo/.install.lock" ]
+}
+
+@test "kilit: aynı anda iki kurulum iç içe klasör üretmez; biri kurar, diğeri 'zaten kurulu' der" {
+    make_pkg 1.0.0
+    install_ver 1.0.0 > "$T/o1" 2>&1 & local p1=$!
+    install_ver 1.0.0 > "$T/o2" 2>&1 & local p2=$!
+    wait "$p1"; r1=$?; wait "$p2"; r2=$?
+    [ "$r1" -eq 0 ] && [ "$r2" -eq 0 ]
+    [ ! -e "$T/components/demo/1.0.0/demo-1.0.0" ]
+    [ -f "$T/components/demo/1.0.0/component.json" ]
+    run comp_verify_installed demo 1.0.0
+    [ "$status" -eq 0 ]
+    [ -z "$(find "$T/components" -name '.tmp*' -o -name '.install.lock')" ]
+    grep -qh "kuruldu\|zaten kurulu" "$T/o1" "$T/o2"
+}
+
+@test "kilit: başarısız kurulum da kilidi bırakır" {
+    make_pkg 1.0.0 badid
+    run install_ver 1.0.0
+    [ "$status" -ne 0 ]
+    [ ! -e "$T/components/demo/.install.lock" ]
+}

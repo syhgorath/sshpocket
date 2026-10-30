@@ -132,6 +132,34 @@ comp_install_archive() {
 
     base="$(comp_dir)/$id"
     mkdir -p "$base" || return 1
+    _comp_install_lock "$base" || return 1
+    _comp_install_place "$id" "$ver" "$archive" "$base"; rc=$?
+    rm -r -- "${base:?}/.install.lock" 2>/dev/null
+    return "$rc"
+}
+
+# Aynı pakete iki kurulumun aynı anda yerleşmesini engeller (mkdir atomiktir). Kilit sahibi ölmüşse (yarım kalmış) temizlenir.
+# Kilit doluysa en fazla ~10 sn beklenir. Başka bir sshpocket (ya da sekme) aynı anda `sync` çalıştırırsa klasörler iç içe girmesin.
+_comp_install_lock() {
+    local base="$1" lock="$1/.install.lock" other tries=0
+    while ! mkdir "$lock" 2>/dev/null; do
+        other=$(cat "$lock/pid" 2>/dev/null)
+        if [ -n "$other" ] && ! kill -0 "$other" 2>/dev/null; then rm -r -- "${lock:?}" 2>/dev/null; continue; fi
+        tries=$((tries + 1))
+        if [ "$tries" -gt "${SSHPOCKET_INSTALL_LOCK_TRIES:-20}" ]; then echo "başka bir kurulum sürüyor${other:+ (pid $other)}; bitince yeniden deneyin" >&2; return 1; fi
+        sleep 0.5
+    done
+    printf '%s\n' "$$" > "$lock/pid"
+}
+
+# _comp_install_place <id> <sürüm> <arşiv> <paket-klasörü>: KİLİT ALTINDA arşivi açıp yerleştirir (önce yeniden "zaten kurulu mu" bakar)
+_comp_install_place() {
+    local id="$1" ver="$2" archive="$3" base="$4" tmp inst rc
+    inst=$(comp_installed_version "$id")
+    if [ "$inst" = "$ver" ]; then
+        comp_verify_installed "$id" "$ver" || return 1
+        echo "zaten kurulu: $id $ver"; return 0
+    fi
     tmp=$(mktemp -d "$base/.tmp.XXXXXX") || return 1
     if ! tar -xzf "$archive" -C "$tmp" 2>/dev/null; then
         rm -r -- "${tmp:?}"; echo "arşiv açılamadı" >&2; return 1
