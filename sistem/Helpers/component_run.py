@@ -273,8 +273,9 @@ def cmd_describe(argv):
         mx = str(v["max"]) if isinstance(v.get("max"), int) and not isinstance(v.get("max"), bool) else ""
         grp = v.get("group")
         grp = clean(grp) if isinstance(grp, str) else ""
+        vals = json.dumps(v["values"], ensure_ascii=False, separators=(",", ":")) if isinstance(v.get("values"), list) else ""
         print("\t".join([name, clean(v.get("type", "string")), "yes" if v.get("required") is True else "no",
-                         clean(dflt), mn, mx, clean(warn), clean(v.get("description", "")), grp]))
+                         clean(dflt), mn, mx, clean(warn), clean(v.get("description", "")), grp, clean(vals)]))
     return 0
 
 

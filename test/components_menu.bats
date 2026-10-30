@@ -544,3 +544,165 @@ PY
     [[ "$output" == *"kapsadığı için kaldırıldı: 10.99.0.4/32"* ]] || false
     [ "$(vget allow_from)" = "192.168.1.0/24,10.99.0.0/24" ]
 }
+
+
+# ---------- etkileşimli değişken düzenleme (bool/enum seçici, yeniden deneme, duraksamasız ileti) ----------
+# Sahte seçici: kuyruktaki sıradaki numarayı verir (eylem listesi, değişken listesi, değer seçici aynı kuyruktan); aldığı başlangıç konumunu kaydeder
+interactive_pick() {
+    : > "$T/q"; for x in "$@"; do echo "$x" >> "$T/q"; done
+    ui_arrows_enabled() { return 0; }
+    ui_pick_arrows() {
+        echo "$1" >> "$T/starts"; echo "$UI_PICK_TITLE|$UI_PICK_HEADER" >> "$T/heads"
+        local a; a=$(head -n 1 "$T/q"); sed -i.bak '1d' "$T/q" 2>/dev/null || true; rm -f "$T/q.bak"
+        printf '%s' "${a:-0}"
+    }
+}
+
+@test "etkileşimli bool: yazılı değer yokken varsayılan true ise imleç false'ta; false seçilince riskli onayla yazılır ve ileti listede görünür" {
+    interactive_pick 1 3 2 0 0
+    run comp_menu_actions demo web1 <<<"e"
+    [ "$(vget rb_enabled)" = "false" ]
+    [[ "$output" == *"✅ Kaydedildi: rb_enabled = false"* ]] || false
+    grep -qx "2" "$T/starts"
+    [[ "$(cat "$T/heads")" == *"Değişkenler › rb_enabled"* ]] || false
+}
+
+@test "etkileşimli bool: Geri hiçbir şey yazmaz; riskli değerde H yazmaz ve iptal ileti gösterir" {
+    interactive_pick 1 3 0 0 0
+    run comp_menu_actions demo web1 </dev/null
+    run vget rb_enabled; [ "$status" -ne 0 ]
+    interactive_pick 1 3 2 0 0
+    run comp_menu_actions demo web1 <<<"h"
+    out="$output"
+    run vget rb_enabled; [ "$status" -ne 0 ]
+    [[ "$out" == *"İptal edildi: rb_enabled değişmedi"* ]] || false
+}
+
+@test "etkileşimli enum: izinli değerler listelenir ve seçilen yazılır" {
+    interactive_pick 1 5 2 0 0
+    run comp_menu_actions demo web1 </dev/null
+    [ "$(vget mode)" = "b" ]
+}
+
+@test "etkileşimli: 'Varsayılana dön' yazılı değeri siler" {
+    comp_vars_set "$D/demo.vars" rb_enabled true
+    interactive_pick 1 3 3 0 0
+    run comp_menu_actions demo web1 </dev/null
+    out="$output"
+    run vget rb_enabled; [ "$status" -ne 0 ]
+    [[ "$out" == *"Silindi (varsayılana döner): rb_enabled"* ]] || false
+}
+
+@test "etkileşimli int: geçersiz değerde ekran kapanmadan yeniden sorar (3 deneme); geçerli değer yazılır" {
+    interactive_pick 1 4 0 0
+    run comp_menu_actions demo web1 <<<$'5\n600'
+    [[ "$output" == *"deneme 1/3"* ]] || false
+    [ "$(vget rb_timeout)" = "600" ]
+    comp_vars_unset "$D/demo.vars" rb_timeout
+    interactive_pick 1 4 0 0
+    run comp_menu_actions demo web1 <<<$'5\n6\n7'
+    out="$output"
+    run vget rb_timeout; [ "$status" -ne 0 ]
+    [[ "$out" == *"en az 30"* ]] || false
+    [[ "$out" == *"deneme 2/3"* ]] || false
+}
+
+@test "describe: enum izinli değerleri 10. alanda JSON dizi olarak verir" {
+    run bash -c "python3 \"$H/component_run.py\" describe \"$T/m.json\" | awk -F'\t' '\$1==\"mode\" {print \$10}'"
+    [ "$output" = '["a","b"]' ]
+}
+
+
+# ---------- etkileşimli liste editörü (list[string], list[int], list[cidr]) ----------
+liste_manifest() {
+    python3 - "$T/m.json" "$T/comps/demo/1.0.0/component.json" <<'PY'
+import json,sys
+m=json.load(open(sys.argv[1]))
+m["vars"].append({"name":"groups","type":"list[string]","default":[],"description":"izinli gruplar"})
+m["vars"].append({"name":"ports","type":"list[int]","default":[80,443],"description":"yayınlanan portlar"})
+json.dump(m,open(sys.argv[2],"w"))
+PY
+    cp "$T/comps/demo/1.0.0/component.json" "$T/m.json"
+    INFO=$(comp_manifest_info "$T/m.json" demo 1.0.0)
+    comp_net_local() { return 1; }          # öneri yok (makineye bağlı olmasın)
+}
+
+# Sıra: eylem listesi → 1 (Değişkenler) → değişken numarası; değişken sırası allow_from=1 scan_dir=2 rb_enabled=3 rb_timeout=4 mode=5 groups=6 ports=7
+# Editör satırları (boş liste): Ekle=1 Kaydet=2 · tek öğe: •=1 Ekle=2 Temizle=3 Kaydet=4 · iki öğe: •=1 •=2 Ekle=3 Temizle=4 Kaydet=5
+# list[cidr] (öneri yok): •=1 Ekle=2 Sorgula=3 Temizle=4 Kaydet=5 · iki öğe: Kaydet=6 · boş: Ekle=1 Sorgula=2 Kaydet=3
+@test "liste editörü: ekle + kaydet yazar; Vazgeç dosyayı değiştirmez; ileti listede görünür" {
+    liste_manifest
+    interactive_pick 1 6 1 0 0
+    run comp_menu_actions demo web1 <<<"admin"
+    run vget groups; [ "$status" -ne 0 ]
+    interactive_pick 1 6 1 4 0 0
+    run comp_menu_actions demo web1 <<<"admin"
+    out="$output"
+    [ "$(vget groups)" = "admin" ]
+    [[ "$out" == *"✅ Kaydedildi: groups = admin"* ]] || false
+}
+
+@test "liste editörü: iki öğe eklenir, virgülle yazılır; aynı öğe iki kez eklenmez" {
+    liste_manifest
+    interactive_pick 1 6 1 2 3 5 0 0
+    run comp_menu_actions demo web1 <<<$'a\nb\nb'
+    [ "$(vget groups)" = "a,b" ]
+}
+
+@test "liste editörü: öğeye Enter → Sil ve Değiştir; Kaydet'e kadar dosya değişmez" {
+    liste_manifest
+    comp_vars_set "$D/demo.vars" groups "a,b,c"
+    interactive_pick 1 6 2 1 0 0
+    run comp_menu_actions demo web1 </dev/null
+    [ "$(vget groups)" = "a,b,c" ]
+    interactive_pick 1 6 2 1 5 0 0
+    run comp_menu_actions demo web1 </dev/null
+    [ "$(vget groups)" = "a,c" ]
+    interactive_pick 1 6 1 2 5 0 0
+    run comp_menu_actions demo web1 <<<"z"
+    [ "$(vget groups)" = "z,c" ]
+}
+
+@test "liste editörü: list[int] geçersiz öğeyi reddeder (neden gösterilir), geçerliyi yazar" {
+    liste_manifest
+    interactive_pick 1 7 1 1 4 0 0
+    run comp_menu_actions demo web1 <<<$'abc\n8080'
+    out="$output"
+    [ "$(vget ports)" = "8080" ]
+    [[ "$out" == *"tamsayı"* ]] || false
+}
+
+@test "liste editörü: zorunlu liste boş kaydedilemez; zorunlu olmayan boş liste değişkeni siler" {
+    liste_manifest
+    interactive_pick 1 1 4 3 0 0 0
+    run comp_menu_actions demo web1 </dev/null
+    out="$output"
+    [[ "$out" == *"Liste boş olamaz"* ]] || false
+    [ "$(vget allow_from)" = "10.99.0.0/24" ]
+    comp_vars_set "$D/demo.vars" groups "a"
+    interactive_pick 1 6 3 2 0 0
+    run comp_menu_actions demo web1 </dev/null
+    run vget groups; [ "$status" -ne 0 ]
+}
+
+@test "liste editörü: Vazgeç hiçbir şey yazmaz ve 'Vazgeçildi' iletisi gösterir" {
+    liste_manifest
+    interactive_pick 1 6 1 0 0 0
+    run comp_menu_actions demo web1 <<<"x"
+    out="$output"
+    run vget groups; [ "$status" -ne 0 ]
+    [[ "$out" == *"Vazgeçildi: groups değişmedi"* ]] || false
+}
+
+@test "liste editörü: list[cidr] tek ağla kaydederken uyarı; H o haliyle yazar, e düzenlemeye döner" {
+    liste_manifest
+    interactive_pick 1 1 5 0 0
+    run comp_menu_actions demo web1 <<<"h"
+    out="$output"
+    [[ "$out" == *"yalnızca bir ağ var"* ]] || false
+    [ "$(vget allow_from)" = "10.99.0.0/24" ]
+    [[ "$out" == *"✅ Kaydedildi: allow_from = 10.99.0.0/24"* ]] || false
+    interactive_pick 1 1 2 6 0 0
+    run comp_menu_actions demo web1 <<<"10.50.0.0/24"
+    [ "$(vget allow_from)" = "10.99.0.0/24,10.50.0.0/24" ] || [ "$(vget allow_from)" = "10.50.0.0/24,10.99.0.0/24" ]
+}

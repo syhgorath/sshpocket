@@ -25,14 +25,14 @@ JSON
 filemode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
 
 # ---------- describe / check ----------
-@test "describe: değişken başına TSV (ad, tür, zorunlu, varsayılan, min, max, warn_if, açıklama, grup); sekme açıklamada temizlenir" {
+@test "describe: değişken başına TSV (ad, tür, zorunlu, varsayılan, min, max, warn_if, açıklama, grup, enum değerleri); sekme açıklamada temizlenir" {
     run comp_vars_describe "$T/m.json"
     [ "$status" -eq 0 ]
     [ "${#lines[@]}" -eq 5 ]
-    [ "${lines[0]}" = $'allow_from\tlist[cidr]\tyes\t\t\t\t\tSSH\'a izin verilen ağlar\t' ]
-    [ "${lines[1]}" = $'scan_dir\tpath\tno\t\t\t\t\tÇıktı klasörü\t' ]
-    [ "${lines[2]}" = $'rb_enabled\tbool\tno\ttrue\t\t\tfalse\tgeri alma\t' ]
-    [ "${lines[3]}" = $'rb_timeout\tint\tno\t300\t30\t3600\t\t\t' ]
+    [ "${lines[0]}" = $'allow_from\tlist[cidr]\tyes\t\t\t\t\tSSH\'a izin verilen ağlar\t\t' ]
+    [ "${lines[1]}" = $'scan_dir\tpath\tno\t\t\t\t\tÇıktı klasörü\t\t' ]
+    [ "${lines[2]}" = $'rb_enabled\tbool\tno\ttrue\t\t\tfalse\tgeri alma\t\t' ]
+    [ "${lines[3]}" = $'rb_timeout\tint\tno\t300\t30\t3600\t\t\t\t' ]
 }
 
 @test "check: geçerli değerler geçer; tür/aralık/enum/cidr hataları, tanımsız ad ve boş değer reddedilir" {
