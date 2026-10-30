@@ -394,7 +394,9 @@ comp_menu_vars() {
         # fzf geniş düzeni: yol çubuğu kenarlık etiketi, sağda açıklama, üstte konum özeti, Ctrl-O ile grup seçimi
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         local UI_PICK_WIDE=1 UI_PICK_TITLE="Sunucu › $server › $id › Değişkenler" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER=""
+        # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         UI_PICK_HEADER="Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg"
+        # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         if [ -n "$glist" ]; then UI_PICK_EXPECT="ctrl-o"; UI_PICK_EXPECT_HINT="Ctrl-O: grup seç"; fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         if [ "$pick" = "key:ctrl-o" ]; then _comp_menu_pick_group; continue; fi
