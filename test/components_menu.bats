@@ -706,3 +706,99 @@ PY
     run comp_menu_actions demo web1 <<<"10.50.0.0/24"
     [ "$(vget allow_from)" = "10.99.0.0/24,10.50.0.0/24" ] || [ "$(vget allow_from)" = "10.50.0.0/24,10.99.0.0/24" ]
 }
+
+
+# ---------- eylem paneli (fzf kartları) ve sonuç paneli ----------
+@test "eylem kartı: etkiler, onay, ön koşul ve uyarılar; kapalı eylemde ⛔" {
+    export SSHPOCKET_STATE_DIR="$T/state"
+    _comp_menu_ctx demo web1 "$INFO"
+    run _comp_menu_action_card "$INFO" demo web1 apply ""
+    [[ "$output" == *"apply  —  "* ]] || false
+    [[ "$output" == *"Etkiler: changes-config"* ]] || false
+    [[ "$output" == *"Onay: type-server-name"* ]] || false
+    [[ "$output" == *"Ön koşul: preview"* ]] || false
+    run _comp_menu_action_card "$INFO" demo web1 preview ""
+    [[ "$output" == *"⚠️  Önizleme ufw değişikliğini göstermez."* ]] || false
+    [[ "$output" == *"Etkiler: yok (salt okunur)"* ]] || false
+    run _comp_menu_action_card "$INFO" demo web1 apply "allow_from"
+    [[ "$output" == *"⛔ Kapalı"* ]] || false
+}
+
+@test "fzf paneli: hazırlık özeti başlıkta, her eylemin kartı sağ bölmede (geniş düzen)" {
+    export SSHPOCKET_STATE_DIR="$T/state"
+    ui_fzf_enabled() { return 0; }
+    ui_arrows_enabled() { return 0; }
+    ui_pick_arrows() {
+        echo "W=$UI_PICK_WIDE" > "$T/panel"
+        echo "T=$UI_PICK_TITLE" >> "$T/panel"
+        echo "H=$UI_PICK_HEADER" >> "$T/panel"
+        for d in "${UI_PICK_DESCS[@]}"; do echo "D=${d//$'\n'/|}" >> "$T/panel"; done
+        printf 0
+    }
+    run comp_menu_actions demo web1 </dev/null
+    [ "$status" -eq 0 ]
+    grep -q "^W=1" "$T/panel"
+    grep -q "^T=Sunucu › web1 › Paketler › demo 1.0.0" "$T/panel"
+    grep -q "Zorunlu değişkenler tamam" "$T/panel"
+    [ "$(grep -c '^D=' "$T/panel")" -eq 6 ]            # değişkenler + 4 eylem + geçmiş
+    grep -q "^D=apply  —  .*Ön koşul: preview" "$T/panel"
+    run ! grep -q "Hazırlık" <<< "$output"               # klasik düz metin bloğu çıkmaz
+}
+
+@test "sonuç paneli: başarı, özet, günlük ve sıradaki adım (preview → apply)" {
+    export SSHPOCKET_STATE_DIR="$T/state"; UI_RULE='---'
+    mkdir -p "$T/state/demo/web1"
+    printf 'PLAY RECAP\nweb1 : ok=190 changed=50 unreachable=0 failed=0 skipped=184\n' > "$T/state/demo/web1/last-run.log"
+    run _comp_menu_run_panel demo web1 "$INFO" preview 0 12
+    [[ "$output" == *"Sonuç: preview — web1"* ]] || false
+    [[ "$output" == *"✅ Başarılı · 12 sn"* ]] || false
+    [[ "$output" == *"Özet: ok=190 changed=50 unreachable=0 failed=0 skipped=184"* ]] || false
+    [[ "$output" == *"Günlük: $T/state/demo/web1/last-run.log"* ]] || false
+    [[ "$output" == *"Sıradaki adım: apply"* ]] || false
+}
+
+@test "sonuç paneli: başarısızlıkta günlüğe yönlendirir; çalıştırılmadıysa (kapı) bunu söyler ve sıradaki adım önermez" {
+    export SSHPOCKET_STATE_DIR="$T/state"; UI_RULE='---'
+    mkdir -p "$T/state/demo/web1"
+    run _comp_menu_run_panel demo web1 "$INFO" apply 4 3
+    [[ "$output" == *"❌ Başarısız (çıkış 4)"* ]] || false
+    [[ "$output" == *"günlüğe bakın"* ]] || false
+    run _comp_menu_run_panel demo web1 "$INFO" apply 190 0
+    [[ "$output" == *"⛔ Çalıştırılmadı"* ]] || false
+    [[ "$output" != *"Sıradaki adım"* ]] || false
+}
+
+@test "etkileşimli eylem: çalıştırma sonrası sonuç paneli gösterilir (numaralı modda eski akış, panel yok)" {
+    export SSHPOCKET_STATE_DIR="$T/state"; UI_RULE='---'
+    interactive_pick 2 0
+    run comp_menu_actions demo web1 <<<""
+    [[ "$output" == *"Sonuç: preview — web1"* ]] || false
+    rm -f "$T/runs"; unset -f ui_arrows_enabled ui_pick_arrows
+    run comp_menu_actions demo web1 <<<$'2\n\n0'
+    [[ "$output" != *"Sonuç: preview"* ]] || false
+}
+
+
+@test "çalışma paneli (fzf): üst bölüm sabit çizilir, alt bölüm kaydırma bölgesi olur; sonuç başlığa yazılır; bölge sonda sıfırlanır" {
+    export SSHPOCKET_STATE_DIR="$T/state" SSHPOCKET_ROWS=30 SSHPOCKET_COLS=80; UI_RULE='---'
+    ui_fzf_enabled() { return 0; }
+    interactive_pick 2 0
+    run comp_menu_actions demo web1 <<<""
+    [[ "$output" == *$'\033[13;30r'* ]] || false                 # alt bölge: üst=30*4/10=12 → 13..30
+    [[ "$output" == *"Sunucu › web1 › Paketler › demo › preview"* ]] || false
+    [[ "$output" == *"Etkiler: yok (salt okunur)"* ]] || false    # üstte eylem kartı
+    [[ "$output" == *"Çıktı: preview — web1 (çalışıyor)"* ]] || false
+    [[ "$output" == *"✅ preview — web1: başarılı"* ]] || false
+    [[ "$output" == *"Sonuç: preview — web1"* ]] || false          # sonuç paneli bölgede
+    [[ "$output" == *$'\033[r'* ]] || false                       # bölge sıfırlandı
+}
+
+@test "çalışma paneli: küçük terminalde (<24 satır) kaydırma bölgesi kurulmaz, eski akış sürer" {
+    export SSHPOCKET_STATE_DIR="$T/state" SSHPOCKET_ROWS=20 SSHPOCKET_COLS=80; UI_RULE='---'
+    ui_fzf_enabled() { return 0; }
+    interactive_pick 2 0
+    run comp_menu_actions demo web1 <<<""
+    [[ "$output" != *$'\033[13;30r'* ]] || false
+    [[ "$output" != *"Çıktı: preview"* ]] || false
+    [[ "$output" == *"Sonuç: preview — web1"* ]] || false
+}

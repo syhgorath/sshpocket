@@ -482,3 +482,13 @@ PY
     grep -q -- "down,3,wrap,border-top" "$BATS_TEST_TMPDIR/fzf.args"
     run ! grep -q -- "--border-label\|right,48%" "$BATS_TEST_TMPDIR/fzf.args"
 }
+
+
+@test "fzf kart: çok satırlı açıklama \\037 ile tek satırda saklanır; ok tuşlu seçicide tek satıra indirilir" {
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf FZF_FAKE_PICK=1
+    UI_PICK_DESCS=($'Birinci\nİkinci\nÜçüncü')
+    run ui_pick_arrows 1 Geri "Bir"
+    [ "$(sed -n 2p "$BATS_TEST_TMPDIR/fzf.desc")" = $'Birinci\037İkinci\037Üçüncü' ]
+    grep -q -- "gsub" "$BATS_TEST_TMPDIR/fzf.args"
+}
