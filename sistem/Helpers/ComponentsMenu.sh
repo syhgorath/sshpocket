@@ -147,9 +147,74 @@ _comp_menu_action_blocked() {
     [ -n "$3" ] && comp_gate_required_applies "$1" "$2"
 }
 
+# _comp_menu_action_card <bilgi> <paket> <sunucu> <eylem> <eksik> → seçili eylemin kartı (çok satırlı; fzf sağ bölmesi)
+_comp_menu_action_card() {
+    local info="$1" id="$2" server="$3" name="$4" missing="$5" eff req conf w last ts rest now n=0
+    eff=$(comp_action_get "$info" "$name" effects); req=$(comp_action_get "$info" "$name" requires); conf=$(comp_action_get "$info" "$name" confirm)
+    printf '%s  —  %s\n' "$name" "$(_comp_menu_badge "$info" "$name")"
+    printf 'Etkiler: %s\n' "${eff:-yok (salt okunur)}"
+    printf 'Onay: %s\n' "${conf:-yok}"
+    [ -z "$req" ] || printf 'Ön koşul: %s\n' "$(_comp_menu_req_label "$id" "$server" "$COMP_MENU_VER" "$req")"
+    if _comp_menu_action_blocked "$info" "$name" "$missing"; then printf '⛔ Kapalı: önce zorunlu değişkenleri tamamlayın\n'; fi
+    if last=$(comp_exec_last_result "$id" "$server" "$name" 2>/dev/null); then
+        now=$(date +%s); ts=$(printf '%s\n' "$last" | head -n 1); rest=$(printf '%s\n' "$last" | tail -n +2 | tr '\n' ' ')
+        if [[ "$ts" =~ ^[0-9]+$ ]] && [ "$ts" -le "$now" ]; then printf 'Son sonuç (%s): %s\n' "$(_comp_menu_age $((now - ts)))" "${rest% }"
+        else printf 'Son sonuç: %s\n' "${rest% }"; fi
+    fi
+    while IFS= read -r w; do
+        [ -n "$w" ] || continue
+        n=$((n + 1)); [ "$n" -le 6 ] || break
+        printf '⚠️  %s\n' "$w"
+    done < <(comp_info_all "$info" "action.$name.warning")
+}
+
+# _comp_menu_prep_text <paket> <sunucu> <bilgi> <eksik> → hazırlık özeti (başlık için; baştaki boşluklar atılır)
+_comp_menu_prep_text() {
+    local id="$1" server="$2" info="$3" missing="$4" m
+    if [ -n "$missing" ]; then
+        while IFS= read -r m; do [ -n "$m" ] && echo "❌ $m (zorunlu, yazılmadı)"; done <<< "$missing"
+    else echo "✅ Zorunlu değişkenler tamam"; fi
+    { _comp_menu_status_lines "$id" "$server" "$info"; _comp_menu_score_lines "$id" "$server"; } | sed 's/^ *//'
+}
+
+# _comp_menu_run_panel <paket> <sunucu> <bilgi> <eylem> <çıkış-kodu> <saniye> → çalışma bitince tek bakışta sonuç paneli (ok/changed/failed, sonuç anahtarları, günlük, sıradaki adım)
+_comp_menu_run_panel() {
+    local id="$1" server="$2" info="$3" name="$4" rc="$5" secs="$6" log recap last rest nxt a r status
+    log="$(_comp_gate_state_dir)/$id/$server/last-run.log"
+    if [ "$rc" -eq 0 ]; then status="✅ Başarılı"
+    elif [ "$rc" -eq "${COMP_EXEC_REFUSED:-190}" ]; then status="⛔ Çalıştırılmadı (kapı/onay/hazırlık; ayrıntı yukarıdaki iletide)"
+    else status="❌ Başarısız (çıkış $rc)"; fi
+    echo ""
+    echo "$UI_RULE"
+    printf '  Sonuç: %s — %s\n' "$name" "$server"
+    echo "$UI_RULE"
+    printf '  %s · %s sn\n' "$status" "$secs"
+    if [ -f "$log" ]; then
+        recap=$(grep -E '^[^ ]+ +: ok=' "$log" 2>/dev/null | tail -n 1 | sed -E 's/^[^:]+: *//; s/ +/ /g')
+        [ -z "$recap" ] || printf '  Özet: %s\n' "$recap"
+    fi
+    if last=$(comp_exec_last_result "$id" "$server" "$name" 2>/dev/null); then
+        rest=$(printf '%s\n' "$last" | tail -n +2 | tr '\n' ' ')
+        [ -z "${rest// /}" ] || printf '  Anahtarlar: %s\n' "${rest% }"
+    fi
+    [ ! -f "$log" ] || printf '  Günlük: %s\n' "$log"
+    # sıradaki adım: bu eylemi ön koşul sayan eylemler (örn. preview → apply); başarısızsa günlüğe bak
+    if [ "$rc" -eq 0 ]; then
+        nxt=""
+        while IFS= read -r a; do
+            [ -n "$a" ] || continue
+            for r in $(comp_action_get "$info" "$a" requires | tr ',' ' '); do [ "$r" = "$name" ] && nxt="${nxt:+$nxt, }$a"; done
+        done < <(comp_info_all "$info" action)
+        [ -z "$nxt" ] || printf '  ▶ Sıradaki adım: %s (bu eylemden sonra açılır)\n' "$nxt"
+    elif [ "$rc" -ne "${COMP_EXEC_REFUSED:-190}" ]; then
+        printf '  ▶ Sıradaki adım: günlüğe bakın, sorunu giderin ve eylemi yeniden çalıştırın\n'
+    fi
+    echo "$UI_RULE"
+}
+
 # comp_menu_actions <paket> <sunucu> → hazırlık durumu + (📝 Değişkenler | eylemler); seçileni çalıştırır; geri dönene kadar döngü
 comp_menu_actions() {
-    local id="$1" server="$2" info name pick i act eff req missing m plat hidden
+    local id="$1" server="$2" info name pick i act eff req missing m plat hidden fz=0 t0 rc
     local -a names labels
     info=$(comp_prepare "$id") || { echo "Paket doğrulanamadı: $id (./start.sh --components list)" >&2; return 1; }
     _comp_menu_ctx "$id" "$server" "$info"
@@ -164,6 +229,8 @@ comp_menu_actions() {
     while true; do
         missing=$(comp_vars_missing "$COMP_MENU_MF" "$COMP_MENU_VARS")
         clear
+        fz=0; declare -F ui_fzf_enabled >/dev/null && ui_fzf_enabled && fz=1
+        if [ "$fz" = 0 ]; then
         if declare -F ui_header >/dev/null; then ui_header "Sunucu › $server › Paketler › $id $COMP_MENU_VER"; fi
         echo ""
         echo "Hazırlık"
@@ -177,6 +244,7 @@ comp_menu_actions() {
         _comp_menu_score_lines "$id" "$server"
         [ "$hidden" -eq 0 ] || echo "  ℹ️  $hidden eylem bu sunucunun platformuna uygun olmadığı için gizlendi."
         echo ""
+        fi
         labels=("📝 Değişkenler${missing:+  ← önce burası}")
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır.")
@@ -191,6 +259,17 @@ comp_menu_actions() {
         UI_PICK_DESCS+=("Bu sunucudaki son çalıştırmalar, ön koşulların tazeliği (örn. apply için preview) ve son çalıştırma günlüğü.")
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
+        if [ "$fz" = 1 ]; then
+            # fzf paneli: yol çubuğu, hazırlık özeti başlıkta, seçili eylemin kartı sağ bölmede
+            local -a UI_PICK_DESCS=()
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_TITLE="Sunucu › $server › Paketler › $id $COMP_MENU_VER" UI_PICK_HEADER=""
+            UI_PICK_HEADER=$(_comp_menu_prep_text "$id" "$server" "$info" "$missing")
+            [ "$hidden" -eq 0 ] || UI_PICK_HEADER="$UI_PICK_HEADER"$'\n'"ℹ️  $hidden eylem bu platforma uygun olmadığı için gizlendi"
+            UI_PICK_DESCS+=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır."$'\n'"Zorunlu eksik: $(printf '%s' "${missing:-yok}" | tr '\n' ' ')")
+            for name in "${names[@]}"; do UI_PICK_DESCS+=("$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")"); done
+            UI_PICK_DESCS+=("Bu sunucudaki son çalıştırmalar, ön koşulların tazeliği (örn. apply için preview) ve son çalıştırma günlüğü.")
+        fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
         if [ "$pick" -eq 1 ]; then
@@ -208,7 +287,9 @@ comp_menu_actions() {
             continue
         fi
         echo ""
-        comp_cli_run "$id" "${names[$((pick - 2))]}" "$server" || true
+        t0=$SECONDS
+        comp_cli_run "$id" "${names[$((pick - 2))]}" "$server" && rc=0 || rc=$?
+        if _comp_menu_interactive; then _comp_menu_run_panel "$id" "$server" "$info" "${names[$((pick - 2))]}" "$rc" "$((SECONDS - t0))"; fi
         echo ""
         read -r -p "Devam için Enter..." _ || return 0
     done

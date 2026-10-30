@@ -122,6 +122,7 @@ _ui_pick_draw() {
     else hint="↑↓ seç · Enter aç · ←/q/0 geri · numara yazıp Enter"; fi
     printf '\r\033[2K\033[2m%s\033[0m\n' "$hint" >&2
     if [ "$sel" -le "$n" ]; then desc="${UI_PICK_DESCS[$((sel - 1))]:-}"; else desc="${UI_PICK_BACK_DESC:-}"; fi
+    desc="${desc//$'\n'/ · }"
     printf '\r\033[2K%s\n' "$desc" >&2
     printf '\033[?7h' >&2        # sarma yeniden AÇIK
 }
@@ -156,15 +157,16 @@ _ui_pick_fzf() {
         printf '0\t%s\n' "$label"
     } > "$tmp/list"
     {
-        printf '%s\n' "${UI_PICK_BACK_DESC:-}"
+        # çok satırlı açıklama (kart): satır sonu \037 olarak saklanır, önizlemede geri çevrilir
+        label="${UI_PICK_BACK_DESC:-}"; printf '%s\n' "${label//$'\n'/$'\037'}"
         i=0
-        while [ "$i" -lt "$n" ]; do printf '%s\n' "${UI_PICK_DESCS[$i]:-}"; i=$((i + 1)); done
+        while [ "$i" -lt "$n" ]; do label="${UI_PICK_DESCS[$i]:-}"; printf '%s\n' "${label//$'\n'/$'\037'}"; i=$((i + 1)); done
     } > "$tmp/desc"
     local -a opts
     opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height='~60%' --min-height=8
           --border --no-sort --cycle --prompt='› '
           --header='Enter: aç · ←/Esc: geri · yazarak ara'
-          --preview "awk -v n={1} 'NR==n+1' '$tmp/desc'" --preview-window='down,3,wrap,border-top'
+          --preview "awk -v n={1} 'NR==n+1 {gsub(/\037/,\"\\n\"); print}' '$tmp/desc'" --preview-window='down,3,wrap,border-top'
           --bind 'left:abort' --bind "start:pos($sel)")
     if [ -n "${UI_PICK_WIDE:-}" ]; then
         # geniş düzen: sağda önizleme, etiketli çerçeveler (yol çubuğu = kenarlık etiketi); eski fzf'te yalnız sağ önizleme
@@ -172,7 +174,7 @@ _ui_pick_fzf() {
         ver=$(ui_fzf_version "$fzf_bin")
         opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height='85%' --min-height=12
               --no-sort --cycle --prompt='› '
-              --preview "awk -v n={1} 'NR==n+1' '$tmp/desc'" --preview-window='right,48%,wrap'
+              --preview "awk -v n={1} 'NR==n+1 {gsub(/\037/,\"\\n\"); print}' '$tmp/desc'" --preview-window='right,48%,wrap'
               --bind 'left:abort' --bind "start:pos($sel)")
         hdr="${hdr:+$hdr$'\n'}Enter: aç · ←/Esc: geri · yazarak ara${UI_PICK_EXPECT_HINT:+ · $UI_PICK_EXPECT_HINT}"
         opts+=(--header="$hdr")
