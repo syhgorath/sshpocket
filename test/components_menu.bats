@@ -777,3 +777,28 @@ PY
     run comp_menu_actions demo web1 <<<$'2\n\n0'
     [[ "$output" != *"Sonuç: preview"* ]] || false
 }
+
+
+@test "çalışma paneli (fzf): üst bölüm sabit çizilir, alt bölüm kaydırma bölgesi olur; sonuç başlığa yazılır; bölge sonda sıfırlanır" {
+    export SSHPOCKET_STATE_DIR="$T/state" SSHPOCKET_ROWS=30 SSHPOCKET_COLS=80; UI_RULE='---'
+    ui_fzf_enabled() { return 0; }
+    interactive_pick 2 0
+    run comp_menu_actions demo web1 <<<""
+    [[ "$output" == *$'\033[13;30r'* ]] || false                 # alt bölge: üst=30*4/10=12 → 13..30
+    [[ "$output" == *"Sunucu › web1 › Paketler › demo › preview"* ]] || false
+    [[ "$output" == *"Etkiler: yok (salt okunur)"* ]] || false    # üstte eylem kartı
+    [[ "$output" == *"Çıktı: preview — web1 (çalışıyor)"* ]] || false
+    [[ "$output" == *"✅ preview — web1: başarılı"* ]] || false
+    [[ "$output" == *"Sonuç: preview — web1"* ]] || false          # sonuç paneli bölgede
+    [[ "$output" == *$'\033[r'* ]] || false                       # bölge sıfırlandı
+}
+
+@test "çalışma paneli: küçük terminalde (<24 satır) kaydırma bölgesi kurulmaz, eski akış sürer" {
+    export SSHPOCKET_STATE_DIR="$T/state" SSHPOCKET_ROWS=20 SSHPOCKET_COLS=80; UI_RULE='---'
+    ui_fzf_enabled() { return 0; }
+    interactive_pick 2 0
+    run comp_menu_actions demo web1 <<<""
+    [[ "$output" != *$'\033[13;30r'* ]] || false
+    [[ "$output" != *"Çıktı: preview"* ]] || false
+    [[ "$output" == *"Sonuç: preview — web1"* ]] || false
+}

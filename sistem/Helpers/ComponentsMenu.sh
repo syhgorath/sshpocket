@@ -177,6 +177,50 @@ _comp_menu_prep_text() {
     { _comp_menu_status_lines "$id" "$server" "$info"; _comp_menu_score_lines "$id" "$server"; } | sed 's/^ *//'
 }
 
+# ---- Çalışma paneli (fzf): üst bölüm sabit çizilir, alt bölüm terminalin KAYDIRMA BÖLGESİ olur ----
+# Onay soruları, 'BECOME password:' istemi ve çıktı hep alt bölgede akar; ekran değişmez. Küçük terminalde (<24 satır / <60 sütun) kullanılmaz.
+COMP_MENU_PANEL_ROWS=0
+_comp_menu_panel_int() { printf '\033[r' >&2; trap - INT; kill -INT $$; }
+_comp_menu_panel_reset() {
+    [ "$COMP_MENU_PANEL_ROWS" -gt 0 ] || return 0
+    printf '\033[r\033[%d;1H' "$COMP_MENU_PANEL_ROWS"
+    COMP_MENU_PANEL_ROWS=0; trap - INT
+}
+# _comp_menu_panel_rule <satır> <metin> <sütun>
+_comp_menu_panel_rule() {
+    local label="$2" cols="$3" n
+    n=$((cols - ${#label} - 4)); [ "$n" -gt 0 ] || n=1
+    printf '\033[%d;1H\033[2K\033[1m── %s %s\033[0m' "$1" "$label" "$(printf '─%.0s' $(seq 1 "$n"))"
+}
+# _comp_menu_panel_begin <paket> <sunucu> <bilgi> <eylem> <eksik> → 0: panel kuruldu; 1: terminal küçük/bilinmiyor (eski akış)
+_comp_menu_panel_begin() {
+    local id="$1" server="$2" info="$3" name="$4" missing="$5" rows cols top i=0 line
+    rows="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; cols="${SSHPOCKET_COLS:-$(tput cols 2>/dev/null)}"
+    [[ "$rows" =~ ^[0-9]+$ && "$cols" =~ ^[0-9]+$ ]] && [ "$rows" -ge 24 ] && [ "$cols" -ge 60 ] || return 1
+    top=$((rows * 4 / 10)); [ "$top" -ge 11 ] || top=11; [ "$top" -le 16 ] || top=16
+    clear
+    printf '\033[1;1H\033[2K\033[1m  Sunucu › %s › Paketler › %s › %s\033[0m' "$server" "$id" "$name"
+    printf '\033[2;1H\033[2K%s' "$(printf '─%.0s' $(seq 1 "$cols"))"
+    while IFS= read -r line; do
+        i=$((i + 1)); [ "$i" -le $((top - 3)) ] || break
+        printf '\033[%d;1H\033[2K  %s' "$((i + 2))" "${line:0:$((cols - 4))}"
+    done < <(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")
+    _comp_menu_panel_rule "$top" "Çıktı: $name — $server (çalışıyor)" "$cols"
+    COMP_MENU_PANEL_ROWS="$rows"; COMP_MENU_PANEL_COLS="$cols"; COMP_MENU_PANEL_TOP="$top"
+    printf '\033[%d;%dr\033[%d;1H' "$((top + 1))" "$rows" "$((top + 1))"
+    trap _comp_menu_panel_int INT
+    return 0
+}
+# _comp_menu_panel_end <eylem> <sunucu> <çıkış-kodu> <saniye> → çıktı çerçevesinin başlığını sonuçla günceller
+_comp_menu_panel_end() {
+    local name="$1" server="$2" rc="$3" secs="$4" label
+    [ "$COMP_MENU_PANEL_ROWS" -gt 0 ] || return 0
+    if [ "$rc" -eq 0 ]; then label="✅ $name — $server: başarılı · $secs sn"
+    elif [ "$rc" -eq "${COMP_EXEC_REFUSED:-190}" ]; then label="⛔ $name — $server: çalıştırılmadı"
+    else label="❌ $name — $server: başarısız (çıkış $rc) · $secs sn"; fi
+    printf '\0337'; _comp_menu_panel_rule "$COMP_MENU_PANEL_TOP" "$label" "$COMP_MENU_PANEL_COLS"; printf '\0338'
+}
+
 # _comp_menu_run_panel <paket> <sunucu> <bilgi> <eylem> <çıkış-kodu> <saniye> → çalışma bitince tek bakışta sonuç paneli (ok/changed/failed, sonuç anahtarları, günlük, sıradaki adım)
 _comp_menu_run_panel() {
     local id="$1" server="$2" info="$3" name="$4" rc="$5" secs="$6" log recap last rest nxt a r status
@@ -286,12 +330,14 @@ comp_menu_actions() {
             read -r -p "Devam için Enter..." _ || return 0
             continue
         fi
-        echo ""
         t0=$SECONDS
+        if [ "$fz" = 1 ] && _comp_menu_panel_begin "$id" "$server" "$info" "${names[$((pick - 2))]}" "$missing"; then :; else echo ""; fi
         comp_cli_run "$id" "${names[$((pick - 2))]}" "$server" && rc=0 || rc=$?
         if _comp_menu_interactive; then _comp_menu_run_panel "$id" "$server" "$info" "${names[$((pick - 2))]}" "$rc" "$((SECONDS - t0))"; fi
+        _comp_menu_panel_end "${names[$((pick - 2))]}" "$server" "$rc" "$((SECONDS - t0))"
         echo ""
-        read -r -p "Devam için Enter..." _ || return 0
+        read -r -p "Devam için Enter..." _ || { _comp_menu_panel_reset; return 0; }
+        _comp_menu_panel_reset
     done
 }
 
