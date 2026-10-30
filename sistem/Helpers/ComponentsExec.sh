@@ -14,6 +14,35 @@
 COMP_EXEC_REFUSED=190
 COMP_EXEC_RESULT=""
 
+# comp_progress_parse <log-dosyası> → alan başına son durum, sekmeyle ayrılmış satırlar (alan, sıra, toplam, durum, degisen, atlanan, kesin, uyari, bekle); yoksa "-"
+# Paketin `SSHPOCKET_PROGRESS alan=<ad> sira=<n>/<toplam> durum=basladi|bitti [degisen= atlanan= kesin= uyari= bekle_tahmin=]` satırları (docs/package-standard.md).
+# Satır başı ve tırnak varsayılmaz (Ansible `msg:` çıktısında girintili/tırnaklı gelir); bilinmeyen anahtarlar yok sayılır, bozuk satır atlanır.
+# `bitti` olmadan kalan alan "basladi" görünür (hata ya da hâlâ çalışıyor). Satır yoksa çıktı boş (ilerleme bilgisi yok) ve dönüş 1.
+comp_progress_parse() {
+    [ -f "$1" ] && grep -q 'SSHPOCKET_PROGRESS' "$1" 2>/dev/null || return 1
+    grep 'SSHPOCKET_PROGRESS' "$1" | tr -d '\r' | awk '
+        {
+            i = index($0, "SSHPOCKET_PROGRESS"); line = substr($0, i + 18)
+            n = split(line, tok, /[ \t]+/); delete kv
+            for (j = 1; j <= n; j++) {
+                t = tok[j]; gsub(/["\\,}]+$/, "", t)
+                e = index(t, "="); if (e > 1) kv[substr(t, 1, e - 1)] = substr(t, e + 1)
+            }
+            a = kv["alan"]; d = kv["durum"]
+            if (a !~ /^[a-z][a-z0-9_]*$/ || (d != "basladi" && d != "bitti")) next
+            if (kv["sira"] !~ /^[0-9]+\/[0-9]+$/) next
+            if (!(a in seen)) { seen[a] = 1; order[++cnt] = a }
+            split(kv["sira"], sp, "/"); sira[a] = sp[1]; top[a] = sp[2]
+            if (d == "bitti" || !(a in dur)) {
+                dur[a] = d
+                if (d == "bitti") { dg[a] = kv["degisen"]; at[a] = kv["atlanan"]; ks[a] = kv["kesin"]; uy[a] = kv["uyari"] }
+            }
+            if (kv["bekle_tahmin"] ~ /^[0-9]+$/) bk[a] = kv["bekle_tahmin"]
+        }
+        function v(x) { return (x == "" ? "-" : x) }
+        END { for (j = 1; j <= cnt; j++) { a = order[j]; printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", a, sira[a], top[a], dur[a], v(dg[a]), v(at[a]), v(ks[a]), v(uy[a]), v(bk[a]) } }'
+}
+
 # comp_exec_parse_result <bilgi> <eylem> <log-dosyası> → COMP_EXEC_RESULT ("k=v" satırları); geçersizse boş ve 1
 # Satır başı varsayılmaz (Ansible yaml/json çıktısında girintili/tırnaklı gelir): son 'SSHPOCKET_RESULT' işaretinden itibaren okunur.
 comp_exec_parse_result() {

@@ -206,6 +206,30 @@ _comp_menu_panel_end() {
 }
 _comp_menu_panel_reset() { ui_region_reset; }
 
+# _comp_menu_progress_lines <bilgi> <eylem> <günlük> → paketin SSHPOCKET_PROGRESS satırlarından alan tablosu (satır yoksa hiçbir şey yazmaz)
+# Salt okunur eylemde (önizleme) "değişen" = uygulanırsa "değişecek"; kesin=0 ise sayı tahminidir (~). degisen/atlanan yoksa "?".
+_comp_menu_progress_lines() {
+    local info="$1" name="$2" log="$3" a top dur dg at ks uy bk icon word total=0 n=0 preview=0 cell
+    [ -z "$(comp_action_get "$info" "$name" effects)" ] && preview=1
+    word="değişen"; [ "$preview" -eq 0 ] || word="değişecek"
+    while IFS=$'\t' read -r a _ top dur dg at ks uy bk; do
+        [ "$n" -gt 0 ] || printf '  Alanlar (%s açık):\n' "$top"
+        n=$((n + 1))
+        if [ "$dur" = bitti ]; then
+            icon="✅"; cell="$word ${dg/#-/?}"
+            [ "$ks" != 0 ] || cell="$word ~${dg/#-/?}"
+            [ "$at" = "-" ] || cell="$cell · atlanan $at"
+            [ "$uy" = "-" ] || cell="$cell · ⚠ uyarı $uy"
+        else
+            icon="⏳"; cell="bitmedi"
+            [ "$bk" = "-" ] || cell="bitmedi (tahmini bekleme $bk sn)"
+        fi
+        printf '    %s %-14s %s\n' "$icon" "$a" "$cell"
+        [[ "$dg" =~ ^[0-9]+$ ]] && total=$((total + dg))
+    done < <(comp_progress_parse "$log")
+    if [ "$n" -gt 0 ] && [ "$preview" -eq 1 ]; then printf '    Toplam %s: %s\n' "$word" "$total"; fi
+}
+
 # _comp_menu_run_panel <paket> <sunucu> <bilgi> <eylem> <çıkış-kodu> <saniye> → çalışma bitince tek bakışta sonuç paneli (ok/changed/failed, sonuç anahtarları, günlük, sıradaki adım)
 _comp_menu_run_panel() {
     local id="$1" server="$2" info="$3" name="$4" rc="$5" secs="$6" log recap last rest nxt a r status
@@ -222,6 +246,7 @@ _comp_menu_run_panel() {
         recap=$(grep -E '^[^ ]+ +: ok=' "$log" 2>/dev/null | tail -n 1 | sed -E 's/^[^:]+: *//; s/ +/ /g')
         [ -z "$recap" ] || printf '  Özet: %s\n' "$recap"
     fi
+    _comp_menu_progress_lines "$info" "$name" "$log"
     if last=$(comp_exec_last_result "$id" "$server" "$name" 2>/dev/null); then
         rest=$(printf '%s\n' "$last" | tail -n +2 | tr '\n' ' ')
         [ -z "${rest// /}" ] || printf '  Anahtarlar: %s\n' "${rest% }"
