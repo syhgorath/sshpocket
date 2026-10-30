@@ -123,5 +123,39 @@ Menüde `⚙️ Ayarlar`. Satırlar: ayar adı, mevcut değer, Enter ile değiş
 - Kasıtlı olarak az sayıda ayar: her ayar bir test ve bir belge maliyetidir. Yeni ayar için gerekçe istenir.
 
 
-## 5b. fzf geniş düzen (3.7 hazırlığı)
-Seçici (`_ui_pick_fzf`) isteğe bağlı bağlam değişkenleri alır: `UI_PICK_WIDE=1` (sağda önizleme), `UI_PICK_TITLE` (kenarlık etiketi = yol çubuğu), `UI_PICK_HEADER` (konum özeti), `UI_PICK_EXPECT` ve `UI_PICK_EXPECT_HINT` (fzf `--expect`: basılan tuş `key:<ad>` olarak döner). Sürüm `ui_fzf_version` ile okunur, eski fzf'te etiketli çerçeveler atlanır. Şimdilik yalnız Değişkenler ekranı kullanır; diğer ekranlara yayma ve durum özeti (dashboard hissi) sıradaki adım.
+## 5b. Ortak arayüz parçaları (UI.sh): seçici, bölgeli ekran, liste editörü
+Bütün menüler aynı üç parçayı kullanır; paketten ve ekrandan bağımsızdır. Parametreler bash'in **dinamik kapsamıyla** (çağıranın `local` değişkenleri) verilir. Hepsi isteğe bağlıdır; verilmezse eski davranış sürer. Kullanan yeni bir ekran (örn. `utility` paketi, Lynis bulgu listesi) bu tabloyu okuyup `local` ile tanımlar.
+
+### Seçici: `ui_pick <geri-etiketi> <öğe>...` → seçilen numara (geri/hata = 0)
+Etkileşimli modda ok tuşlu ya da fzf (`UI=auto|fzf|arrows`), değilse numaralı menü. fzf'te sağ bölme, etiketli çerçeveler ve kısayollar `UI_PICK_*` ile gelir:
+
+| Değişken | Anlamı |
+|---|---|
+| `UI_PICK_DESCS` (dizi) | Her öğe için açıklama; fzf'te sağ bölmede (çok satırlı olabilir, kart), ok tuşlu seçicide alt satırda tek satır |
+| `UI_PICK_BACK_DESC` | Geri/çıkış satırının açıklaması |
+| `UI_PICK_WIDE=1` | Geniş düzen: sağda önizleme, etiketli çerçeveler (fzf ≥ 0.35 kenarlık etiketi, ≥ 0.58 liste/giriş çerçeveleri; eski fzf'te yalnız sağ önizleme) |
+| `UI_PICK_TITLE` | Yol çubuğu (kenarlık etiketi) |
+| `UI_PICK_HEADER` | Başlık: konum özeti ya da ileti (çok satırlı olabilir) |
+| `UI_PICK_START` | İmlecin başlangıç öğesi (varsayılan 1) |
+| `UI_PICK_EXPECT`, `UI_PICK_EXPECT_HINT` | fzf kısayolu (`--expect`, örn. `ctrl-o`) ve başlıktaki ipucu; basılırsa `ui_pick` `key:<ad>` döner (numaralı menüde elle yazılan değer kabul edilmez) |
+
+fzf sürümü `ui_fzf_version` ile okunur. Çok satırlı açıklama dosyaya `\037` ile tek satır olarak yazılır, önizlemede geri çevrilir.
+
+### Bölgeli ekran: `ui_region_begin <başlık> <gövde> <alt-etiket>` / `ui_region_end <etiket>` / `ui_region_reset`
+Üst bölüm (başlık + gövde metni) sabit çizilir, alt bölüm terminalin **kaydırma bölgesi** (DECSTBM) olur: sorular, `BECOME password:` istemi ve çıktı alt bölgede akar, ekran değişmez. Terminal < 24 satır ya da < 60 sütunsa `begin` 1 döner (çağıran eski akışa düşer). `Ctrl-C` bölgeyi sıfırlar. Test için `SSHPOCKET_ROWS`/`SSHPOCKET_COLS`. Not: fzf'yi canlı tutup altta çalıştırma denendi, `execute` sonrası fzf üst bölgeyi yeniden çizmediği için olmadı.
+
+### Liste editörü: `ui_edit_list`
+Öğeler liste olarak görünür (Enter = sil/değiştir), ➕ Ekle, ek satırlar, 🧹 Temizle, 💾 Kaydet, Vazgeç. Dosyaya hiçbir şey yazmaz; çağıran sonucu alır.
+
+| Değişken | Anlamı |
+|---|---|
+| `UI_LIST_ITEMS` (dizi) | Girdi: başlangıç öğeleri; çıktı: son hali |
+| `UI_LIST_TITLE`, `UI_LIST_NAME`, `UI_LIST_META`, `UI_LIST_DESC` | Yol çubuğu, liste adı, üst bilgi satırı, açıklama |
+| `UI_LIST_PROMPT`, `UI_LIST_ADD_HINT` | Ekleme istemi ve açıklama eki |
+| `UI_LIST_REQUIRED=yes` | Boş liste kaydedilemez |
+| `UI_LIST_VALIDATE` | Zorunlu işlev: `<öğe>`; geçerliyse 0, değilse nedeni yazıp 1 |
+| `UI_LIST_ADD` | İsteğe bağlı işlev: öğeyi kendi kuralıyla ekler (örn. daha geniş CIDR dar olanların yerine geçer) |
+| `UI_LIST_EXTRAS` + `UI_LIST_EXTRA_RUN` | Ek satırlar: `UI_LIST_X_LABELS/_ACTS/_DESCS` dizilerini doldurur; seçilince `<eylem>` ile çalışır, iletiyi `UI_LIST_MSG`'ye yazar |
+| `UI_LIST_SAVE_CHECK` | Kaydetmeden önce denetim: 1 dönerse düzenlemeye döner |
+
+Çıkış kodu: `0` Kaydet · `1` Vazgeç · `2` girdi bitti (EOF); `UI_LIST_DIRTY=1` kaydedilmemiş değişiklik vardı. Örnek kullanım: `ComponentsMenu.sh` `comp_menu_edit_list` (list[string], list[int], list[cidr]; CIDR'e özgü öneri/sorgu geri çağrımları orada).

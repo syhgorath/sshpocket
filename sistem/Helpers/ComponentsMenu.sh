@@ -30,24 +30,8 @@ _comp_menu_badge() {
     esac
 }
 
-# _comp_menu_pick <başlık-geri> <öğe>... → seçilen numara (geri/hata = 0); UI_PICK_DESCS/UI_PICK_BACK_DESC dinamik kapsamdan okunur
-_comp_menu_pick() {
-    local back="$1" choice i=1 label; shift
-    if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
-        choice=$(ui_pick_arrows "${UI_PICK_START:-1}" "$back" "$@")
-        echo "" >&2
-        # fzf kısayolu (UI_PICK_EXPECT): çağıran işler; yalnızca seçicinin kendi çıktısı, elle yazılan değil
-        if [ -n "${UI_PICK_EXPECT:-}" ] && [ "$choice" = "key:$UI_PICK_EXPECT" ]; then printf '%s' "$choice"; return 0; fi
-    else
-        for label in "$@"; do printf '  %d) %s\n' "$i" "$label" >&2; i=$((i + 1)); done
-        printf '  0) %s (q)\n' "$back" >&2
-        IFS= read -r -p "Seçim [0]: " choice || { printf '0'; return 0; }
-    fi
-    case "${choice:-0}" in
-        q|Q) choice=0 ;;
-    esac
-    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -le "$#" ]; then printf '%s' "$choice"; else printf '0'; fi
-}
+# _comp_menu_pick <başlık-geri> <öğe>... → UI.sh ui_pick'e devreder (seçilen numara; geri/hata = 0)
+_comp_menu_pick() { ui_pick "$@"; }
 
 # _comp_menu_ctx <paket> <sunucu> <bilgi> → COMP_MENU_VER/PKG/MF/DIR/VARS (dinamik kapsam)
 _comp_menu_ctx() {
@@ -177,49 +161,21 @@ _comp_menu_prep_text() {
     { _comp_menu_status_lines "$id" "$server" "$info"; _comp_menu_score_lines "$id" "$server"; } | sed 's/^ *//'
 }
 
-# ---- Çalışma paneli (fzf): üst bölüm sabit çizilir, alt bölüm terminalin KAYDIRMA BÖLGESİ olur ----
-# Onay soruları, 'BECOME password:' istemi ve çıktı hep alt bölgede akar; ekran değişmez. Küçük terminalde (<24 satır / <60 sütun) kullanılmaz.
-COMP_MENU_PANEL_ROWS=0
-_comp_menu_panel_int() { printf '\033[r' >&2; trap - INT; kill -INT $$; }
-_comp_menu_panel_reset() {
-    [ "$COMP_MENU_PANEL_ROWS" -gt 0 ] || return 0
-    printf '\033[r\033[%d;1H' "$COMP_MENU_PANEL_ROWS"
-    COMP_MENU_PANEL_ROWS=0; trap - INT
-}
-# _comp_menu_panel_rule <satır> <metin> <sütun>
-_comp_menu_panel_rule() {
-    local label="$2" cols="$3" n
-    n=$((cols - ${#label} - 4)); [ "$n" -gt 0 ] || n=1
-    printf '\033[%d;1H\033[2K\033[1m── %s %s\033[0m' "$1" "$label" "$(printf '─%.0s' $(seq 1 "$n"))"
-}
+# ---- Çalışma paneli (fzf): üst bölüm sabit çizilir, alt bölüm terminalin KAYDIRMA BÖLGESİ olur (genel parça: UI.sh ui_region_*) ----
 # _comp_menu_panel_begin <paket> <sunucu> <bilgi> <eylem> <eksik> → 0: panel kuruldu; 1: terminal küçük/bilinmiyor (eski akış)
 _comp_menu_panel_begin() {
-    local id="$1" server="$2" info="$3" name="$4" missing="$5" rows cols top i=0 line
-    rows="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; cols="${SSHPOCKET_COLS:-$(tput cols 2>/dev/null)}"
-    [[ "$rows" =~ ^[0-9]+$ && "$cols" =~ ^[0-9]+$ ]] && [ "$rows" -ge 24 ] && [ "$cols" -ge 60 ] || return 1
-    top=$((rows * 4 / 10)); [ "$top" -ge 11 ] || top=11; [ "$top" -le 16 ] || top=16
-    clear
-    printf '\033[1;1H\033[2K\033[1m  Sunucu › %s › Paketler › %s › %s\033[0m' "$server" "$id" "$name"
-    printf '\033[2;1H\033[2K%s' "$(printf '─%.0s' $(seq 1 "$cols"))"
-    while IFS= read -r line; do
-        i=$((i + 1)); [ "$i" -le $((top - 3)) ] || break
-        printf '\033[%d;1H\033[2K  %s' "$((i + 2))" "${line:0:$((cols - 4))}"
-    done < <(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")
-    _comp_menu_panel_rule "$top" "Çıktı: $name — $server (çalışıyor)" "$cols"
-    COMP_MENU_PANEL_ROWS="$rows"; COMP_MENU_PANEL_COLS="$cols"; COMP_MENU_PANEL_TOP="$top"
-    printf '\033[%d;%dr\033[%d;1H' "$((top + 1))" "$rows" "$((top + 1))"
-    trap _comp_menu_panel_int INT
-    return 0
+    local id="$1" server="$2" info="$3" name="$4" missing="$5"
+    ui_region_begin "Sunucu › $server › Paketler › $id › $name" "$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")" "Çıktı: $name — $server (çalışıyor)"
 }
 # _comp_menu_panel_end <eylem> <sunucu> <çıkış-kodu> <saniye> → çıktı çerçevesinin başlığını sonuçla günceller
 _comp_menu_panel_end() {
     local name="$1" server="$2" rc="$3" secs="$4" label
-    [ "$COMP_MENU_PANEL_ROWS" -gt 0 ] || return 0
     if [ "$rc" -eq 0 ]; then label="✅ $name — $server: başarılı · $secs sn"
     elif [ "$rc" -eq "${COMP_EXEC_REFUSED:-190}" ]; then label="⛔ $name — $server: çalıştırılmadı"
     else label="❌ $name — $server: başarısız (çıkış $rc) · $secs sn"; fi
-    printf '\0337'; _comp_menu_panel_rule "$COMP_MENU_PANEL_TOP" "$label" "$COMP_MENU_PANEL_COLS"; printf '\0338'
+    ui_region_end "$label"
 }
+_comp_menu_panel_reset() { ui_region_reset; }
 
 # _comp_menu_run_panel <paket> <sunucu> <bilgi> <eylem> <çıkış-kodu> <saniye> → çalışma bitince tek bakışta sonuç paneli (ok/changed/failed, sonuç anahtarları, günlük, sıradaki adım)
 _comp_menu_run_panel() {
@@ -558,113 +514,86 @@ comp_menu_vars() {
     done
 }
 
+# ---- Liste editörü: genel motor UI.sh ui_edit_list; burada yalnızca pakete/CIDR'e özgü geri çağrımlar ----
+# Durum (dinamik/genel): COMP_MENU_LIST_NAME, COMP_MENU_LIST_LA (CIDR önerisi için yerel adres), _SC/_SD (öneriler), _IP/_PORT/_USER/_KEY
+_comp_menu_list_validate() { comp_vars_check "$COMP_MENU_MF" "$COMP_MENU_LIST_NAME" "$1" 2>&1; }
+# list[cidr] ekleme: daha geniş ağ daha dar girdilerin yerine geçer; bilgi stdout'a (_comp_menu_cidr_add `list` dizisini okur/yazar)
+_comp_menu_list_cidr_add() {
+    local -a list=()
+    list=(${UI_LIST_ITEMS[@]+"${UI_LIST_ITEMS[@]}"})
+    _comp_menu_cidr_add "$1" || true
+    UI_LIST_ITEMS=(${list[@]+"${list[@]}"})
+}
+_comp_menu_list_cidr_extras() {
+    local c x i=0
+    COMP_MENU_LIST_SC=(); COMP_MENU_LIST_SD=()
+    if [ -n "$COMP_MENU_LIST_LA" ]; then
+        while IFS=$'\t' read -r c x; do [ -n "$c" ] && { COMP_MENU_LIST_SC+=("$c"); COMP_MENU_LIST_SD+=("$x"); }; done < <(comp_net_suggest "$COMP_MENU_LIST_LA")
+    fi
+    for c in ${COMP_MENU_LIST_SC[@]+"${COMP_MENU_LIST_SC[@]}"}; do
+        UI_LIST_X_LABELS+=("➕ öneri: $c"); UI_LIST_X_ACTS+=("sug:$i"); UI_LIST_X_DESCS+=("${COMP_MENU_LIST_SD[$i]}"); i=$((i + 1))
+    done
+    UI_LIST_X_LABELS+=("🔎 Sunucunun beni gördüğü adresi sorgula"); UI_LIST_X_ACTS+=(seen)
+    UI_LIST_X_DESCS+=("Salt okunur ssh ile sunucunun sizi hangi adresten gördüğünü sorar ve öneriyi buna göre günceller.")
+}
+_comp_menu_list_cidr_run() {
+    local seen
+    case "$1" in
+        sug:*) _comp_menu_list_cidr_add "${COMP_MENU_LIST_SC[${1#sug:}]}" > "${TMPDIR:-/tmp}/.sshpocket-cidr.$$"; UI_LIST_MSG=$(cat "${TMPDIR:-/tmp}/.sshpocket-cidr.$$"); rm -f -- "${TMPDIR:-/tmp}/.sshpocket-cidr.$$"; UI_LIST_DIRTY=1 ;;
+        seen)
+            if seen=$(comp_net_seen_by_server "$COMP_MENU_LIST_IP" "$COMP_MENU_LIST_PORT" "$COMP_MENU_LIST_USER" "$COMP_MENU_LIST_KEY"); then
+                COMP_MENU_LIST_LA="$seen/32"; UI_LIST_MSG="Sunucu sizi şu adresten görüyor: $seen"
+            else UI_LIST_MSG="⚠️  Sunucudan sorgulanamadı (ağ/anahtar/host key)."; fi ;;
+    esac
+}
+# list[cidr] tek ağla kaydedilirken uyarı: H o haliyle kaydeder, e düzenlemeye döner
+_comp_menu_list_cidr_save_check() {
+    local ans
+    [ "${#UI_LIST_ITEMS[@]}" -eq 1 ] || return 0
+    echo "⚠️  Listede yalnızca bir ağ var. Başka bir ağdan (ev LAN, ofis, başka VPN) bağlanırsanız SSH kapalı olur."
+    IFS= read -r -p "Başka ağ da eklemek ister misiniz? [e/H]: " ans || return 0
+    case "$ans" in e|E|evet|Evet) return 1 ;; esac
+    return 0
+}
+
 # comp_menu_edit_list <TSV-satırı> <sunucu> → etkileşimli (ok tuşlu/fzf) liste editörü: list[string], list[int] ve list[cidr].
-# Öğeler liste olarak görünür (Enter = sil/değiştir), ➕ Ekle, (cidr) öneriler ve sunucunun gördüğü adres, 🧹 Temizle, 💾 Kaydet.
 # Değişiklik Kaydet'e kadar dosyaya yazılmaz; Vazgeç hiçbir şey yazmaz.
+# shellcheck disable=SC2034  # UI_LIST_* değişkenlerini ui_edit_list (dinamik kapsam) okur
 comp_menu_edit_list() {
-    local line="$1" server="$2" n t req d desc cur v c x k i msg="" dirty=0 pick act kind="" ans out la="" seen ip port user key prefix tmpm
-    local -a list sc sd acts labels keep
+    local line="$1" server="$2" n t req d desc cur v rc prefix
+    local -a UI_LIST_ITEMS UI_LIST_X_LABELS UI_LIST_X_DESCS UI_LIST_X_ACTS
+    local UI_LIST_TITLE UI_LIST_NAME UI_LIST_META UI_LIST_DESC UI_LIST_REQUIRED UI_LIST_VALIDATE UI_LIST_ADD="" UI_LIST_EXTRAS="" UI_LIST_EXTRA_RUN="" UI_LIST_SAVE_CHECK="" UI_LIST_PROMPT UI_LIST_ADD_HINT="" UI_LIST_DIRTY UI_LIST_MSG
     n=$(_comp_menu_field "$line" 1); t=$(_comp_menu_field "$line" 2); req=$(_comp_menu_field "$line" 3)
     d=$(_comp_menu_field "$line" 4); desc=$(_comp_menu_field "$line" 8)
-    [ "$t" = "list[cidr]" ] && kind=cidr
     cur=$(comp_vars_get "$COMP_MENU_VARS" "$n" 2>/dev/null) || cur=""
-    list=(); [ -z "$cur" ] || IFS=',' read -r -a list <<< "$cur"
-    if [ "$kind" = cidr ]; then
+    UI_LIST_ITEMS=(); [ -z "$cur" ] || IFS=',' read -r -a UI_LIST_ITEMS <<< "$cur"
+    COMP_MENU_LIST_NAME="$n"
+    UI_LIST_TITLE="${UI_PICK_TITLE:-Değişkenler}"; UI_LIST_NAME="$n"; UI_LIST_DESC="$desc"; UI_LIST_REQUIRED="$req"
+    UI_LIST_META="$t$([ "$req" = yes ] && echo ' · zorunlu') · yazılı: ${cur:-(yok)}${d:+ · varsayılan: $d}"
+    UI_LIST_VALIDATE=_comp_menu_list_validate
+    if [ "$t" = "list[cidr]" ]; then
+        UI_LIST_PROMPT="Yeni CIDR (örn. 192.168.1.0/24): "; UI_LIST_ADD_HINT="CIDR, örn. 192.168.1.0/24. "
+        UI_LIST_ADD=_comp_menu_list_cidr_add; UI_LIST_EXTRAS=_comp_menu_list_cidr_extras
+        UI_LIST_EXTRA_RUN=_comp_menu_list_cidr_run; UI_LIST_SAVE_CHECK=_comp_menu_list_cidr_save_check
         prefix=$(module_prefix "$server")
-        ip=$(srv_get "$COMP_MENU_DIR" "$prefix" IP); port=$(srv_get "$COMP_MENU_DIR" "$prefix" PORT); port="${port:-22}"
-        user=$(srv_get "$COMP_MENU_DIR" "$prefix" USER); key=$(srv_get "$COMP_MENU_DIR" "$prefix" KEY)
-        [ -n "$key" ] || key="$COMP_MENU_DIR/id_ed25519_${server}"
-        if [ "${key:0:1}" = "~" ]; then key="$HOME${key:1}"; fi
-        la=$(comp_net_local "$ip" 2>/dev/null) || la=""
+        COMP_MENU_LIST_IP=$(srv_get "$COMP_MENU_DIR" "$prefix" IP); COMP_MENU_LIST_PORT=$(srv_get "$COMP_MENU_DIR" "$prefix" PORT); COMP_MENU_LIST_PORT="${COMP_MENU_LIST_PORT:-22}"
+        COMP_MENU_LIST_USER=$(srv_get "$COMP_MENU_DIR" "$prefix" USER); COMP_MENU_LIST_KEY=$(srv_get "$COMP_MENU_DIR" "$prefix" KEY)
+        [ -n "$COMP_MENU_LIST_KEY" ] || COMP_MENU_LIST_KEY="$COMP_MENU_DIR/id_ed25519_${server}"
+        if [ "${COMP_MENU_LIST_KEY:0:1}" = "~" ]; then COMP_MENU_LIST_KEY="$HOME${COMP_MENU_LIST_KEY:1}"; fi
+        COMP_MENU_LIST_LA=$(comp_net_local "$COMP_MENU_LIST_IP" 2>/dev/null) || COMP_MENU_LIST_LA=""
     fi
-    tmpm=$(mktemp "${TMPDIR:-/tmp}/sshpocket-liste.XXXXXX") || return 1
-    while true; do
-        sc=(); sd=(); acts=(); labels=()
-        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
-        local -a UI_PICK_DESCS=()
-        i=0
-        for c in ${list[@]+"${list[@]}"}; do
-            labels+=("• $c"); acts+=("item:$i"); UI_PICK_DESCS+=("Enter: bu öğeyi sil ya da değiştir. ${desc:-}"); i=$((i + 1))
-        done
-        labels+=("➕ Ekle…"); acts+=(add)
-        UI_PICK_DESCS+=("Yeni öğeyi yazarsınız; tür doğrulanır${kind:+ (CIDR, örn. 192.168.1.0/24)}. ${desc:-}")
-        if [ "$kind" = cidr ]; then
-            if [ -n "$la" ]; then
-                while IFS=$'\t' read -r c x; do [ -n "$c" ] && { sc+=("$c"); sd+=("$x"); }; done < <(comp_net_suggest "$la")
-            fi
-            i=0
-            for c in ${sc[@]+"${sc[@]}"}; do labels+=("➕ öneri: $c"); acts+=("sug:$i"); UI_PICK_DESCS+=("${sd[$i]}"); i=$((i + 1)); done
-            labels+=("🔎 Sunucunun beni gördüğü adresi sorgula"); acts+=(seen)
-            UI_PICK_DESCS+=("Salt okunur ssh ile sunucunun sizi hangi adresten gördüğünü sorar ve öneriyi buna göre günceller.")
-        fi
-        if [ "${#list[@]}" -gt 0 ]; then labels+=("🧹 Hepsini temizle"); acts+=(clear); UI_PICK_DESCS+=("Listedeki tüm öğeleri kaldırır (Kaydet'e kadar dosyaya yazılmaz)."); fi
-        labels+=("💾 Kaydet (${#list[@]} öğe)"); acts+=(save)
-        UI_PICK_DESCS+=("Listeyi bu sunucunun değişken dosyasına yazar.")
-        clear
-        if declare -F ui_header >/dev/null; then ui_header "${UI_PICK_TITLE:-Değişkenler} › $n"; fi
-        [ -z "$msg" ] || { echo "$msg"; echo ""; }
-        # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
-        local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_BACK_DESC="Kaydetmeden listeye (değişkenler) döner."
-        local UI_PICK_HEADER=""
-        UI_PICK_HEADER="${msg:+$msg$'\n'}$t$([ "$req" = yes ] && echo ' · zorunlu') · yazılı: ${cur:-(yok)}${d:+ · varsayılan: $d}$([ "$dirty" = 1 ] && echo ' · ✏️ kaydedilmedi')"
-        msg=""
-        pick=$(_comp_menu_pick "Vazgeç (kaydetme)" "${labels[@]}")
-        if ! [ "$pick" -ge 1 ] 2>/dev/null; then
-            rm -f -- "$tmpm"
-            if [ "$dirty" = 1 ]; then COMP_MENU_FLASH="Vazgeçildi: $n değişmedi."; fi
-            return 0
-        fi
-        act="${acts[$((pick - 1))]}"
-        case "$act" in
-            add)
-                IFS= read -r -p "Yeni öğe: " c || { rm -f -- "$tmpm"; return 1; }
-                [ -n "$c" ] || continue
-                if out=$(comp_vars_check "$COMP_MENU_MF" "$n" "$c" 2>&1); then
-                    if [ "$kind" = cidr ]; then _comp_menu_cidr_add "$c" > "$tmpm"; msg=$(cat "$tmpm"); dirty=1
-                    else
-                        x=0; for v in ${list[@]+"${list[@]}"}; do [ "$v" = "$c" ] && x=1; done
-                        if [ "$x" = 1 ]; then msg="Zaten listede: $c"; else list+=("$c"); dirty=1; fi
-                    fi
-                else msg="⚠️  $out"; fi ;;
-            sug:*)
-                _comp_menu_cidr_add "${sc[${act#sug:}]}" > "$tmpm"; msg=$(cat "$tmpm"); dirty=1 ;;
-            seen)
-                if seen=$(comp_net_seen_by_server "$ip" "$port" "$user" "$key"); then la="$seen/32"; msg="Sunucu sizi şu adresten görüyor: $seen"
-                else msg="⚠️  Sunucudan sorgulanamadı (ağ/anahtar/host key)."; fi ;;
-            clear) list=(); dirty=1 ;;
-            item:*)
-                k="${act#item:}"
-                # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
-                local -a UI_PICK_DESCS=("Bu öğeyi listeden çıkarır." "Öğeyi yeni bir değerle değiştirir (tür doğrulanır).")
-                # shellcheck disable=SC2034
-                local UI_PICK_WIDE=1 UI_PICK_START=1 UI_PICK_EXPECT="" UI_PICK_HEADER="Öğe: ${list[$k]}" UI_PICK_BACK_DESC="Öğeye dokunmadan döner."
-                pick=$(_comp_menu_pick "Geri" "🗑 Sil" "✏️  Değiştir")
-                case "$pick" in
-                    1) keep=(); i=0; for v in "${list[@]}"; do [ "$i" -eq "$k" ] || keep+=("$v"); i=$((i + 1)); done
-                       list=(); for v in ${keep[@]+"${keep[@]}"}; do list+=("$v"); done; dirty=1 ;;
-                    2) IFS= read -r -p "Yeni değer (şimdi: ${list[$k]}): " c || { rm -f -- "$tmpm"; return 1; }
-                       if [ -z "$c" ]; then :
-                       elif out=$(comp_vars_check "$COMP_MENU_MF" "$n" "$c" 2>&1); then list[k]="$c"; dirty=1
-                       else msg="⚠️  $out"; fi ;;
-                esac ;;
-            save)
-                if [ "${#list[@]}" -eq 0 ]; then
-                    if [ "$req" = yes ]; then msg="⚠️  Liste boş olamaz (zorunlu)."; continue; fi
-                    comp_vars_unset "$COMP_MENU_VARS" "$n"; rm -f -- "$tmpm"
-                    COMP_MENU_FLASH="Silindi (varsayılana döner): $n"; return 0
-                fi
-                if [ "$kind" = cidr ] && [ "${#list[@]}" -eq 1 ]; then
-                    echo "⚠️  Listede yalnızca bir ağ var. Başka bir ağdan (ev LAN, ofis, başka VPN) bağlanırsanız SSH kapalı olur."
-                    IFS= read -r -p "Başka ağ da eklemek ister misiniz? [e/H]: " ans || { rm -f -- "$tmpm"; return 1; }
-                    case "$ans" in e|E|evet|Evet) continue ;; esac
-                fi
-                v=$(IFS=,; printf '%s' "${list[*]}")
-                rm -f -- "$tmpm"
-                if comp_vars_save "$COMP_MENU_MF" "$COMP_MENU_VARS" "$n" "$v" >/dev/null; then COMP_MENU_FLASH="✅ Kaydedildi: $n = $v"
-                else COMP_MENU_FLASH="⚠️  Kaydedilemedi: $n"; fi
-                return 0 ;;
-        esac
-    done
+    ui_edit_list && rc=0 || rc=$?
+    case "$rc" in
+        1) [ "$UI_LIST_DIRTY" = 1 ] && COMP_MENU_FLASH="Vazgeçildi: $n değişmedi." ; return 0 ;;
+        2) return 1 ;;
+    esac
+    if [ "${#UI_LIST_ITEMS[@]}" -eq 0 ]; then
+        comp_vars_unset "$COMP_MENU_VARS" "$n"; COMP_MENU_FLASH="Silindi (varsayılana döner): $n"; return 0
+    fi
+    v=$(IFS=,; printf '%s' "${UI_LIST_ITEMS[*]}")
+    if comp_vars_save "$COMP_MENU_MF" "$COMP_MENU_VARS" "$n" "$v" >/dev/null; then COMP_MENU_FLASH="✅ Kaydedildi: $n = $v"
+    else COMP_MENU_FLASH="⚠️  Kaydedilemedi: $n"; fi
+    return 0
 }
 
 # _comp_menu_interactive → 0 ise etkileşimli seçici (ok tuşlu/fzf) kullanılır; değilse numaralı mod (eski akış)
