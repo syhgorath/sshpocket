@@ -42,7 +42,7 @@ echo "\$ANSIBLE_CONFIG|\$ANSIBLE_HOST_KEY_CHECKING|\${ANSIBLE_TIMEOUT:-yok}" > "
 # -i ve -e @ dosyalarının İÇERİĞİNİ çalışma sırasında kaydet
 while [ \$# -gt 0 ]; do case "\$1" in -i) cp "\$2" "$T/seen_inv"; stat -c %a "\$2" >/dev/null 2>&1 && stat -c %a "\$2" > "$T/inv_mode" || stat -f %Lp "\$2" > "$T/inv_mode"; echo "\$2" > "$T/inv_path";; -e) f="\${2#@}"; cp "\$f" "$T/seen_vars"; echo "\$f" > "$T/vars_path";; esac; shift; done
 [ -n "\${FAKE_OUT:-}" ] && printf '%s\n' "\$FAKE_OUT"
-[ -n "\${FAKE_KILL_PARENT:-}" ] && { touch "$T/started"; kill -\${FAKE_SIG:-TERM} \$(ps -o ppid= -p \$PPID | tr -d ' '); sleep 30; }
+[ -n "\${FAKE_KILL_PARENT:-}" ] && { touch "$T/started"; kill -\${FAKE_SIG:-TERM} \$(ps -o ppid= -p \$PPID | tr -d ' '); exec >/dev/null 2>&1 3>&- 4>&-; sleep 3; }
 exit \${FAKE_RC:-0}
 STUB
     chmod +x "$T/bin/ansible-playbook"

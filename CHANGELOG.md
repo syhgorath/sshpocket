@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- Test: `yürütme: TERM ve HUP` testinin sahte `ansible-playbook`'u sinyalden sonra çıktı borularını bırakır; yetim işlem `bats`'ı asmaz ve tam koşuda dalgalanmaz.
+
 ### Değişti
 - **Ortak arayüz parçaları (`UI.sh`):** menülerdeki seçici (`ui_pick`), kaydırma bölgeli ekran (`ui_region_begin/end/reset`, `ui_rule_label`) ve genel liste editörü (`ui_edit_list`) paket menüsünden çıkarıldı; `comp_menu_edit_list` artık yalnızca CIDR/paket geri çağrımlarını verir. Davranış değişmedi. `UI_PICK_*` ve `UI_LIST_*` bağlam değişkenleri `docs/ui-design.md` §5b'de belgelendi (yeni paketler, örn. `utility`, aynı altyapıyı kullanır). Paketten bağımsız yeni testler.
 - **Eylem paneli (fzf):** eylem listesinde hazırlık özeti başlıkta, seçili eylemin kartı (etkiler, onay, ön koşul, kapı durumu, son sonuç, uyarılar) sağ bölmede; eylem bitince sonuç paneli (durum, süre, `ok/changed/failed` özeti, sonuç anahtarları, günlük yolu, sıradaki adım). Terminal ≥ 24 satır ve 60 sütunsa çalışma sırasında üst bölüm sabit kalır, alt bölüm kaydırma bölgesi olur: onay soruları, `BECOME password:` istemi ve çıktı aynı ekranda akar, `Ctrl-C` bölgeyi sıfırlar. Küçük terminalde ve numaralı modda eski akış. Çok satırlı açıklama desteği eklendi.
