@@ -492,3 +492,81 @@ PY
     [ "$(sed -n 2p "$BATS_TEST_TMPDIR/fzf.desc")" = $'Birinci\037İkinci\037Üçüncü' ]
     grep -q -- "gsub" "$BATS_TEST_TMPDIR/fzf.args"
 }
+
+
+# ---------- bölgeli ekran (ui_region_*) ve genel liste editörü (ui_edit_list): paketten bağımsız ----------
+@test "ui_region: kaydırma bölgesi kurulur, alt çerçeve sonuçla güncellenir, sıfırlanınca bölge kalkar" {
+    export SSHPOCKET_ROWS=30 SSHPOCKET_COLS=80
+    clear() { :; }
+    f() { ui_region_begin "Başlık" $'satır bir\nsatır iki' "Etiket" && ui_region_end "Bitti" && ui_region_reset; }
+    run f
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'\033[13;30r'* ]] || false                      # üst=30*4/10=12 → bölge 13..30
+    [[ "$output" == *"Başlık"* && "$output" == *"satır bir"* && "$output" == *"satır iki"* ]] || false
+    [[ "$output" == *"Etiket"* && "$output" == *"Bitti"* ]] || false
+    [[ "$output" == *$'\033[r'* ]] || false
+}
+
+@test "ui_region: küçük ya da bilinmeyen terminalde kurulmaz (1); sıfırlama kurulmamışken sessiz" {
+    clear() { :; }
+    SSHPOCKET_ROWS=20 SSHPOCKET_COLS=80 run ui_region_begin "T" "g" "E"
+    [ "$status" -eq 1 ]
+    SSHPOCKET_ROWS=30 SSHPOCKET_COLS=40 run ui_region_begin "T" "g" "E"
+    [ "$status" -eq 1 ]
+    SSHPOCKET_ROWS=abc SSHPOCKET_COLS=80 run ui_region_begin "T" "g" "E"
+    [ "$status" -eq 1 ]
+    run ui_region_reset
+    [ "$status" -eq 0 ]; [ -z "$output" ]
+}
+
+# Motor testleri: ui_pick sahte seçiciyle (kuyruk); satırlar: öğeler, ➕ Ekle, (ek satırlar), 🧹 Temizle (öğe varsa), 💾 Kaydet
+liste_motoru() {
+    : > "$BATS_TEST_TMPDIR/q"; for x in "$@"; do echo "$x" >> "$BATS_TEST_TMPDIR/q"; done
+    clear() { :; }
+    ui_arrows_enabled() { return 0; }
+    ui_pick_arrows() { local a; a=$(head -n 1 "$BATS_TEST_TMPDIR/q"); sed -i.bak '1d' "$BATS_TEST_TMPDIR/q"; rm -f "$BATS_TEST_TMPDIR/q.bak"; printf '%s' "${a:-0}"; }
+    sayi_dogrula() { [[ "$1" =~ ^[0-9]+$ ]] || { echo "sayı olmalı"; return 1; }; }
+}
+
+@test "ui_edit_list: ekle + kaydet (0) son listeyi verir; geçersiz öğe reddedilir ve neden gösterilir" {
+    liste_motoru 3 6
+    f() { UI_LIST_ITEMS=(1 2); UI_LIST_VALIDATE=sayi_dogrula; ui_edit_list; local rc=$?; echo "rc=$rc items=${UI_LIST_ITEMS[*]} dirty=$UI_LIST_DIRTY"; }
+    run f <<<"7"
+    [[ "$output" == *"rc=0 items=1 2 7 dirty=1"* ]] || false
+    liste_motoru 3 3 6
+    run f <<<$'abc\n9'
+    [[ "$output" == *"sayı olmalı"* ]] || false
+    [[ "$output" == *"items=1 2 9"* ]] || false
+}
+
+@test "ui_edit_list: Vazgeç (1) listeyi kaydetmez; zorunlu boş liste kaydedilemez; EOF (2)" {
+    liste_motoru 0
+    f() { UI_LIST_ITEMS=(1); UI_LIST_VALIDATE=sayi_dogrula; UI_LIST_REQUIRED=${REQ:-no}; ui_edit_list; echo "rc=$?"; }
+    run f
+    [[ "$output" == *"rc=1"* ]] || false
+    liste_motoru 3 2 0                                   # tek öğe: •=1 Ekle=2 Temizle=3 Kaydet=4 → 3=Temizle, boş: Ekle=1 Kaydet=2
+    liste_motoru 3 2 0                                   # (aynı kuyruk) Temizle → Kaydet(zorunlu boş) → Vazgeç
+    REQ=yes run f
+    [[ "$output" == *"Liste boş olamaz"* ]] || false
+    liste_motoru 2
+    run f </dev/null                                      # Ekle → istem EOF
+    [[ "$output" == *"rc=1"* || "$output" == *"rc=2"* ]] || false
+}
+
+@test "ui_edit_list: ek satırlar, ekleme ve kaydetme geri çağrımları paketten bağımsız çalışır" {
+    liste_motoru 2 4
+    ek_satir() { UI_LIST_X_LABELS+=("✚ ekstra"); UI_LIST_X_ACTS+=(ex1); UI_LIST_X_DESCS+=("ek açıklama"); }
+    ek_calistir() { UI_LIST_MSG="ek eylem çalıştı: $1"; UI_LIST_ITEMS+=("eklenen"); UI_LIST_DIRTY=1; }
+    f() { UI_LIST_ITEMS=(); UI_LIST_VALIDATE=true; UI_LIST_EXTRAS=ek_satir; UI_LIST_EXTRA_RUN=ek_calistir; ui_edit_list; echo "rc=$? items=${UI_LIST_ITEMS[*]}"; }
+    # boş liste satırları: Ekle=1 ✚ ekstra=2 Kaydet=3 → 2 = ek eylem; sonra tek öğe: •=1 Ekle=2 ✚=3 Temizle=4 Kaydet=5
+    liste_motoru 2 5
+    run f
+    [[ "$output" == *"rc=0 items=eklenen"* ]] || false
+    [[ "$output" == *"ek eylem çalıştı: ex1"* ]] || false
+    # kaydetme denetimi 1 dönerse düzenlemeye döner
+    ret1() { return 1; }
+    g() { UI_LIST_ITEMS=(a); UI_LIST_VALIDATE=true; UI_LIST_SAVE_CHECK=ret1; ui_edit_list; echo "rc=$?"; }
+    liste_motoru 4 0                                      # Kaydet(=4: •=1 Ekle=2 Temizle=3 Kaydet=4) → denetim reddeder → Vazgeç
+    run g
+    [[ "$output" == *"rc=1"* ]] || false
+}

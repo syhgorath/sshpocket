@@ -5,7 +5,7 @@ load test_helper
 setup() {
     load_helpers
     export SISTEM_PATH="$ROOT/sistem"
-    for f in Servers Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsGates ComponentsVars ComponentsMenu; do source "$H/$f.sh"; done
+    for f in UI Servers Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsGates ComponentsVars ComponentsMenu; do source "$H/$f.sh"; done
     T="$BATS_TEST_TMPDIR"
     export SSHPOCKET_COMPONENTS_DIR="$T/comps" SSHPOCKET_SERVERS_DIR="$T/srv"
     D="$T/srv/web1"; mkdir -p "$D" "$T/comps/demo/1.0.0"

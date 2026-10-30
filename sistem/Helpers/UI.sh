@@ -269,3 +269,157 @@ ui_describe_entry() {
 # Ana menü döngüsüne "bu eylemden sonra duraklatma" der (menüden geri dönüldü; okunacak çıktı yok).
 # shellcheck disable=SC2034  # Main.sh döngüsü okur
 ui_no_pause() { SSHPOCKET_NO_PAUSE=1; }
+
+# ui_pick <geri-etiketi> <öğe>... → seçilen numara (geri/hata = 0). Etkileşimli modda (UI.sh seçicileri) ok tuşlu/fzf, değilse numaralı menü.
+# Bağlam (çağıranın dinamik kapsamı, hepsi isteğe bağlı): bkz. docs/ui-design.md "Seçici bağlam değişkenleri" (UI_PICK_*).
+ui_pick() {
+    local back="$1" choice i=1 label; shift
+    if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+        choice=$(ui_pick_arrows "${UI_PICK_START:-1}" "$back" "$@")
+        echo "" >&2
+        # fzf kısayolu (UI_PICK_EXPECT): çağıran işler; yalnızca seçicinin kendi çıktısı, elle yazılan değil
+        if [ -n "${UI_PICK_EXPECT:-}" ] && [ "$choice" = "key:$UI_PICK_EXPECT" ]; then printf '%s' "$choice"; return 0; fi
+    else
+        for label in "$@"; do printf '  %d) %s\n' "$i" "$label" >&2; i=$((i + 1)); done
+        printf '  0) %s (q)\n' "$back" >&2
+        IFS= read -r -p "Seçim [0]: " choice || { printf '0'; return 0; }
+    fi
+    case "${choice:-0}" in
+        q|Q) choice=0 ;;
+    esac
+    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -le "$#" ]; then printf '%s' "$choice"; else printf '0'; fi
+}
+
+# ---- Genel liste editörü: öğeler liste olarak görünür; Enter = sil/değiştir, ➕ Ekle, (ek satırlar), 🧹 Temizle, 💾 Kaydet, Vazgeç ----
+# Girdi (çağıranın kapsamı):
+#   UI_LIST_ITEMS (dizi)   başlangıç öğeleri; çıkışta son hali
+#   UI_LIST_TITLE          yol çubuğu (üst başlık/kenarlık etiketi)        UI_LIST_NAME  liste adı
+#   UI_LIST_META           üst bilgi satırı (tür, zorunlu, yazılı, varsayılan)   UI_LIST_DESC  açıklama (sağ bölme)
+#   UI_LIST_ADD_HINT       "Ekle…" açıklamasına ek metin                   UI_LIST_PROMPT  ekleme istemi (varsayılan "Yeni öğe: ")
+#   UI_LIST_REQUIRED       yes → boş liste kaydedilemez
+#   UI_LIST_VALIDATE       işlev: <öğe> → 0 geçerli; geçersizse nedenini stdout'a yazar
+#   UI_LIST_ADD            işlev (isteğe bağlı): <öğe> → UI_LIST_ITEMS'a kendi kuralıyla ekler, bilgiyi stdout'a yazar (varsayılan: yineleneni atla, sona ekle)
+#   UI_LIST_EXTRAS         işlev (isteğe bağlı): UI_LIST_X_LABELS / UI_LIST_X_DESCS / UI_LIST_X_ACTS dizilerini doldurur (ek satırlar)
+#   UI_LIST_EXTRA_RUN      işlev (isteğe bağlı): <eylem> → ek satır seçilince çalışır; iletiyi UI_LIST_MSG'ye yazabilir
+#   UI_LIST_SAVE_CHECK     işlev (isteğe bağlı): 0 = kaydetmeye devam · 1 = düzenlemeye dön
+# Çıkış kodu: 0 Kaydet (son hali UI_LIST_ITEMS) · 1 Vazgeç · 2 girdi bitti (EOF). UI_LIST_DIRTY=1: kaydedilmemiş değişiklik vardı.
+ui_edit_list() {
+    local i c x v k pick act out msg="" tmpm
+    local -a labels acts
+    UI_LIST_DIRTY=0; UI_LIST_MSG=""
+    tmpm=$(mktemp "${TMPDIR:-/tmp}/sshpocket-liste.XXXXXX") || return 2
+    while true; do
+        labels=(); acts=(); UI_LIST_X_LABELS=(); UI_LIST_X_DESCS=(); UI_LIST_X_ACTS=()
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=()
+        i=0
+        for c in ${UI_LIST_ITEMS[@]+"${UI_LIST_ITEMS[@]}"}; do
+            labels+=("• $c"); acts+=("item:$i"); UI_PICK_DESCS+=("Enter: bu öğeyi sil ya da değiştir. ${UI_LIST_DESC:-}"); i=$((i + 1))
+        done
+        labels+=("➕ Ekle…"); acts+=(add)
+        UI_PICK_DESCS+=("Yeni öğeyi yazarsınız; tür doğrulanır. ${UI_LIST_ADD_HINT:-}${UI_LIST_DESC:-}")
+        if [ -n "${UI_LIST_EXTRAS:-}" ]; then
+            "$UI_LIST_EXTRAS"
+            i=0
+            for c in ${UI_LIST_X_LABELS[@]+"${UI_LIST_X_LABELS[@]}"}; do
+                labels+=("$c"); acts+=("${UI_LIST_X_ACTS[$i]}"); UI_PICK_DESCS+=("${UI_LIST_X_DESCS[$i]:-}"); i=$((i + 1))
+            done
+        fi
+        if [ "${#UI_LIST_ITEMS[@]}" -gt 0 ]; then labels+=("🧹 Hepsini temizle"); acts+=(clear); UI_PICK_DESCS+=("Listedeki tüm öğeleri kaldırır (Kaydet'e kadar dosyaya yazılmaz)."); fi
+        labels+=("💾 Kaydet (${#UI_LIST_ITEMS[@]} öğe)"); acts+=(save)
+        UI_PICK_DESCS+=("Listeyi kaydeder.")
+        clear
+        if declare -F ui_header >/dev/null; then ui_header "${UI_LIST_TITLE:-Liste} › ${UI_LIST_NAME:-}"; fi
+        [ -z "$msg" ] || { echo "$msg"; echo ""; }
+        # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
+        local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_BACK_DESC="Kaydetmeden döner."
+        # shellcheck disable=SC2034
+        local UI_PICK_HEADER=""
+        UI_PICK_HEADER="${msg:+$msg$'\n'}${UI_LIST_META:-}$([ "$UI_LIST_DIRTY" = 1 ] && echo ' · ✏️ kaydedilmedi')"
+        msg=""
+        pick=$(ui_pick "Vazgeç (kaydetme)" "${labels[@]}")
+        if ! [ "$pick" -ge 1 ] 2>/dev/null; then rm -f -- "$tmpm"; return 1; fi
+        act="${acts[$((pick - 1))]}"
+        case "$act" in
+            add)
+                IFS= read -r -p "${UI_LIST_PROMPT:-Yeni öğe: }" c || { rm -f -- "$tmpm"; return 2; }
+                [ -n "$c" ] || continue
+                if out=$("$UI_LIST_VALIDATE" "$c" 2>&1); then
+                    if [ -n "${UI_LIST_ADD:-}" ]; then "$UI_LIST_ADD" "$c" > "$tmpm"; msg=$(cat "$tmpm")
+                    else
+                        x=0; for v in ${UI_LIST_ITEMS[@]+"${UI_LIST_ITEMS[@]}"}; do [ "$v" = "$c" ] && x=1; done
+                        if [ "$x" = 1 ]; then msg="Zaten listede: $c"; else UI_LIST_ITEMS+=("$c"); fi
+                    fi
+                    UI_LIST_DIRTY=1
+                else msg="⚠️  $out"; fi ;;
+            clear) UI_LIST_ITEMS=(); UI_LIST_DIRTY=1 ;;
+            item:*)
+                k="${act#item:}"
+                # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+                local -a UI_PICK_DESCS=("Bu öğeyi listeden çıkarır." "Öğeyi yeni bir değerle değiştirir (tür doğrulanır).")
+                # shellcheck disable=SC2034
+                local UI_PICK_WIDE=1 UI_PICK_START=1 UI_PICK_EXPECT="" UI_PICK_HEADER="Öğe: ${UI_LIST_ITEMS[$k]}" UI_PICK_BACK_DESC="Öğeye dokunmadan döner."
+                pick=$(ui_pick "Geri" "🗑 Sil" "✏️  Değiştir")
+                case "$pick" in
+                    1) local -a keep=(); i=0
+                       for v in "${UI_LIST_ITEMS[@]}"; do [ "$i" -eq "$k" ] || keep+=("$v"); i=$((i + 1)); done
+                       UI_LIST_ITEMS=(); for v in ${keep[@]+"${keep[@]}"}; do UI_LIST_ITEMS+=("$v"); done; UI_LIST_DIRTY=1 ;;
+                    2) IFS= read -r -p "Yeni değer (şimdi: ${UI_LIST_ITEMS[$k]}): " c || { rm -f -- "$tmpm"; return 2; }
+                       if [ -z "$c" ]; then :
+                       elif out=$("$UI_LIST_VALIDATE" "$c" 2>&1); then UI_LIST_ITEMS[k]="$c"; UI_LIST_DIRTY=1
+                       else msg="⚠️  $out"; fi ;;
+                esac ;;
+            save)
+                if [ "${#UI_LIST_ITEMS[@]}" -eq 0 ] && [ "${UI_LIST_REQUIRED:-no}" = yes ]; then msg="⚠️  Liste boş olamaz (zorunlu)."; continue; fi
+                if [ -n "${UI_LIST_SAVE_CHECK:-}" ] && ! "$UI_LIST_SAVE_CHECK"; then continue; fi
+                rm -f -- "$tmpm"; return 0 ;;
+            *)
+                if [ -n "${UI_LIST_EXTRA_RUN:-}" ]; then UI_LIST_MSG=""; "$UI_LIST_EXTRA_RUN" "$act"; msg="$UI_LIST_MSG"; fi ;;
+        esac
+    done
+}
+
+# ---- Bölgeli ekran: üst bölüm sabit çizilir, alt bölüm terminalin KAYDIRMA BÖLGESİ (DECSTBM) olur ----
+# Alt bölgedeki her şey (sorular, parola istemleri, çıktı) kendi içinde kaydırılır; üst bölüm yerinde kalır.
+# ui_region_begin <başlık> <gövde-metni> <alt-çerçeve-etiketi> → 0: kuruldu · 1: terminal küçük (<24 satır / <60 sütun) ya da bilinmiyor
+# ui_region_end <etiket> → alt çerçevenin başlığını günceller · ui_region_reset → bölgeyi sıfırlar, imleci en alta alır
+# Ctrl-C de bölgeyi sıfırlar. Test için SSHPOCKET_ROWS / SSHPOCKET_COLS terminal boyutunu geçersiz kılar.
+UI_REGION_ROWS=0
+_ui_region_int() { printf '\033[r' >&2; trap - INT; kill -INT $$; }
+
+# ui_rule_label <satır> <etiket> <sütun> → verilen satıra "── etiket ─────" çizer (kalın)
+ui_rule_label() {
+    local label="$2" cols="$3" n
+    n=$((cols - ${#label} - 4)); [ "$n" -gt 0 ] || n=1
+    printf '\033[%d;1H\033[2K\033[1m── %s %s\033[0m' "$1" "$label" "$(printf '─%.0s' $(seq 1 "$n"))"
+}
+
+ui_region_begin() {
+    local title="$1" body="$2" label="$3" rows cols top i=0 line
+    rows="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; cols="${SSHPOCKET_COLS:-$(tput cols 2>/dev/null)}"
+    [[ "$rows" =~ ^[0-9]+$ && "$cols" =~ ^[0-9]+$ ]] && [ "$rows" -ge 24 ] && [ "$cols" -ge 60 ] || return 1
+    top=$((rows * 4 / 10)); [ "$top" -ge 11 ] || top=11; [ "$top" -le 16 ] || top=16
+    clear
+    printf '\033[1;1H\033[2K\033[1m  %s\033[0m' "$title"
+    printf '\033[2;1H\033[2K%s' "$(printf '─%.0s' $(seq 1 "$cols"))"
+    while IFS= read -r line; do
+        i=$((i + 1)); [ "$i" -le $((top - 3)) ] || break
+        printf '\033[%d;1H\033[2K  %s' "$((i + 2))" "${line:0:$((cols - 4))}"
+    done <<< "$body"
+    ui_rule_label "$top" "$label" "$cols"
+    UI_REGION_ROWS="$rows"; UI_REGION_COLS="$cols"; UI_REGION_TOP="$top"
+    printf '\033[%d;%dr\033[%d;1H' "$((top + 1))" "$rows" "$((top + 1))"
+    trap _ui_region_int INT
+    return 0
+}
+
+ui_region_end() {
+    [ "$UI_REGION_ROWS" -gt 0 ] || return 0
+    printf '\0337'; ui_rule_label "$UI_REGION_TOP" "$1" "$UI_REGION_COLS"; printf '\0338'
+}
+
+ui_region_reset() {
+    [ "$UI_REGION_ROWS" -gt 0 ] || return 0
+    printf '\033[r\033[%d;1H' "$UI_REGION_ROWS"
+    UI_REGION_ROWS=0; trap - INT
+}
