@@ -34,7 +34,7 @@ _comp_menu_badge() {
 _comp_menu_pick() {
     local back="$1" choice i=1 label; shift
     if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
-        choice=$(ui_pick_arrows 1 "$back" "$@")
+        choice=$(ui_pick_arrows "${UI_PICK_START:-1}" "$back" "$@")
         echo "" >&2
         # fzf kısayolu (UI_PICK_EXPECT): çağıran işler; yalnızca seçicinin kendi çıktısı, elle yazılan değil
         if [ -n "${UI_PICK_EXPECT:-}" ] && [ "$choice" = "key:$UI_PICK_EXPECT" ]; then printf '%s' "$choice"; return 0; fi
@@ -391,11 +391,13 @@ comp_menu_vars() {
         fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Eylem listesine döner."
+        local flash="${COMP_MENU_FLASH:-}"; COMP_MENU_FLASH=""
+        [ -z "$flash" ] || echo "$flash"
         # fzf geniş düzeni: yol çubuğu kenarlık etiketi, sağda açıklama, üstte konum özeti, Ctrl-O ile grup seçimi
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         local UI_PICK_WIDE=1 UI_PICK_TITLE="Sunucu › $server › $id › Değişkenler" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER=""
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
-        UI_PICK_HEADER="Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg"
+        UI_PICK_HEADER="${flash:+$flash$'\n'}Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg"
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         if [ -n "$glist" ]; then UI_PICK_EXPECT="ctrl-o"; UI_PICK_EXPECT_HINT="Ctrl-O: grup seç"; fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
@@ -419,6 +421,8 @@ comp_menu_vars() {
         if printf '%s\n' "$forced" | grep -qxF -- "$n"; then
             echo "ℹ️  $n çalıştırıcı tarafından belirlenir (hassas çıktı USB'ye yazılmasın diye kullanıcı klasörüne yönlendirilir)."
             read -r -p "Devam için Enter..." _ || return 0
+        elif [[ "$t" == list\[* ]] && _comp_menu_interactive; then
+            comp_menu_edit_list "$line" "$server" || return 0
         elif [[ "$t" == list\[cidr\] ]]; then
             comp_menu_edit_cidr "$n" "$server" || return 0
         else
@@ -427,29 +431,199 @@ comp_menu_vars() {
     done
 }
 
-# comp_menu_edit_value <TSV-satırı> → tek değişkeni düzenletir (doğrula → gerekirse onay → yaz)
-comp_menu_edit_value() {
-    local line="$1" n t d lo hi desc cur v v2 out
-    n=$(_comp_menu_field "$line" 1); t=$(_comp_menu_field "$line" 2); d=$(_comp_menu_unq "$(_comp_menu_field "$line" 4)")
-    lo=$(_comp_menu_field "$line" 5); hi=$(_comp_menu_field "$line" 6); desc=$(_comp_menu_field "$line" 8)
+# comp_menu_edit_list <TSV-satırı> <sunucu> → etkileşimli (ok tuşlu/fzf) liste editörü: list[string], list[int] ve list[cidr].
+# Öğeler liste olarak görünür (Enter = sil/değiştir), ➕ Ekle, (cidr) öneriler ve sunucunun gördüğü adres, 🧹 Temizle, 💾 Kaydet.
+# Değişiklik Kaydet'e kadar dosyaya yazılmaz; Vazgeç hiçbir şey yazmaz.
+comp_menu_edit_list() {
+    local line="$1" server="$2" n t req d desc cur v c x k i msg="" dirty=0 pick act kind="" ans out la="" seen ip port user key prefix tmpm
+    local -a list sc sd acts labels keep
+    n=$(_comp_menu_field "$line" 1); t=$(_comp_menu_field "$line" 2); req=$(_comp_menu_field "$line" 3)
+    d=$(_comp_menu_field "$line" 4); desc=$(_comp_menu_field "$line" 8)
+    [ "$t" = "list[cidr]" ] && kind=cidr
     cur=$(comp_vars_get "$COMP_MENU_VARS" "$n" 2>/dev/null) || cur=""
-    echo "$n — ${desc:-açıklama yok}"
-    echo "Tür: $t${lo:+ · en az $lo}${hi:+ · en çok $hi}${d:+ · varsayılan $d}"
-    echo "Şimdiki: ${cur:-(boş)}"
-    IFS= read -r -p "Yeni değer (Enter = değiştirme, - = sil): " v || return 1
-    case "$v" in
-        "") return 0 ;;
-        "-") comp_vars_unset "$COMP_MENU_VARS" "$n"; echo "Silindi (varsayılana döner)."; read -r -p "Devam için Enter..." _ || return 1; return 0 ;;
-    esac
-    out=$(comp_vars_check "$COMP_MENU_MF" "$n" "$v" 2>&1) || { echo "⚠️  $out"; read -r -p "Devam için Enter..." _ || return 1; return 0; }
+    list=(); [ -z "$cur" ] || IFS=',' read -r -a list <<< "$cur"
+    if [ "$kind" = cidr ]; then
+        prefix=$(module_prefix "$server")
+        ip=$(srv_get "$COMP_MENU_DIR" "$prefix" IP); port=$(srv_get "$COMP_MENU_DIR" "$prefix" PORT); port="${port:-22}"
+        user=$(srv_get "$COMP_MENU_DIR" "$prefix" USER); key=$(srv_get "$COMP_MENU_DIR" "$prefix" KEY)
+        [ -n "$key" ] || key="$COMP_MENU_DIR/id_ed25519_${server}"
+        if [ "${key:0:1}" = "~" ]; then key="$HOME${key:1}"; fi
+        la=$(comp_net_local "$ip" 2>/dev/null) || la=""
+    fi
+    tmpm=$(mktemp "${TMPDIR:-/tmp}/sshpocket-liste.XXXXXX") || return 1
+    while true; do
+        sc=(); sd=(); acts=(); labels=()
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=()
+        i=0
+        for c in ${list[@]+"${list[@]}"}; do
+            labels+=("• $c"); acts+=("item:$i"); UI_PICK_DESCS+=("Enter: bu öğeyi sil ya da değiştir. ${desc:-}"); i=$((i + 1))
+        done
+        labels+=("➕ Ekle…"); acts+=(add)
+        UI_PICK_DESCS+=("Yeni öğeyi yazarsınız; tür doğrulanır${kind:+ (CIDR, örn. 192.168.1.0/24)}. ${desc:-}")
+        if [ "$kind" = cidr ]; then
+            if [ -n "$la" ]; then
+                while IFS=$'\t' read -r c x; do [ -n "$c" ] && { sc+=("$c"); sd+=("$x"); }; done < <(comp_net_suggest "$la")
+            fi
+            i=0
+            for c in ${sc[@]+"${sc[@]}"}; do labels+=("➕ öneri: $c"); acts+=("sug:$i"); UI_PICK_DESCS+=("${sd[$i]}"); i=$((i + 1)); done
+            labels+=("🔎 Sunucunun beni gördüğü adresi sorgula"); acts+=(seen)
+            UI_PICK_DESCS+=("Salt okunur ssh ile sunucunun sizi hangi adresten gördüğünü sorar ve öneriyi buna göre günceller.")
+        fi
+        if [ "${#list[@]}" -gt 0 ]; then labels+=("🧹 Hepsini temizle"); acts+=(clear); UI_PICK_DESCS+=("Listedeki tüm öğeleri kaldırır (Kaydet'e kadar dosyaya yazılmaz)."); fi
+        labels+=("💾 Kaydet (${#list[@]} öğe)"); acts+=(save)
+        UI_PICK_DESCS+=("Listeyi bu sunucunun değişken dosyasına yazar.")
+        clear
+        if declare -F ui_header >/dev/null; then ui_header "${UI_PICK_TITLE:-Değişkenler} › $n"; fi
+        [ -z "$msg" ] || { echo "$msg"; echo ""; }
+        # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
+        local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_BACK_DESC="Kaydetmeden listeye (değişkenler) döner."
+        local UI_PICK_HEADER=""
+        UI_PICK_HEADER="${msg:+$msg$'\n'}$t$([ "$req" = yes ] && echo ' · zorunlu') · yazılı: ${cur:-(yok)}${d:+ · varsayılan: $d}$([ "$dirty" = 1 ] && echo ' · ✏️ kaydedilmedi')"
+        msg=""
+        pick=$(_comp_menu_pick "Vazgeç (kaydetme)" "${labels[@]}")
+        if ! [ "$pick" -ge 1 ] 2>/dev/null; then
+            rm -f -- "$tmpm"
+            if [ "$dirty" = 1 ]; then COMP_MENU_FLASH="Vazgeçildi: $n değişmedi."; fi
+            return 0
+        fi
+        act="${acts[$((pick - 1))]}"
+        case "$act" in
+            add)
+                IFS= read -r -p "Yeni öğe: " c || { rm -f -- "$tmpm"; return 1; }
+                [ -n "$c" ] || continue
+                if out=$(comp_vars_check "$COMP_MENU_MF" "$n" "$c" 2>&1); then
+                    if [ "$kind" = cidr ]; then _comp_menu_cidr_add "$c" > "$tmpm"; msg=$(cat "$tmpm"); dirty=1
+                    else
+                        x=0; for v in ${list[@]+"${list[@]}"}; do [ "$v" = "$c" ] && x=1; done
+                        if [ "$x" = 1 ]; then msg="Zaten listede: $c"; else list+=("$c"); dirty=1; fi
+                    fi
+                else msg="⚠️  $out"; fi ;;
+            sug:*)
+                _comp_menu_cidr_add "${sc[${act#sug:}]}" > "$tmpm"; msg=$(cat "$tmpm"); dirty=1 ;;
+            seen)
+                if seen=$(comp_net_seen_by_server "$ip" "$port" "$user" "$key"); then la="$seen/32"; msg="Sunucu sizi şu adresten görüyor: $seen"
+                else msg="⚠️  Sunucudan sorgulanamadı (ağ/anahtar/host key)."; fi ;;
+            clear) list=(); dirty=1 ;;
+            item:*)
+                k="${act#item:}"
+                # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+                local -a UI_PICK_DESCS=("Bu öğeyi listeden çıkarır." "Öğeyi yeni bir değerle değiştirir (tür doğrulanır).")
+                # shellcheck disable=SC2034
+                local UI_PICK_WIDE=1 UI_PICK_START=1 UI_PICK_EXPECT="" UI_PICK_HEADER="Öğe: ${list[$k]}" UI_PICK_BACK_DESC="Öğeye dokunmadan döner."
+                pick=$(_comp_menu_pick "Geri" "🗑 Sil" "✏️  Değiştir")
+                case "$pick" in
+                    1) keep=(); i=0; for v in "${list[@]}"; do [ "$i" -eq "$k" ] || keep+=("$v"); i=$((i + 1)); done
+                       list=(); for v in ${keep[@]+"${keep[@]}"}; do list+=("$v"); done; dirty=1 ;;
+                    2) IFS= read -r -p "Yeni değer (şimdi: ${list[$k]}): " c || { rm -f -- "$tmpm"; return 1; }
+                       if [ -z "$c" ]; then :
+                       elif out=$(comp_vars_check "$COMP_MENU_MF" "$n" "$c" 2>&1); then list[k]="$c"; dirty=1
+                       else msg="⚠️  $out"; fi ;;
+                esac ;;
+            save)
+                if [ "${#list[@]}" -eq 0 ]; then
+                    if [ "$req" = yes ]; then msg="⚠️  Liste boş olamaz (zorunlu)."; continue; fi
+                    comp_vars_unset "$COMP_MENU_VARS" "$n"; rm -f -- "$tmpm"
+                    COMP_MENU_FLASH="Silindi (varsayılana döner): $n"; return 0
+                fi
+                if [ "$kind" = cidr ] && [ "${#list[@]}" -eq 1 ]; then
+                    echo "⚠️  Listede yalnızca bir ağ var. Başka bir ağdan (ev LAN, ofis, başka VPN) bağlanırsanız SSH kapalı olur."
+                    IFS= read -r -p "Başka ağ da eklemek ister misiniz? [e/H]: " ans || { rm -f -- "$tmpm"; return 1; }
+                    case "$ans" in e|E|evet|Evet) continue ;; esac
+                fi
+                v=$(IFS=,; printf '%s' "${list[*]}")
+                rm -f -- "$tmpm"
+                if comp_vars_save "$COMP_MENU_MF" "$COMP_MENU_VARS" "$n" "$v" >/dev/null; then COMP_MENU_FLASH="✅ Kaydedildi: $n = $v"
+                else COMP_MENU_FLASH="⚠️  Kaydedilemedi: $n"; fi
+                return 0 ;;
+        esac
+    done
+}
+
+# _comp_menu_interactive → 0 ise etkileşimli seçici (ok tuşlu/fzf) kullanılır; değilse numaralı mod (eski akış)
+_comp_menu_interactive() { declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; }
+
+# _comp_menu_done <ileti> → etkileşimli modda iletiyi bir sonraki ekranda gösterir (duraksama yok); değilse yazar ve Enter bekler
+_comp_menu_done() {
+    if _comp_menu_interactive; then COMP_MENU_FLASH="$1"; return 0; fi
+    echo "$1"; read -r -p "Devam için Enter..." _ || return 1
+}
+
+# _comp_menu_pick_value <ad> <tür> <şimdiki> <varsayılan> <açıklama> <warn_if> <enum-değerleri> → seçilen değer (stdout);
+# "" = değiştirme · "-" = sil. bool: true/false · enum: izinli değerler. Açıklama sağ bölmede, riskli değer işaretli.
+_comp_menu_pick_value() {
+    local n="$1" t="$2" cur="$3" d="$4" desc="$5" warn="$6" vals="$7" c eff mark i start=1 pick
+    local -a choices labels
+    if [ "$t" = bool ]; then choices=(true false)
+    else choices=(); while IFS= read -r c; do [ -n "$c" ] && choices+=("$c"); done < <(printf '%s\n' "$vals" | tr -d '[]"' | tr ',' '\n'); fi
+    [ "${#choices[@]}" -gt 0 ] || { printf ''; return 0; }
+    eff="${cur:-$d}"; labels=(); i=0
+    # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+    local -a UI_PICK_DESCS=()
+    for c in "${choices[@]}"; do
+        i=$((i + 1)); mark=""
+        [ "$c" = "$eff" ] && { mark=" ← şimdiki"; [ -z "$cur" ] && mark=" ← şimdiki (varsayılan)"; }
+        labels+=("$c$mark")
+        if [ "$warn" = "$c" ] || [ "$warn" = "\"$c\"" ]; then
+            UI_PICK_DESCS+=("⚠️  RİSKLİ değer: paketin uyarısı var, kaydederken onay istenir. ${desc:-}")
+        else
+            UI_PICK_DESCS+=("${desc:-açıklama yok}")
+        fi
+    done
+    # bool: imleç şimdikinin tersinde (bir tuşla değiştirme); enum: şimdikinde
+    i=0; for c in "${choices[@]}"; do
+        i=$((i + 1))
+        if [ "$t" = bool ]; then [ "$c" != "$eff" ] && { start=$i; break; }
+        else [ "$c" = "$eff" ] && { start=$i; break; }; fi
+    done
+    if [ -n "$cur" ]; then
+        labels+=("↩ Varsayılana dön (dosyadan sil)")
+        UI_PICK_DESCS+=("Bu sunucu için yazılı değeri siler; paket varsayılanı kullanılır${d:+ ($d)}.")
+    fi
+    # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
+    local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START="$start" UI_PICK_BACK_DESC="Değeri değiştirmeden listeye döner."
+    # shellcheck disable=SC2034
+    local UI_PICK_TITLE="${UI_PICK_TITLE:+$UI_PICK_TITLE › }$n" UI_PICK_HEADER="$t · yazılı: ${cur:-(yok)}${d:+ · varsayılan: $d}"
+    pick=$(_comp_menu_pick "Geri (değiştirme)" "${labels[@]}")
+    if ! [ "$pick" -ge 1 ] 2>/dev/null; then printf ''
+    elif [ "$pick" -le "${#choices[@]}" ]; then printf '%s' "${choices[$((pick - 1))]}"
+    else printf -- '-'; fi
+}
+
+# comp_menu_edit_value <TSV-satırı> → tek değişkeni düzenletir (doğrula → gerekirse onay → yaz)
+# Etkileşimli modda (ok tuşlu/fzf): bool ve enum için seçici, yanlış değerde yeniden sorma, duraksamasız ileti. Numaralı mod: eski akış.
+comp_menu_edit_value() {
+    local line="$1" n t d lo hi desc cur v v2 out warn vals try=1 maxtry=1 inter=0
+    n=$(_comp_menu_field "$line" 1); t=$(_comp_menu_field "$line" 2); d=$(_comp_menu_unq "$(_comp_menu_field "$line" 4)")
+    lo=$(_comp_menu_field "$line" 5); hi=$(_comp_menu_field "$line" 6); warn=$(_comp_menu_field "$line" 7); desc=$(_comp_menu_field "$line" 8)
+    vals=$(_comp_menu_field "$line" 10)
+    cur=$(comp_vars_get "$COMP_MENU_VARS" "$n" 2>/dev/null) || cur=""
+    if _comp_menu_interactive; then inter=1; maxtry=3; fi
+    while [ "$try" -le "$maxtry" ]; do
+        if [ "$inter" = 1 ] && { [ "$t" = bool ] || { [ "$t" = enum ] && [ -n "$vals" ]; }; }; then
+            v=$(_comp_menu_pick_value "$n" "$t" "$cur" "$d" "$desc" "$warn" "$vals")
+        else
+            echo "$n — ${desc:-açıklama yok}"
+            echo "Tür: $t${lo:+ · en az $lo}${hi:+ · en çok $hi}${d:+ · varsayılan $d}"
+            echo "Şimdiki: ${cur:-(boş)}"
+            IFS= read -r -p "Yeni değer (Enter = değiştirme, - = sil): " v || return 1
+        fi
+        case "$v" in
+            "") return 0 ;;
+            "-") comp_vars_unset "$COMP_MENU_VARS" "$n"; _comp_menu_done "Silindi (varsayılana döner): $n" || return 1; return 0 ;;
+        esac
+        if out=$(comp_vars_check "$COMP_MENU_MF" "$n" "$v" 2>&1); then break; fi
+        if [ "$try" -lt "$maxtry" ]; then echo "⚠️  $out (deneme $try/$maxtry, tekrar girin)"; try=$((try + 1)); continue; fi
+        _comp_menu_done "⚠️  $n: $out" || return 1; return 0
+    done
     case "$out" in
         *warn=*)
             echo "⚠️  Bu değer riskli (paketin warn_if uyarısı)."
             IFS= read -r -p "Yine de kaydedilsin mi? [e/H]: " v2 || return 1
-            case "$v2" in e|E|evet|Evet) ;; *) echo "İptal edildi."; return 0 ;; esac ;;
+            case "$v2" in e|E|evet|Evet) ;; *) if [ "$inter" = 1 ]; then COMP_MENU_FLASH="İptal edildi: $n değişmedi."; else echo "İptal edildi."; fi; return 0 ;; esac ;;
     esac
-    if comp_vars_set "$COMP_MENU_VARS" "$n" "$v"; then echo "✅ Kaydedildi."; else echo "⚠️  Kaydedilemedi."; fi
-    read -r -p "Devam için Enter..." _ || return 1
+    if comp_vars_set "$COMP_MENU_VARS" "$n" "$v"; then _comp_menu_done "✅ Kaydedildi: $n = $v" || return 1
+    else _comp_menu_done "⚠️  Kaydedilemedi: $n" || return 1; fi
 }
 
 # _comp_menu_cidr_add <cidr> → list dizisine (dinamik kapsam) ekler; kapsanan/yinelenen/yerine geçen durumunu yazar
