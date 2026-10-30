@@ -19,14 +19,14 @@ comp_menu_available() {
     [ -n "$(comp_menu_installed)" ]
 }
 
-# _comp_menu_badge <bilgi> <eylem> → "🔍 salt okunur" | "✏️  değişiklik yapar" | "☠️  yıkıcı"
+# _comp_menu_badge <bilgi> <eylem> → "🔍 salt okunur" | "✎ değişiklik yapar" | "☠ yıkıcı" (değişkenlik seçicisi olmayan düz semboller: emoji genişliği sarmayı bozar)
 _comp_menu_badge() {
     local eff
     eff=$(comp_action_get "$1" "$2" effects)
     case ",$eff," in
         ",,") printf '🔍 salt okunur' ;;
-        *,destructive,*) printf '☠️  yıkıcı' ;;
-        *) printf '✏️  değişiklik yapar' ;;
+        *,destructive,*) printf '☠ yıkıcı' ;;
+        *) printf '✎ değişiklik yapar' ;;
     esac
 }
 
@@ -131,6 +131,18 @@ _comp_menu_action_blocked() {
     [ -n "$3" ] && comp_gate_required_applies "$1" "$2"
 }
 
+# _comp_menu_wrap <genişlik> <girinti> <metin> → metni sözcük sınırından satırlara böler; devam satırları girintilenir
+_comp_menu_wrap() {
+    local w="$1" ind="$2" line="" word out=""
+    set -f
+    for word in $3; do
+        if [ -n "$line" ] && [ $((${#line} + ${#word} + 1)) -gt "$w" ]; then out+="$line"$'\n'; line="$ind$word"
+        else line="${line:+$line }$word"; fi
+    done
+    set +f
+    printf '%s\n' "$out$line"
+}
+
 # _comp_menu_action_card <bilgi> <paket> <sunucu> <eylem> <eksik> → seçili eylemin kartı (çok satırlı; fzf sağ bölmesi)
 _comp_menu_action_card() {
     local info="$1" id="$2" server="$3" name="$4" missing="$5" eff req conf w last ts rest now n=0
@@ -148,8 +160,25 @@ _comp_menu_action_card() {
     while IFS= read -r w; do
         [ -n "$w" ] || continue
         n=$((n + 1)); [ "$n" -le 6 ] || break
-        printf '⚠️  %s\n' "$w"
+        _comp_menu_wrap 44 "   " "⚠ $w"
     done < <(comp_info_all "$info" "action.$name.warning")
+}
+
+# _comp_menu_history_card <paket> <sunucu> → Geçmiş satırının kartı: son 5 çalıştırma ve son günlüğün son 8 satırı (fzf sağ bölmesi)
+_comp_menu_history_card() {
+    local id="$1" server="$2" log t v act res sdir n=0
+    log="$COMP_MENU_DIR/components.log"
+    printf 'Son çalıştırmalar\n'
+    if [ -f "$log" ] && grep -qF "|$id|" "$log"; then
+        while IFS='|' read -r t _ v act res; do
+            printf '  %s %s  %s %s\n' "${t:5:5}" "${t:11:5}" "$act" "$([ "$res" = ok ] && echo '✅' || echo '❌')"
+        done < <(grep -F "|$id|" "$log" | tail -n 5)
+    else printf '  (kayıt yok)\n'; fi
+    sdir="$(_comp_gate_state_dir)/$id/$server"
+    if [ -f "$sdir/last-run.log" ]; then
+        printf '\nSon günlüğün sonu\n'
+        tail -n 8 "$sdir/last-run.log" | while IFS= read -r t; do n=$((n + 1)); printf '  %s\n' "${t:0:46}"; done
+    fi
 }
 
 # _comp_menu_prep_text <paket> <sunucu> <bilgi> <eksik> → hazırlık özeti (başlık için; baştaki boşluklar atılır)
@@ -264,11 +293,11 @@ comp_menu_actions() {
             local -a UI_PICK_DESCS=()
             # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
             local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_TITLE="Sunucu › $server › Paketler › $id $COMP_MENU_VER" UI_PICK_HEADER=""
-            UI_PICK_HEADER=$(_comp_menu_prep_text "$id" "$server" "$info" "$missing")
+            UI_PICK_HEADER=$(_comp_menu_prep_text "$id" "$server" "$info" "$missing" | while IFS= read -r m; do _comp_menu_wrap "$(( ${SSHPOCKET_COLS:-$(tput cols 2>/dev/null || echo 80)} - 6 ))" "   " "$m"; done)
             [ "$hidden" -eq 0 ] || UI_PICK_HEADER="$UI_PICK_HEADER"$'\n'"ℹ️  $hidden eylem bu platforma uygun olmadığı için gizlendi"
             UI_PICK_DESCS+=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır."$'\n'"Zorunlu eksik: $(printf '%s' "${missing:-yok}" | tr '\n' ' ')")
             for name in "${names[@]}"; do UI_PICK_DESCS+=("$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")"); done
-            UI_PICK_DESCS+=("Bu sunucudaki son çalıştırmalar, ön koşulların tazeliği (örn. apply için preview) ve son çalıştırma günlüğü.")
+            UI_PICK_DESCS+=("$(_comp_menu_history_card "$id" "$server")")
         fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0

@@ -65,8 +65,8 @@ JSON
     run comp_menu_actions demo web1 <<<"0"
     [ "$status" -eq 0 ]
     [[ "$output" == *"preview — 🔍 salt okunur"* ]] || false
-    [[ "$output" == *"apply — ✏️  değişiklik yapar  (önce: preview)"* ]] || false
-    [[ "$output" == *"wipe — ☠️  yıkıcı"* ]] || false
+    [[ "$output" == *"apply — ✎ değişiklik yapar  (önce: preview)"* ]] || false
+    [[ "$output" == *"wipe — ☠ yıkıcı"* ]] || false
     [ ! -e "$T/runs" ]
 }
 
@@ -447,7 +447,7 @@ setup_state() {
 @test "eylem etiketi: önkoşul kaydı yoksa '(önce: preview)'; taze ise ✅ yaş; süresi dolmuşsa ⏳" {
     setup_state
     run comp_menu_actions demo web1 <<<$'0'
-    [[ "$output" == *"apply — ✏️  değişiklik yapar  (önce: preview)"* ]] || false
+    [[ "$output" == *"apply — ✎ değişiklik yapar  (önce: preview)"* ]] || false
     comp_gate_record demo web1 1.0.0 preview ok
     run comp_menu_actions demo web1 <<<$'0'
     [[ "$output" == *"(önce: preview ✅ "* ]] || false
@@ -718,7 +718,7 @@ PY
     [[ "$output" == *"Onay: type-server-name"* ]] || false
     [[ "$output" == *"Ön koşul: preview"* ]] || false
     run _comp_menu_action_card "$INFO" demo web1 preview ""
-    [[ "$output" == *"⚠️  Önizleme ufw değişikliğini göstermez."* ]] || false
+    [[ "$output" == *"⚠ Önizleme ufw"* ]] || false
     [[ "$output" == *"Etkiler: yok (salt okunur)"* ]] || false
     run _comp_menu_action_card "$INFO" demo web1 apply "allow_from"
     [[ "$output" == *"⛔ Kapalı"* ]] || false
@@ -801,4 +801,25 @@ PY
     [[ "$output" != *$'\033[13;30r'* ]] || false
     [[ "$output" != *"Çıktı: preview"* ]] || false
     [[ "$output" == *"Sonuç: preview — web1"* ]] || false
+}
+
+@test "_comp_menu_wrap: sözcük sınırından böler, devam satırlarını girintiler, joker karakter genişletmez" {
+    run _comp_menu_wrap 20 "  " "bir iki uc dort bes alti yedi sekiz * dokuz"
+    [ "$status" -eq 0 ]
+    [ "${lines[0]}" = "bir iki uc dort bes" ]
+    [ "${lines[1]}" = "  alti yedi sekiz *" ]
+    [ "${lines[2]}" = "  dokuz" ]
+}
+
+@test "geçmiş kartı: bu paketin son çalıştırmaları ve son günlüğün sonu; kayıt yoksa söyler" {
+    setup_state
+    export SSHPOCKET_STATE_DIR="$T/state"
+    _comp_menu_ctx demo web1 "$INFO"
+    run _comp_menu_history_card demo web1
+    [[ "$output" == *"(kayıt yok)"* && "$output" != *"Son günlüğün sonu"* ]] || false
+    printf '2026-10-16T14:17:49Z|demo|1.0.0|preview|ok\n2026-10-16T14:20:00Z|baska|1.0.0|yabanci|ok\n2026-10-16T14:38:32Z|demo|1.0.0|apply|fail\n' > "$D/components.log"
+    mkdir -p "$T/state/demo/web1"; printf 'satir1\nsatir2\n' > "$T/state/demo/web1/last-run.log"
+    run _comp_menu_history_card demo web1
+    [[ "$output" == *"10-16 14:17  preview ✅"* && "$output" == *"10-16 14:38  apply ❌"* ]] || false
+    [[ "$output" != *"yabanci"* && "$output" == *"Son günlüğün sonu"* && "$output" == *"  satir2"* ]] || false
 }
