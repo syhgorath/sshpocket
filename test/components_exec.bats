@@ -39,6 +39,7 @@ JSON
 echo "\$*" > "$T/args"
 echo "\$PWD" > "$T/pwd"
 echo "\$ANSIBLE_CONFIG|\$ANSIBLE_HOST_KEY_CHECKING|\${ANSIBLE_TIMEOUT:-yok}" > "$T/envseen"
+echo "\${PYTHONDONTWRITEBYTECODE:-yok}" > "$T/bytecode"
 # -i ve -e @ dosyalarının İÇERİĞİNİ çalışma sırasında kaydet
 while [ \$# -gt 0 ]; do case "\$1" in -i) cp "\$2" "$T/seen_inv"; stat -c %a "\$2" >/dev/null 2>&1 && stat -c %a "\$2" > "$T/inv_mode" || stat -f %Lp "\$2" > "$T/inv_mode"; echo "\$2" > "$T/inv_path";; -e) f="\${2#@}"; cp "\$f" "$T/seen_vars"; echo "\$f" > "$T/vars_path";; esac; shift; done
 [ -n "\${FAKE_OUT:-}" ] && printf '%s\n' "\$FAKE_OUT"
@@ -93,6 +94,12 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     ANSIBLE_HOST_KEY_CHECKING=False run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
     [ "$status" -eq 0 ]
     [ "$(cat "$T/envseen")" = "$T/pkg/ansible.cfg|True|30" ]
+}
+
+@test "yürütme: Python bayt kodu kurulu paket klasörüne yazılmaz (PYTHONDONTWRITEBYTECODE=1), bütünlük denetimi bozulmaz" {
+    PYTHONDONTWRITEBYTECODE= run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    [ "$(cat "$T/bytecode")" = "1" ]
 }
 
 @test "yürütme: playbook başarısızsa kodu döner, 'fail' kaydedilir, geçici dosyalar silinir" {
