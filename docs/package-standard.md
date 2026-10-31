@@ -151,7 +151,30 @@ Her iki runner için ortak kurallar:
   `toplam` yalnız açık alanları sayar ve koşu boyunca sabittir; önizlemede `degisen` "uygulanırsa değişecek" demektir, `kesin=0` sayının
   tahmini olduğunu gösterir. Satır başı/tırnak varsayılmaz, bilinmeyen anahtarlar yok sayılır, satırda `SSHPOCKET_RESULT` geçmez.
   Satır yoksa "ilerleme bilgisi yok" sayılır. sshpocket sonuç panelinde alan tablosunu gösterir (`bitti` olmayan alan ⏳).
+- `outputs.findings`: eylemin yazdığı bulgu listesi, **düz dosya adı** (`bulgular.tsv`; `/`, `..` yok, `.tsv`, ≤ 64 karakter). Dosya `summary.json`
+  gibi aranır: `<kullanıcı durum klasörü>/<paket>/<sunucu>/` altında derinlik ≤ 5, birden çoksa en yeni. Biçimi aşağıda ("Bulgular").
 - `outputs.summary`: eylemin yazdığı özet dosyası (JSON); sshpocket okuyup gösterir.
+
+### Bulgular (`bulgular.tsv`)
+Denetim eylemi (Lynis, …) `outputs.findings` ile bildirdiği dosyayı yazarsa sshpocket bulguları sunucu menüsünde listeler (🔎 Bulgular).
+UTF-8, sekmeyle ayrılmış, ilk satır başlık, dosya 0600 (kullanıcı klasöründe; USB'ye yazılmaz). Başlığın **ilk 10 sütunu bu sırayla** olmalıdır
+(sonda fazladan sütun yok sayılır); aksi halde dosya "bozuk" sayılıp gösterilmez, eylem sonucu etkilenmez.
+
+| sütun | değer |
+|---|---|
+| `kimlik` | araç test kimliği (`SSH-7408`); kimliksiz madde `GENEL-<n>`. Tek başına benzersiz değildir |
+| `risk` | `yuksek` `orta` `dusuk` `bilgi` `bilinmiyor` (önem verilmeyen bulgu `bilinmiyor`, sıralamada en altta) |
+| `tur` | `uyari` ya da `oneri` |
+| `aciklama` | tek satır düz metin |
+| `ayrinti` | aynı kimlikli satırları ayıran ayrıntı (`MaxSessions (set 4 to 2)`); yoksa boş |
+| `oneri` | tek satır düz metin; yoksa boş |
+| `alan` | paketin sabit alan kimliği (`ssh`, `base`, …) ya da boş |
+| `deger` | `ad=değer` (bu bulguyu kapatan paket değişkeni) ya da boş |
+| `kapanir_varsayilan` | `evet` (paket varsayılanıyla kapanır) · `hayir` (değişken elle ayarlanmalı) · boş; yalnız `alan` doluyken anlamlı |
+| `platform` | `ubuntu` `proxmox` `hepsi` |
+
+Geçersiz satır atlanır ve sayılır ("N satır atlandı"); en çok 2000 satır gösterilir. Dosya bir denetim koşusunu içerir (her koşu baştan yazar);
+yalnız başlık satırı "bulgu yok" demektir. Örnek: `test/fixtures/bulgular-ornek.tsv`.
 
 ### Denetim özeti (`summary.json`) ve menüdeki puan
 Bir denetim eylemi (Lynis, OpenSCAP, …) çıktı klasöründe `summary.json` yazarsa, sunucu menüsünde (🛡️ Paketler › paket) **araç başına son puan ve bir öncekiyle fark** gösterilir: `📊 Lynis: 83 (2 gün önce) · önceki 61 (+22)`. Gösterim araca özgü değildir; ortak biçim:
