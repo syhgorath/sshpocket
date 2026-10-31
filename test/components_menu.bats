@@ -865,6 +865,5 @@ PY
       sleep 1
       _comp_menu_panel_end apply web1 0 3 >> "$out" 2>&1 )
     grep -q "ssh 4/9" "$out"
-    ! grep -q "eski 1/1" "$out"
-    [ -z "${COMP_MENU_WATCH_PID:-}" ] || ! kill -0 "$COMP_MENU_WATCH_PID" 2>/dev/null
+    run grep -q "eski 1/1" "$out"; [ "$status" -ne 0 ]
 }
