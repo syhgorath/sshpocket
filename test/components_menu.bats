@@ -867,3 +867,17 @@ PY
     grep -q "ssh 4/9" "$out"
     run grep -q "eski 1/1" "$out"; [ "$status" -ne 0 ]
 }
+
+@test "bulgular: eylem menüsünde '🔎 Bulgular (N)' görünür (Geçmiş'ten sonra), seçilince liste açılır; bulgu yoksa görünmez" {
+    setup_state
+    export SSHPOCKET_STATE_DIR="$T/state"
+    run comp_menu_actions demo web1 <<<$'0'
+    [[ "$output" != *"Bulgular ("* ]] || false
+    sed 's|"outputs":{"dir_var":"scan_dir"}|"outputs":{"dir_var":"scan_dir","findings":"bulgular.tsv"}|' "$T/m.json" > "$T/m2.json"
+    INFO=$(comp_manifest_info "$T/m2.json" demo 1.0.0)
+    mkdir -p "$T/state/demo/web1/h/t"; cp "$ROOT/test/fixtures/bulgular-ornek.tsv" "$T/state/demo/web1/h/t/bulgular.tsv"
+    run comp_menu_actions demo web1 <<<$'0'
+    [[ "$output" == *"Bulgular: 26 (9 tanesi paket seçeneğiyle eşleşir)"* && "$output" == *"7) 🔎 Bulgular (26)"* ]] || { echo "$output"; false; }
+    run comp_menu_actions demo web1 <<<$'7\n0\n0'
+    [[ "$output" == *"Yalnız eşlemeli: kapalı (26 gösterilen)"* && "$output" == *"SSH-7408"* ]] || { echo "$output"; false; }
+}

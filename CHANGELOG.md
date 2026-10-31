@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **Denetim bulguları:** manifestte `outputs.findings` (düz `.tsv` dosya adı) bildiren paketin `bulgular.tsv` dosyası (10 sütun: kimlik, risk, tur, aciklama, ayrinti, oneri, alan, deger, kapanir_varsayilan, platform) ayrıştırılır (`component_findings.py`; geçersiz satır atlanır, en çok 2000 satır, başlık bozuksa gösterilmez). Paket menüsünde hazırlık özetinde sayı ve eşleşen bulgular, "🔎 Bulgular" ekranında önem sırasıyla liste ve kartlar (ayrıntı, öneri, paket karşılığı, "elle ayarlayın / apply yeterli"), "yalnız eşlemeli" süzgeci. Biçim: `docs/package-standard.md` "Bulgular".
 - **Canlı ilerleme (fzf çalışma paneli):** paket `SSHPOCKET_PROGRESS` satırları yazıyorsa çıktı çerçevesinin başlığı çalışırken güncellenir ("Çıktı: apply — srv (çalışıyor) · aide 9/14 · bekleniyor ~300 sn"). Günlüğe saniyede bir bakan ayrı bir arka plan izleyici yapar; ana çıktı akışına dokunmaz (parola istemleri gecikmez), önceki koşunun günlüğünü yok sayar, panel bitince durur.
 - **İlerleme satırı ayrıştırıcısı:** paketin `SSHPOCKET_PROGRESS alan=… sira=n/toplam durum=basladi|bitti [degisen atlanan kesin uyari bekle_tahmin]` satırları (`comp_progress_parse`) sonuç panelinde alan tablosu olur: uygulamada "değişen", önizlemede "değişecek" (+ toplam; `kesin=0` ise `~` tahmini), bitmeyen alan ⏳, uyarı sayısı. Satır yoksa panel eskisi gibidir; `SSHPOCKET_RESULT` ayrıştırıcısıyla çakışmaz. Biçim `docs/package-standard.md`'de.
 

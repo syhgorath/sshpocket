@@ -30,6 +30,7 @@ RE_PYRANGE = re.compile(r"^>=[0-9]+\.[0-9]+(,<[0-9]+\.[0-9]+)?$")
 RE_SCRIPT = re.compile(r"^scripts/[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.sh$")
 RE_SCRIPT_ARG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._=:/+,-]{0,63}$|^--?[A-Za-z0-9][A-Za-z0-9._=:/+,-]{0,63}$")
 RE_OUTKEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+RE_FINDINGS = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,59}\.tsv$")
 RE_VALUE = re.compile(r"^(<[a-z0-9_ -]{1,40}>|[A-Za-z0-9_./:@=,+-]{1,200})$")
 
 errors = []
@@ -254,6 +255,12 @@ def main():
                     err("%s: outputs.keys/prefix için outputs.format gerekir" % name)
                 if "summary" in outs and not text_ok(outs["summary"], "%s: outputs.summary" % name):
                     pass
+                if "findings" in outs:
+                    fnd = outs["findings"]
+                    if not (is_str(fnd) and RE_FINDINGS.match(fnd) and ".." not in fnd):
+                        err("%s: outputs.findings düz dosya adı olmalı (.tsv; '/' yok; en çok 64 karakter)" % name)
+                    else:
+                        act_lines.append("action.%s.outputs.findings=%s" % (name, fnd))
     # requires: var olan eylemlere, kendine ve döngüsüz
     graph = {}
     for name, a in actions.items():

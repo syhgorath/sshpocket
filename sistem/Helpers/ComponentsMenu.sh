@@ -125,6 +125,96 @@ _comp_menu_score_lines() {
     return 0
 }
 
+# ---- Bulgular (denetim eylemi bulgular.tsv yazarsa): sayı özeti hazırlıkta, liste ve kartlar "🔎 Bulgular" ekranında ----
+# _comp_menu_findings_file <bilgi> → manifestte outputs.findings bildiren ilk eylemin dosya adı (yoksa boş)
+_comp_menu_findings_file() {
+    local a f
+    while IFS= read -r a; do
+        [ -n "$a" ] || continue
+        f=$(comp_action_get "$1" "$a" outputs.findings)
+        [ -z "$f" ] || { printf '%s\n' "$f"; return 0; }
+    done < <(comp_info_all "$1" action)
+    return 0
+}
+# _comp_menu_findings_load <paket> <sunucu> <bilgi> → COMP_FINDINGS_META (başlık satırı alanları) ve COMP_FINDINGS_ROWS (10 sütunlu satırlar)
+# dönüş: 0 veri var · 1 bulgu dosyası yok/bildirilmemiş · 3 dosya var ama başlık bozuk
+COMP_FINDINGS_META=""; COMP_FINDINGS_ROWS=()
+_comp_menu_findings_load() {
+    local f py out rc line first=1
+    COMP_FINDINGS_META=""; COMP_FINDINGS_ROWS=()
+    f=$(_comp_menu_findings_file "$3"); [ -n "$f" ] || return 1
+    py="${COMP_FINDINGS_PY:-${SISTEM_PATH:-.}/Helpers/component_findings.py}"
+    command -v python3 >/dev/null 2>&1 && [ -f "$py" ] || return 1
+    out=$(python3 -I "$py" "$(_comp_gate_state_dir)" "$1" "$2" "$f" 2>/dev/null); rc=$?
+    [ "$rc" -eq 3 ] && return 3
+    [ -n "$out" ] || return 1
+    while IFS= read -r line; do
+        if [ "$first" -eq 1 ]; then COMP_FINDINGS_META="$line"; first=0; else COMP_FINDINGS_ROWS+=("$line"); fi
+    done <<< "$out"
+    return 0
+}
+# _comp_menu_findings_lines <paket> <sunucu> <bilgi> → hazırlık özetine tek satır; bulgu yoksa hiçbir şey yazmaz
+_comp_menu_findings_lines() {
+    local rc _h epoch total skipped trunc mapped now txt
+    _comp_menu_findings_load "$1" "$2" "$3"; rc=$?
+    if [ "$rc" -eq 3 ]; then echo "  🔎 Bulgular okunamadı (dosyanın başlık satırı beklenen biçimde değil)"; return 0; fi
+    [ "$rc" -eq 0 ] || return 0
+    IFS=$'\037' read -r _h epoch total skipped trunc mapped _ <<< "$COMP_FINDINGS_META"
+    now=$(date +%s)
+    txt="  🔎 Bulgular: $total"
+    [ "$mapped" = 0 ] || txt="$txt ($mapped tanesi paket seçeneğiyle eşleşir)"
+    if [[ "$epoch" =~ ^[0-9]+$ ]] && [ "$epoch" -le "$now" ]; then txt="$txt · $(_comp_menu_age $((now - epoch)))"; fi
+    [ "$skipped" = 0 ] || txt="$txt · $skipped satır atlandı"
+    [ "$trunc" = 0 ] || txt="$txt · liste kesildi"
+    printf '%s\n' "$txt"
+}
+# _comp_menu_findings_card <satır> → tek bulgunun kartı (çok satırlı)
+_comp_menu_findings_card() {
+    local kimlik risk tur acik ayr oneri alan deger kapanir platform
+    IFS=$'\037' read -r kimlik risk tur acik ayr oneri alan deger kapanir platform <<< "$1"
+    printf '%s — %s · önem: %s\n' "$kimlik" "$([ "$tur" = uyari ] && echo uyarı || echo öneri)" "$risk"
+    _comp_menu_wrap 46 "  " "$acik"
+    [ -z "$ayr" ] || { printf 'Ayrıntı:\n'; _comp_menu_wrap 46 "  " "  $ayr"; }
+    [ -z "$oneri" ] || { printf 'Öneri:\n'; _comp_menu_wrap 46 "  " "  ${oneri#text:}"; }
+    if [ -n "$alan" ]; then
+        printf 'Paket karşılığı: %s' "$alan"; [ -z "$deger" ] || printf ' → %s' "$deger"; printf '\n'
+        case "$kapanir" in
+            evet) printf '  Paket varsayılanıyla kapanır (apply yeterli)\n' ;;
+            hayir) printf '  Kapanması için değişkeni elle ayarlayın (📝 Değişkenler)\n' ;;
+        esac
+    else printf 'Paket karşılığı: yok (elle ele alınır)\n'; fi
+    [ "$platform" = hepsi ] || printf 'Platform: %s\n' "$platform"
+}
+# comp_menu_findings <paket> <sunucu> <bilgi> → bulgu listesi (fzf: sağ bölmede kart; yalnız eşlemeli süzgeci)
+comp_menu_findings() {
+    local id="$1" server="$2" info="$3" rc row pick i n only=0 acik kimlik risk alan
+    local -a sel labels
+    while :; do
+        _comp_menu_findings_load "$id" "$server" "$info"; rc=$?
+        [ "$rc" -eq 0 ] || { echo "Bulgu listesi yok (önce denetim eylemini çalıştırın)."; return 0; }
+        sel=(); labels=(); n=0
+        for row in "${COMP_FINDINGS_ROWS[@]}"; do
+            IFS=$'\037' read -r kimlik risk _ acik _ _ alan _ <<< "$row"
+            [ "$only" -eq 0 ] || [ -n "$alan" ] || continue
+            sel+=("$row"); n=$((n + 1))
+            labels+=("$(printf '%-9s %-10s %s%s' "$kimlik" "$risk" "${acik:0:60}" "$([ -z "$alan" ] || echo '  ✎')")")
+        done
+        # shellcheck disable=SC2034  # ui_pick (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=("Yalnızca paket seçeneğiyle eşleşen (✎) bulguları gösterir ya da hepsine döner.")
+        for row in "${sel[@]}"; do UI_PICK_DESCS+=("$(_comp_menu_findings_card "$row")"); done
+        # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+        local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=2 UI_PICK_TITLE="Sunucu › $server › Paketler › $id › Bulgular" UI_PICK_HEADER=""
+        UI_PICK_HEADER=$(_comp_menu_findings_lines "$id" "$server" "$info" | sed 's/^ *//')
+        pick=$(ui_pick "Geri" "Yalnız eşlemeli: $([ "$only" -eq 1 ] && echo açık || echo kapalı) ($n gösterilen)" "${labels[@]}")
+        [ "$pick" -ge 1 ] 2>/dev/null || return 0
+        if [ "$pick" -eq 1 ]; then only=$((1 - only)); continue; fi
+        if ! _comp_menu_interactive; then
+            i=$((pick - 2)); echo ""; _comp_menu_findings_card "${sel[$i]}"; echo ""
+            read -r -p "Devam için Enter..." _ || return 0
+        fi
+    done
+}
+
 # _comp_menu_action_blocked <bilgi> <eylem> <eksik-değişkenler> → 0 ise eylem kapalı: zorunlu değişken eksik VE eylem değiştirici ya da
 # başka bir eylemin ön koşulu. Salt okunur durum eylemleri (rollback_status) zorunlu değişken olmadan da açıktır (CLI ile aynı kural).
 _comp_menu_action_blocked() {
@@ -187,7 +277,7 @@ _comp_menu_prep_text() {
     if [ -n "$missing" ]; then
         while IFS= read -r m; do [ -n "$m" ] && echo "❌ $m (zorunlu, yazılmadı)"; done <<< "$missing"
     else echo "✅ Zorunlu değişkenler tamam"; fi
-    { _comp_menu_status_lines "$id" "$server" "$info"; _comp_menu_score_lines "$id" "$server"; } | sed 's/^ *//'
+    { _comp_menu_status_lines "$id" "$server" "$info"; _comp_menu_score_lines "$id" "$server"; _comp_menu_findings_lines "$id" "$server" "$info"; } | sed 's/^ *//'
 }
 
 # ---- Çalışma paneli (fzf): üst bölüm sabit çizilir, alt bölüm terminalin KAYDIRMA BÖLGESİ olur (genel parça: UI.sh ui_region_*) ----
@@ -337,6 +427,7 @@ comp_menu_actions() {
         fi
         _comp_menu_status_lines "$id" "$server" "$info"
         _comp_menu_score_lines "$id" "$server"
+        _comp_menu_findings_lines "$id" "$server" "$info"
         [ "$hidden" -eq 0 ] || echo "  ℹ️  $hidden eylem bu sunucunun platformuna uygun olmadığı için gizlendi."
         echo ""
         fi
@@ -352,6 +443,10 @@ comp_menu_actions() {
         done
         labels+=("📜 Geçmiş ve son sonuçlar")
         UI_PICK_DESCS+=("Bu sunucudaki son çalıştırmalar, ön koşulların tazeliği (örn. apply için preview) ve son çalıştırma günlüğü.")
+        if _comp_menu_findings_load "$id" "$server" "$info"; then
+            labels+=("🔎 Bulgular ($(cut -d$'\037' -f3 <<< "$COMP_FINDINGS_META"))")
+            UI_PICK_DESCS+=("Son denetimin bulguları: önem sırası, ayrıntı ve paketteki karşılığı.")
+        fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
         if [ "$fz" = 1 ]; then
@@ -364,6 +459,7 @@ comp_menu_actions() {
             UI_PICK_DESCS+=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır."$'\n'"Zorunlu eksik: $(printf '%s' "${missing:-yok}" | tr '\n' ' ')")
             for name in "${names[@]}"; do UI_PICK_DESCS+=("$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")"); done
             UI_PICK_DESCS+=("$(_comp_menu_history_card "$id" "$server")")
+            if _comp_menu_findings_load "$id" "$server" "$info"; then UI_PICK_DESCS+=("$(_comp_menu_findings_lines "$id" "$server" "$info" | sed 's/^ *//')"$'\n'"Enter: listeyi aç"); fi
         fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
@@ -373,6 +469,10 @@ comp_menu_actions() {
         fi
         if [ "$pick" -eq $((${#names[@]} + 2)) ]; then
             comp_menu_history "$id" "$server" "$info" || return 0
+            continue
+        fi
+        if [ "$pick" -eq $((${#names[@]} + 3)) ]; then
+            comp_menu_findings "$id" "$server" "$info"
             continue
         fi
         if _comp_menu_action_blocked "$info" "${names[$((pick - 2))]}" "$missing"; then
