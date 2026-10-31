@@ -235,11 +235,13 @@ _comp_exec_body() {
         fi
     done
 
+    # PYTHONDONTWRITEBYTECODE: paketin Python eklentileri (callback/filter) kurulu klasöre __pycache__ yazarsa
+    # bir sonraki koşuda "kurulu paketin dosyaları değişmiş" bütünlük denetimi paketi reddederdi.
     # ---- çalıştır (günlük kullanıcı klasöründe, izin 600; kullanıcı terminali çıktıyı olduğu gibi görür) ----
     log="$sdir/last-run.log"
     ( umask 077; : > "$log" ) || return "$refused"
     {
-        cd "$pkg" && env ANSIBLE_CONFIG="$pkg/ansible.cfg" ANSIBLE_HOST_KEY_CHECKING=True ANSIBLE_TIMEOUT="${ANSIBLE_TIMEOUT:-30}" PATH="$bindir:$PATH" "${COMP_RUN_ARGV[@]}"
+        cd "$pkg" && env PYTHONDONTWRITEBYTECODE=1 ANSIBLE_CONFIG="$pkg/ansible.cfg" ANSIBLE_HOST_KEY_CHECKING=True ANSIBLE_TIMEOUT="${ANSIBLE_TIMEOUT:-30}" PATH="$bindir:$PATH" "${COMP_RUN_ARGV[@]}"
     } 2>&1 | tee -a "$log"
     rc="${PIPESTATUS[0]}"
     if [ "$rc" -ne 0 ] && grep -q "waiting for privilege escalation prompt" "$log" 2>/dev/null; then
