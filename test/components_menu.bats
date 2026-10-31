@@ -840,3 +840,30 @@ PY
     run _comp_menu_progress_lines "$INFO" preview "$log"
     [ -z "$output" ]
 }
+
+@test "ilerleme etiketi: çalışan alan, AIDE bekleme tahmini, hepsi bitince son alan 'tamam'; satır yoksa boş" {
+    local log="$T/pg.log"
+    run _comp_menu_progress_label "$log"; [ -z "$output" ]
+    printf '%s\n' 'x SSHPOCKET_PROGRESS alan=ssh sira=1/3 durum=bitti degisen=1' 'x SSHPOCKET_PROGRESS alan=aide sira=2/3 durum=basladi' > "$log"
+    run _comp_menu_progress_label "$log"; [ "$output" = "aide 2/3" ]
+    printf '%s\n' 'x SSHPOCKET_PROGRESS alan=aide sira=2/3 durum=basladi bekle_tahmin=300' >> "$log"
+    run _comp_menu_progress_label "$log"; [ "$output" = "aide 2/3 · bekleniyor ~300 sn" ]
+    printf '%s\n' 'x SSHPOCKET_PROGRESS alan=aide sira=2/3 durum=bitti degisen=0' >> "$log"
+    run _comp_menu_progress_label "$log"; [ "$output" = "aide 2/3 tamam" ]
+}
+
+@test "çalışma paneli: izleyici günlükteki ilerlemeyi çerçeve başlığına yazar; eski koşunun günlüğünü yok sayar; panel sonunda durur" {
+    export SSHPOCKET_STATE_DIR="$T/state" SSHPOCKET_ROWS=30 SSHPOCKET_COLS=100 SSHPOCKET_WATCH_SECS=0.2
+    _comp_menu_ctx demo web1 "$INFO"
+    mkdir -p "$T/state/demo/web1"
+    printf 'x SSHPOCKET_PROGRESS alan=eski sira=1/1 durum=basladi\n' > "$T/state/demo/web1/last-run.log"
+    touch -t 202001010000 "$T/state/demo/web1/last-run.log"
+    out="$T/panel.out"
+    ( _comp_menu_panel_begin demo web1 "$INFO" apply "" > "$out" 2>&1
+      sleep 0.6
+      printf 'x SSHPOCKET_PROGRESS alan=ssh sira=4/9 durum=basladi\n' > "$T/state/demo/web1/last-run.log"
+      sleep 1
+      _comp_menu_panel_end apply web1 0 3 >> "$out" 2>&1 )
+    grep -q "ssh 4/9" "$out"
+    run grep -q "eski 1/1" "$out"; [ "$status" -ne 0 ]
+}

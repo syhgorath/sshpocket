@@ -191,20 +191,61 @@ _comp_menu_prep_text() {
 }
 
 # ---- Çalışma paneli (fzf): üst bölüm sabit çizilir, alt bölüm terminalin KAYDIRMA BÖLGESİ olur (genel parça: UI.sh ui_region_*) ----
+# _comp_menu_progress_label <günlük> → çalışan alanın kısa ifadesi ("aide 9/14 · bekleniyor ~300 sn"); SSHPOCKET_PROGRESS satırı yoksa boş
+_comp_menu_progress_label() {
+    local a sira top dur bk last_a="" last_s="" last_t="" cur=""
+    while IFS=$'\t' read -r a sira top dur _ _ _ _ bk; do
+        last_a="$a"; last_s="$sira"; last_t="$top"
+        [ "$dur" = basladi ] && cur="$a|$sira|$top|$bk"
+    done < <(comp_progress_parse "$1")
+    [ -n "$last_a" ] || return 0
+    if [ -n "$cur" ]; then
+        IFS='|' read -r a sira top bk <<< "$cur"
+        printf '%s %s/%s' "$a" "$sira" "$top"
+        [ "$bk" = "-" ] || printf ' · bekleniyor ~%s sn' "$bk"
+    else printf '%s %s/%s tamam' "$last_a" "$last_s" "$last_t"; fi
+}
+# _comp_menu_watch_start <paket> <sunucu> <eylem> → arka planda saniyede bir günlüğe bakıp çıktı çerçevesinin başlığına ilerlemeyi yazar
+# (ana akışa dokunmaz: parola istemleri gibi satırsız çıktılar gecikmez). Günlük bu çalıştırmadan önceyse (eski koşu) yok sayılır.
+_comp_menu_watch_start() {
+    local log marker parent=$$ name="$3" server="$2"
+    log="$(_comp_gate_state_dir)/$1/$2/last-run.log"
+    marker=$(mktemp "${TMPDIR:-/tmp}/sshpocket-watch.XXXXXX") || return 0
+    (
+        trap 'rm -f -- "$marker"' EXIT
+        shown=""
+        while kill -0 "$parent" 2>/dev/null; do
+            if [ -f "$log" ] && [ ! "$marker" -nt "$log" ]; then
+                l=$(_comp_menu_progress_label "$log")
+                if [ "$l" != "$shown" ]; then
+                    shown="$l"
+                    ui_region_end "Çıktı: $name — $server (çalışıyor)${l:+ · $l}"
+                fi
+            fi
+            sleep "${SSHPOCKET_WATCH_SECS:-1}"
+        done
+    ) 2>/dev/null &
+    COMP_MENU_WATCH_PID=$!
+}
+_comp_menu_watch_stop() {
+    [ -z "${COMP_MENU_WATCH_PID:-}" ] || { kill "$COMP_MENU_WATCH_PID" 2>/dev/null; wait "$COMP_MENU_WATCH_PID" 2>/dev/null || true; COMP_MENU_WATCH_PID=""; }
+}
 # _comp_menu_panel_begin <paket> <sunucu> <bilgi> <eylem> <eksik> → 0: panel kuruldu; 1: terminal küçük/bilinmiyor (eski akış)
 _comp_menu_panel_begin() {
     local id="$1" server="$2" info="$3" name="$4" missing="$5"
-    ui_region_begin "Sunucu › $server › Paketler › $id › $name" "$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")" "Çıktı: $name — $server (çalışıyor)"
+    ui_region_begin "Sunucu › $server › Paketler › $id › $name" "$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")" "Çıktı: $name — $server (çalışıyor)" || return 1
+    _comp_menu_watch_start "$id" "$server" "$name"
 }
 # _comp_menu_panel_end <eylem> <sunucu> <çıkış-kodu> <saniye> → çıktı çerçevesinin başlığını sonuçla günceller
 _comp_menu_panel_end() {
     local name="$1" server="$2" rc="$3" secs="$4" label
+    _comp_menu_watch_stop
     if [ "$rc" -eq 0 ]; then label="✅ $name — $server: başarılı · $secs sn"
     elif [ "$rc" -eq "${COMP_EXEC_REFUSED:-190}" ]; then label="⛔ $name — $server: çalıştırılmadı"
     else label="❌ $name — $server: başarısız (çıkış $rc) · $secs sn"; fi
     ui_region_end "$label"
 }
-_comp_menu_panel_reset() { ui_region_reset; }
+_comp_menu_panel_reset() { _comp_menu_watch_stop; ui_region_reset; }
 
 # _comp_menu_progress_lines <bilgi> <eylem> <günlük> → paketin SSHPOCKET_PROGRESS satırlarından alan tablosu (satır yoksa hiçbir şey yazmaz)
 # Salt okunur eylemde (önizleme) "değişen" = uygulanırsa "değişecek"; kesin=0 ise sayı tahminidir (~). degisen/atlanan yoksa "?".
