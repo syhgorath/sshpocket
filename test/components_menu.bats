@@ -71,6 +71,8 @@ JSON
 }
 
 @test "eylemler: seçilen eylem doğru paket/eylem/sunucu ile çalıştırılır; sonra liste döner" {
+    setup_state
+    comp_gate_record demo web1 1.0.0 preview ok                       # taze preview: apply doğrudan çalışır
     run comp_menu_actions demo web1 <<<$'2\n\n3\n\n0'
     [ "$status" -eq 0 ]
     [ "$(sed -n 1p "$T/runs")" = "demo preview web1" ]
@@ -428,7 +430,7 @@ setup_state() {
     export SSHPOCKET_STATE_DIR="$T/state" COMP_REQUIRES_TTL=1800
     source "$H/ComponentsGates.sh"; source "$H/ComponentsExec.sh"
 }
-# actions listesi: 1 Değişkenler, 2 preview, 3 apply, 4 wipe, 5 audit, 6 Geçmiş (son)
+# actions listesi: 1 Değişkenler, 2 preview, 3 apply, 4 wipe, 5 audit, 6 Kontrol, 7 Geçmiş (son; Bulgular varsa 8)
 
 @test "gates: requires_age en son başarılı kaydın yaşını verir; fail/başka sürüm/gelecek/kayıt yok sayılmaz" {
     setup_state
@@ -461,7 +463,7 @@ setup_state() {
     printf '2026-10-16T14:17:49Z|demo|1.0.0|preview|ok\n2026-10-16T14:20:00Z|baska|1.0.0|yabanciaction|ok\n2026-10-16T14:38:32Z|demo|1.0.0|apply|fail\n' > "$D/components.log"
     comp_gate_record demo web1 1.0.0 preview ok
     mkdir -p "$T/state/demo/web1"; echo "ansible cikti" > "$T/state/demo/web1/last-run.log"
-    run comp_menu_actions demo web1 <<<$'6\nh\n\n0'
+    run comp_menu_actions demo web1 <<<$'7\nh\n\n0'
     [ "$status" -eq 0 ]
     [[ "$output" == *"2026-10-16T14:17:49Z  preview"* ]] || false
     [[ "$output" == *"2026-10-16T14:38:32Z  apply"* ]] || false
@@ -473,11 +475,11 @@ setup_state() {
 
 @test "geçmiş: kayıt yoksa nazik mesajlar; günlüğün son satırları istenirse gösterilir ve denetim karakterleri temizlenir" {
     setup_state
-    run comp_menu_actions demo web1 <<<$'6\n\n0'
+    run comp_menu_actions demo web1 <<<$'7\n\n0'
     [[ "$output" == *"(kayıt yok)"* ]] || false
     [[ "$output" == *"apply için preview: ❌ başarılı kayıt yok"* ]] || false
     mkdir -p "$T/state/demo/web1"; printf 'satir1\n\033[31mkirmizi\033[0m\n' > "$T/state/demo/web1/last-run.log"
-    run comp_menu_actions demo web1 <<<$'6\ne\n\n0'
+    run comp_menu_actions demo web1 <<<$'7\ne\n\n0'
     [[ "$output" == *"satir1"* ]] || false
     [[ "$output" == *"[31mkirmizi"* ]] || false
     [[ "$output" != *$'\033'* ]] || false
@@ -487,7 +489,7 @@ setup_state() {
     setup_state
     mkdir -p "$T/state/demo/web1"
     printf '%s|1.0.0|preview|ok\n' $(( $(date +%s) - 4000 )) > "$T/state/demo/web1/results"
-    run comp_menu_actions demo web1 <<<$'6\nh\n\n0'
+    run comp_menu_actions demo web1 <<<$'7\nh\n\n0'
     [[ "$output" == *"apply için preview: ⏳ süresi doldu"* ]] || false
 }
 
@@ -740,7 +742,7 @@ PY
     grep -q "^W=1" "$T/panel"
     grep -q "^T=Sunucu › web1 › Paketler › demo 1.0.0" "$T/panel"
     grep -q "Zorunlu değişkenler tamam" "$T/panel"
-    [ "$(grep -c '^D=' "$T/panel")" -eq 6 ]            # değişkenler + 4 eylem + geçmiş
+    [ "$(grep -c '^D=' "$T/panel")" -eq 7 ]            # değişkenler + 4 eylem + Kontrol + geçmiş
     grep -q "^D=apply  —  .*Ön koşul: preview" "$T/panel"
     run ! grep -q "Hazırlık" <<< "$output"               # klasik düz metin bloğu çıkmaz
 }
@@ -877,7 +879,109 @@ PY
     INFO=$(comp_manifest_info "$T/m2.json" demo 1.0.0)
     mkdir -p "$T/state/demo/web1/h/t"; cp "$ROOT/test/fixtures/bulgular-ornek.tsv" "$T/state/demo/web1/h/t/bulgular.tsv"
     run comp_menu_actions demo web1 <<<$'0'
-    [[ "$output" == *"Bulgular: 26 (9 tanesi paket seçeneğiyle eşleşir)"* && "$output" == *"7) 🔎 Bulgular (26)"* ]] || { echo "$output"; false; }
-    run comp_menu_actions demo web1 <<<$'7\n0\n0'
+    [[ "$output" == *"Bulgular: 26 (9 tanesi paket seçeneğiyle eşleşir)"* && "$output" == *"8) 🔎 Bulgular (26)"* ]] || { echo "$output"; false; }
+    run comp_menu_actions demo web1 <<<$'8\n0\n0'
     [[ "$output" == *"Yalnız eşlemeli: kapalı (26 gösterilen)"* && "$output" == *"SSH-7408"* ]] || { echo "$output"; false; }
+}
+
+# =====================================================================
+# Otomatik preview teklifi ve 🧪 Kontrol
+# =====================================================================
+# actions listesi: 1 Değişkenler, 2 preview, 3 apply, 4 wipe, 5 audit, 6 Kontrol, 7 Geçmiş
+
+@test "apply: preview taze değilse sorar; 'h' hiçbir şey çalıştırmaz" {
+    setup_state
+    run comp_menu_actions demo web1 <<<$'3\nh\n\n0'
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"'apply' için önce 'preview' gerekli"* ]] || false
+    [[ "$output" == *"Vazgeçildi: 'apply' çalıştırılmadı."* ]] || false
+    [ ! -e "$T/runs" ]
+}
+
+@test "apply: preview taze değilse 'e' önce preview'ı çalıştırır, sonra devam sorusu; 'e' ile apply da çalışır" {
+    setup_state
+    run comp_menu_actions demo web1 <<<$'3\ne\ne\n\n0'
+    [ "$status" -eq 0 ]
+    [ "$(sed -n 1p "$T/runs")" = "demo preview web1" ]
+    [ "$(sed -n 2p "$T/runs")" = "demo apply web1" ]
+    [ "$(wc -l < "$T/runs" | tr -d ' ')" = "2" ]
+}
+
+@test "apply: preview çalıştı ama devam sorusuna 'h' denirse apply çalışmaz" {
+    setup_state
+    run comp_menu_actions demo web1 <<<$'3\ne\nh\n\n0'
+    [ "$(wc -l < "$T/runs" | tr -d ' ')" = "1" ]
+    [ "$(sed -n 1p "$T/runs")" = "demo preview web1" ]
+    [[ "$output" == *"Vazgeçildi: 'apply' çalıştırılmadı."* ]] || false
+}
+
+@test "apply: önerilen preview başarısız olursa apply çalışmaz ve neden yazılır" {
+    setup_state
+    FAKE_RUN_RC=2 run comp_menu_actions demo web1 <<<$'3\ne\n\n0'
+    [ "$(wc -l < "$T/runs" | tr -d ' ')" = "1" ]
+    [[ "$output" == *"'preview' tamamlanamadı; 'apply' çalıştırılmadı."* ]] || false
+}
+
+@test "apply: preview tazeyse soru çıkmaz, doğrudan apply çalışır" {
+    setup_state
+    comp_gate_record demo web1 1.0.0 preview ok
+    run comp_menu_actions demo web1 <<<$'3\n\n0'
+    [[ "$output" != *"gerekli (yok ya da süresi dolmuş)"* ]] || false
+    [ "$(cat "$T/runs")" = "demo apply web1" ]
+}
+
+@test "apply: girdi yarıda biterse (EOF) soru 'hayır' sayılır ve takılmaz" {
+    setup_state
+    run comp_menu_actions demo web1 <<<'3'
+    [ "$status" -eq 0 ]
+    [ ! -e "$T/runs" ]
+}
+
+@test "preview gibi ön koşulsuz eylem soru çıkarmadan çalışır" {
+    setup_state
+    run comp_menu_actions demo web1 <<<$'2\n\n0'
+    [[ "$output" != *"gerekli (yok ya da süresi dolmuş)"* ]] || false
+    [ "$(cat "$T/runs")" = "demo preview web1" ]
+}
+
+@test "kontrol: satır yalnız preview ve audit ikisi de varsa görünür" {
+    setup_state
+    run comp_menu_actions demo web1 <<<'0'
+    [[ "$output" == *"6) 🧪 Kontrol (preview + audit)"* ]] || false
+    comp_action_on_platform() { [ "$2" != audit ]; }                   # audit bu platformda yok
+    run comp_menu_actions demo web1 <<<'0'
+    [[ "$output" != *"Kontrol (preview + audit)"* ]] || false
+}
+
+@test "kontrol: preview sonra audit art arda çalışır ve tek özet yazılır" {
+    setup_state
+    run comp_menu_actions demo web1 <<<$'6\n\n0'
+    [ "$status" -eq 0 ]
+    [ "$(sed -n 1p "$T/runs")" = "demo preview web1" ]
+    [ "$(sed -n 2p "$T/runs")" = "demo audit web1" ]
+    [ "$(wc -l < "$T/runs" | tr -d ' ')" = "2" ]
+    [[ "$output" == *"Kontrol özeti — web1"* && "$output" == *"preview: ✅ apply için hazır"* && "$output" == *"audit:   ✅ tamam"* ]] || { echo "$output"; false; }
+}
+
+@test "kontrol: preview başarısızsa audit çalıştırılmaz ve özet bunu söyler" {
+    setup_state
+    FAKE_RUN_RC=2 run comp_menu_actions demo web1 <<<$'6\n\n0'
+    [ "$(cat "$T/runs")" = "demo preview web1" ]
+    [[ "$output" == *"preview: ❌ başarısız"* && "$output" == *"preview tamamlanamadı; audit çalıştırılmadı"* ]] || { echo "$output"; false; }
+}
+
+@test "kontrol: audit reddedilirse (kapı/onay) preview sonucu korunur ve özet nedenini söyler" {
+    setup_state
+    comp_cli_run() { echo "$*" >> "$T/runs"; [ "$2" = audit ] && return "$COMP_EXEC_REFUSED"; return 0; }
+    run comp_menu_actions demo web1 <<<$'6\n\n0'
+    [ "$(wc -l < "$T/runs" | tr -d ' ')" = "2" ]
+    [[ "$output" == *"preview: ✅ apply için hazır"* && "$output" == *"audit çalıştırılmadı (kapı/onay"* ]] || { echo "$output"; false; }
+}
+
+@test "kontrol: zorunlu değişken eksikse ⛔ gösterir ve hiçbir şey çalıştırmaz" {
+    setup_state
+    : > "$D/demo.vars"
+    run comp_menu_actions demo web1 <<<$'6\n\n0'
+    [[ "$output" == *"Önce zorunlu değişkenleri tamamlayın"* ]] || false
+    [ ! -e "$T/runs" ]
 }

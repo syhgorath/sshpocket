@@ -397,9 +397,77 @@ _comp_menu_run_panel() {
     echo "$UI_RULE"
 }
 
+# _comp_menu_yn <istem> → 0: e/E/evet; girdi yoksa (EOF) ve diğer her şey: 1 (varsayılan H)
+_comp_menu_yn() {
+    local ans
+    printf '%s' "$1" >&2
+    IFS= read -r ans || { echo >&2; return 1; }
+    case "$ans" in e|E|evet|Evet|EVET) return 0 ;; *) return 1 ;; esac
+}
+
+# _comp_menu_unmet <bilgi> <paket> <sunucu> <eylem> → eylemin taze olmayan (yok/eski/başarısız) ön koşullarını satır satır yazar
+_comp_menu_unmet() {
+    local info="$1" id="$2" server="$3" name="$4" r age
+    for r in $(comp_action_get "$info" "$name" requires | tr ',' ' '); do
+        if age=$(comp_gate_requires_age "$id" "$server" "$COMP_MENU_VER" "$r") && [ "$age" -le "$COMP_REQUIRES_TTL" ]; then :; else printf '%s\n' "$r"; fi
+    done
+}
+
+# _comp_menu_run_one <paket> <sunucu> <bilgi> <eylem> <eksik> <fzf-mi> → tek eylemi panelle çalıştırır; çıkış kodu COMP_MENU_RC'de (işlev hep 0 döner)
+_comp_menu_run_one() {
+    local id="$1" server="$2" info="$3" name="$4" missing="$5" fz="$6" t0=$SECONDS
+    COMP_MENU_RC=0
+    if [ "$fz" = 1 ] && _comp_menu_panel_begin "$id" "$server" "$info" "$name" "$missing"; then :; else echo ""; fi
+    comp_cli_run "$id" "$name" "$server" && COMP_MENU_RC=0 || COMP_MENU_RC=$?
+    if _comp_menu_interactive; then _comp_menu_run_panel "$id" "$server" "$info" "$name" "$COMP_MENU_RC" "$((SECONDS - t0))"; fi
+    _comp_menu_panel_end "$name" "$server" "$COMP_MENU_RC" "$((SECONDS - t0))"
+    return 0
+}
+
+# _comp_menu_run_chain <paket> <sunucu> <bilgi> <eylem> <eksik> <fzf-mi> <eylemler...> → eylemi çalıştırır; taze olmayan ön koşulu (örn. apply için preview)
+# kullanıcı onaylarsa önce çalıştırır, sonucu gösterir ve devam için ikinci kez sorar. Kapı (comp_gate_requires) değişmez: çalıştırma kolaylığıdır, atlama değil.
+_comp_menu_run_chain() {
+    local id="$1" server="$2" info="$3" hedef="$4" missing="$5" fz="$6" r; shift 6
+    local pre
+    pre=$(_comp_menu_unmet "$info" "$id" "$server" "$hedef" | grep -Fxf <(printf '%s\n' "$@") || true)
+    for r in $pre; do
+        if ! _comp_menu_yn "↪ '$hedef' için önce '$r' gerekli (yok ya da süresi dolmuş). '$r' şimdi çalıştırılsın mı? [e/H]: "; then
+            echo "Vazgeçildi: '$hedef' çalıştırılmadı."; return 0
+        fi
+        _comp_menu_run_one "$id" "$server" "$info" "$r" "$missing" "$fz"
+        if [ "$COMP_MENU_RC" -ne 0 ]; then echo ""; echo "⛔ '$r' tamamlanamadı; '$hedef' çalıştırılmadı."; return 0; fi
+        if ! _comp_menu_yn "'$r' sonucunu gördünüz. '$hedef' ile devam edilsin mi? [e/H]: "; then echo "Vazgeçildi: '$hedef' çalıştırılmadı."; return 0; fi
+        _comp_menu_panel_reset
+    done
+    _comp_menu_run_one "$id" "$server" "$info" "$hedef" "$missing" "$fz"
+}
+
+# _comp_menu_kontrol <paket> <sunucu> <bilgi> <eksik> <fzf-mi> → preview, sonra audit; sonunda tek özet (değişecek sayısı, Lynis, bulgu)
+_comp_menu_kontrol() {
+    local id="$1" server="$2" info="$3" missing="$4" fz="$5" total="" prc audit_note=""
+    _comp_menu_run_one "$id" "$server" "$info" preview "$missing" "$fz"; prc=$COMP_MENU_RC
+    if [ "$prc" -eq 0 ]; then
+        total=$(_comp_menu_progress_lines "$info" preview "$(_comp_gate_state_dir)/$id/$server/last-run.log" | sed -n 's/.*Toplam değişecek: *//p' | tail -n 1)
+        _comp_menu_panel_reset
+        _comp_menu_run_one "$id" "$server" "$info" audit "$missing" "$fz"
+        if [ "$COMP_MENU_RC" -eq "${COMP_EXEC_REFUSED:-190}" ]; then audit_note="audit çalıştırılmadı (kapı/onay; ayrıntı yukarıda)"
+        elif [ "$COMP_MENU_RC" -ne 0 ]; then audit_note="audit başarısız (çıkış $COMP_MENU_RC)"; fi
+    else
+        audit_note="preview tamamlanamadı; audit çalıştırılmadı"
+    fi
+    echo ""
+    echo "${UI_RULE:-────────}"
+    printf '  Kontrol özeti — %s\n' "$server"
+    printf '  preview: %s\n' "$([ "$prc" -eq 0 ] && printf '✅ apply için hazır · uygulanırsa değişecek: %s' "${total:-?}" || printf '❌ başarısız')"
+    if [ -n "$audit_note" ]; then printf '  audit:   ⚠ %s\n' "$audit_note"; else printf '  audit:   ✅ tamam\n'; fi
+    _comp_menu_score_lines "$id" "$server"
+    _comp_menu_findings_lines "$id" "$server" "$info"
+    echo "${UI_RULE:-────────}"
+}
+
 # comp_menu_actions <paket> <sunucu> → hazırlık durumu + (📝 Değişkenler | eylemler); seçileni çalıştırır; geri dönene kadar döngü
 comp_menu_actions() {
-    local id="$1" server="$2" info name pick i act eff req missing m plat hidden fz=0 t0 rc
+    local id="$1" server="$2" info name pick i act eff req missing m plat hidden fz=0 rc hedef ko=0
     local -a names labels
     info=$(comp_prepare "$id") || { echo "Paket doğrulanamadı: $id (./start.sh --components list)" >&2; return 1; }
     _comp_menu_ctx "$id" "$server" "$info"
@@ -411,6 +479,8 @@ comp_menu_actions() {
         if comp_action_on_platform "$info" "$name" "$plat"; then names+=("$name"); else hidden=$((hidden + 1)); fi
     done < <(comp_info_all "$info" action)
     [ "${#names[@]}" -gt 0 ] || { echo "Pakette eylem yok." >&2; return 1; }
+    # 🧪 Kontrol (preview + audit art arda): yalnızca ikisi de bu platformda varsa
+    if printf '%s\n' "${names[@]}" | grep -qx preview && printf '%s\n' "${names[@]}" | grep -qx audit; then ko=1; fi
     while true; do
         missing=$(comp_vars_missing "$COMP_MENU_MF" "$COMP_MENU_VARS")
         clear
@@ -441,6 +511,10 @@ comp_menu_actions() {
             eff=$(comp_action_get "$info" "$name" confirm)
             UI_PICK_DESCS+=("${act:-Ek uyarı yok.} [onay: ${eff:-none}]")
         done
+        if [ "$ko" = 1 ]; then
+            labels+=("🧪 Kontrol (preview + audit)")
+            UI_PICK_DESCS+=("preview'ı sonra audit'i art arda çalıştırır; sonunda tek özet: apply'da değişecek sayısı, Lynis puanı, bulgular. Salt okunur (audit hedefe yalnız lynis kurabilir).")
+        fi
         labels+=("📜 Geçmiş ve son sonuçlar")
         UI_PICK_DESCS+=("Bu sunucudaki son çalıştırmalar, ön koşulların tazeliği (örn. apply için preview) ve son çalıştırma günlüğü.")
         if _comp_menu_findings_load "$id" "$server" "$info"; then
@@ -458,6 +532,7 @@ comp_menu_actions() {
             [ "$hidden" -eq 0 ] || UI_PICK_HEADER="$UI_PICK_HEADER"$'\n'"ℹ️  $hidden eylem bu platforma uygun olmadığı için gizlendi"
             UI_PICK_DESCS+=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır."$'\n'"Zorunlu eksik: $(printf '%s' "${missing:-yok}" | tr '\n' ' ')")
             for name in "${names[@]}"; do UI_PICK_DESCS+=("$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")"); done
+            [ "$ko" = 0 ] || UI_PICK_DESCS+=("preview'ı sonra audit'i art arda çalıştırır; sonunda tek özet (değişecek sayısı, Lynis puanı, bulgular)."$'\n'"Her ikisinin kendi onayı/kapısı aynen geçerlidir.")
             UI_PICK_DESCS+=("$(_comp_menu_history_card "$id" "$server")")
             if _comp_menu_findings_load "$id" "$server" "$info"; then UI_PICK_DESCS+=("$(_comp_menu_findings_lines "$id" "$server" "$info" | sed 's/^ *//')"$'\n'"Enter: listeyi aç"); fi
         fi
@@ -467,11 +542,23 @@ comp_menu_actions() {
             comp_menu_vars "$id" "$server" "$info"
             continue
         fi
-        if [ "$pick" -eq $((${#names[@]} + 2)) ]; then
+        if [ "$ko" = 1 ] && [ "$pick" -eq $((${#names[@]} + 2)) ]; then
+            if _comp_menu_action_blocked "$info" preview "$missing" || _comp_menu_action_blocked "$info" audit "$missing"; then
+                echo ""; echo "⛔ Önce zorunlu değişkenleri tamamlayın (📝 Değişkenler)."
+                read -r -p "Devam için Enter..." _ || return 0
+                continue
+            fi
+            _comp_menu_kontrol "$id" "$server" "$info" "$missing" "$fz"
+            echo ""
+            read -r -p "Devam için Enter..." _ || { _comp_menu_panel_reset; return 0; }
+            _comp_menu_panel_reset
+            continue
+        fi
+        if [ "$pick" -eq $((${#names[@]} + 2 + ko)) ]; then
             comp_menu_history "$id" "$server" "$info" || return 0
             continue
         fi
-        if [ "$pick" -eq $((${#names[@]} + 3)) ]; then
+        if [ "$pick" -eq $((${#names[@]} + 3 + ko)) ]; then
             comp_menu_findings "$id" "$server" "$info"
             continue
         fi
@@ -481,11 +568,8 @@ comp_menu_actions() {
             read -r -p "Devam için Enter..." _ || return 0
             continue
         fi
-        t0=$SECONDS
-        if [ "$fz" = 1 ] && _comp_menu_panel_begin "$id" "$server" "$info" "${names[$((pick - 2))]}" "$missing"; then :; else echo ""; fi
-        comp_cli_run "$id" "${names[$((pick - 2))]}" "$server" && rc=0 || rc=$?
-        if _comp_menu_interactive; then _comp_menu_run_panel "$id" "$server" "$info" "${names[$((pick - 2))]}" "$rc" "$((SECONDS - t0))"; fi
-        _comp_menu_panel_end "${names[$((pick - 2))]}" "$server" "$rc" "$((SECONDS - t0))"
+        hedef="${names[$((pick - 2))]}"
+        _comp_menu_run_chain "$id" "$server" "$info" "$hedef" "$missing" "$fz" "${names[@]}"
         echo ""
         read -r -p "Devam için Enter..." _ || { _comp_menu_panel_reset; return 0; }
         _comp_menu_panel_reset
