@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.19] - 2026-11-01
+
+Bu yama sürümü kullanıcıya görünür özellikler de taşır: paket menüsünde 🧪 Kontrol ve ön koşul önerisi, bulgular ekranı, canlı ilerleme, ortak arayüz parçaları ve `linux-hardening` 0.11.0.
+
+### Dikkat
+- **fail2ban davranışı değişti (`linux-hardening` 0.11.0):** `127.0.0.1/8 ::1` her zaman muaf; `hardening_fail2ban_ignoreip` varsayılanı boş ve yazdığınız adresleri EKLER. Kontrol makinesinin ve `hardening_ssh_allow_from`'un adresi artık otomatik muaf EDİLMEZ: bağlı adres muaf değilse art arda hatalı denemede (5) `bantime` (varsayılan `10m`, eskiden `1h`) kadar banlanabilirsiniz; günlükte tek satır `NOT (fail2ban)` çıkar. Yükseltmede jail dosyası bir kez yeniden yazılır (ilk koşu `changed` + fail2ban yeniden başlatması). **Gerçek VM doğrulaması (Ubuntu + Proxmox) henüz yapılmadı** (yalnızca birim/Ansible testleri ve Docker LAB e2e yeşil); ikinci apply'ın `changed=0` olması ve etkin ban davranışı sınanmadı.
+
 ### Eklendi
 - **🧪 Kontrol (paket eylem menüsü):** pakette `preview` ve `audit` ikisi de bu sunucunun platformunda varsa listede yeni satır; ikisini art arda çalıştırır (önce `preview`, başarısızsa `audit` çalışmaz) ve sonunda tek özet yazar: apply'da değişecek sayısı, Lynis puanı, bulgular. Zorunlu değişken eksikse ⛔ ve hiçbir şey çalışmaz; `audit` kapıya/onaya takılırsa `preview` sonucu korunur ve özet nedenini söyler. Paket kodu değişmez, eylemlerin kendi kapıları ve onayları aynen geçerlidir. Menü satırları kayar: Geçmiş artık Kontrol'den sonra gelir.
 - **Ön koşul eylemini önermek (etkileşimli menü):** `apply` gibi `requires` taşıyan bir eylem seçilince ön koşul (örn. `preview`) yok ya da süresi dolmuşsa menü "önce çalıştırılsın mı? [e/H]" diye sorar, çalıştırır, sonucu gösterir ve "devam edilsin mi?" diye ikinci kez sorar; eylemin kendi onayı (sunucu adını yazma) ayrıca aynen sorulur. Ön koşul başarısız olursa ya da "H" denirse eylem çalışmaz; girdi biterse (EOF) "hayır" sayılır. Komut satırı (`--components run`) ve kapı (`comp_gate_requires`) değişmedi: atlama değil, çalıştırma kolaylığı.
